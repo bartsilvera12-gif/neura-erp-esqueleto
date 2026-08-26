@@ -1,5 +1,7 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
+
 /**
  * Selector simple tipo dropdown con opcion "Sin asignar".
  * - `emptyShort` se muestra DENTRO del select cuando no hay opciones (texto corto
@@ -33,7 +35,7 @@ export default function SelectFromList({
   const empty = emptyShort ?? emptyText ?? "Sin opciones";
   return (
     <div className="min-w-0">
-      <select
+      <Select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
         disabled={isEmpty}
@@ -48,7 +50,7 @@ export default function SelectFromList({
             {o.label}{o.sublabel ? ` — ${o.sublabel}` : ""}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 }

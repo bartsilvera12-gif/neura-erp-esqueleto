@@ -25,6 +25,7 @@ import type { Cliente, TipoCliente, OrigenCliente } from "@/lib/clientes/types";
 import type { ClienteTipoServicioRow } from "@/lib/clientes/tipo-servicio-catalogo";
 import { filasTiposDesdeSistemaEstatico, fetchTiposFormCliente } from "@/lib/clientes/fetch-tipos-servicio-form";
 import type { Plan } from "@/lib/planes/types";
+import { Select } from "@/components/ui/Select";
 
 // ── Estilos ────────────────────────────────────────────────────────────────────
 
@@ -459,7 +460,7 @@ function NuevoClienteForm() {
             {MOSTRAR_TIPO_SERVICIO && (
             <div>
               <label className={labelClass}>Tipo de servicio</label>
-              <select
+              <Select
                 name="tipo_servicio_cliente"
                 value={form.tipo_servicio_cliente}
                 onChange={(e) => setForm((prev) => ({ ...prev, tipo_servicio_cliente: e.target.value }))}
@@ -471,7 +472,7 @@ function NuevoClienteForm() {
                     {f.nombre}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             )}
 
@@ -619,7 +620,7 @@ function NuevoClienteForm() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className={labelClass}>Condición de pago</label>
-                <select
+                <Select
                   name="condicion_pago"
                   value={form.condicion_pago}
                   onChange={handleChange}
@@ -631,11 +632,11 @@ function NuevoClienteForm() {
                   <option value="60 DÍAS">60 días</option>
                   <option value="90 DÍAS">90 días</option>
                   <option value="MENSUAL">Mensual</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Moneda preferida</label>
-                <select
+                <Select
                   name="moneda_preferida"
                   value={form.moneda_preferida}
                   onChange={(e) => setForm((prev) => ({ ...prev, moneda_preferida: e.target.value as "GS" | "USD" }))}
@@ -643,11 +644,11 @@ function NuevoClienteForm() {
                 >
                   <option value="GS">Guaraníes (GS)</option>
                   <option value="USD">Dólares (USD)</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Vendedor responsable (usuario ERP)</label>
-                <select
+                <Select
                   name="vendedor_usuario_id"
                   value={form.vendedor_usuario_id}
                   onChange={(e) => setForm((prev) => ({ ...prev, vendedor_usuario_id: e.target.value }))}
@@ -659,7 +660,7 @@ function NuevoClienteForm() {
                       {(u.nombre ?? "").trim() || u.email}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {usuariosEmpresaError ? (
                   <p className="mt-1 text-xs text-red-600">{usuariosEmpresaError}</p>
                 ) : usuariosEmpresa.length === 0 ? (
@@ -682,7 +683,7 @@ function NuevoClienteForm() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Origen del cliente</label>
-                <select
+                <Select
                   name="origen"
                   value={form.origen}
                   onChange={(e) => setForm((prev) => ({ ...prev, origen: e.target.value as OrigenCliente }))}
@@ -692,11 +693,11 @@ function NuevoClienteForm() {
                   <option value="MANUAL">Manual</option>
                   <option value="CRM">CRM</option>
                   <option value="VENTA">Venta</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={labelClass}>Estado inicial</label>
-                <select
+                <Select
                   name="estado"
                   value={form.estado}
                   onChange={(e) => setForm((prev) => ({ ...prev, estado: e.target.value as "activo" | "inactivo" }))}
@@ -704,7 +705,7 @@ function NuevoClienteForm() {
                 >
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
-                </select>
+                </Select>
               </div>
             </div>
 

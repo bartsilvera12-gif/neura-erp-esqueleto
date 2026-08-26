@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getMovimientos } from "@/lib/inventario/storage";
 import type { MovimientoInventario, TipoMovimiento, OrigenMovimiento } from "@/lib/inventario/types";
+import { Select } from "@/components/ui/Select";
 
 /** Paleta blanco + turquesa Zentra. La entrada usa el turquesa de marca. */
 const tipoBadge: Record<TipoMovimiento, string> = {
@@ -121,7 +122,7 @@ export default function MovimientosPage() {
             onChange={(e) => setBusqueda(e.target.value)}
             className={`${inputFilterClass} min-w-56`}
           />
-          <select
+          <Select
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value as TipoMovimiento | "")}
             className={inputFilterClass}
@@ -130,8 +131,8 @@ export default function MovimientosPage() {
             <option value="ENTRADA">ENTRADA</option>
             <option value="SALIDA">SALIDA</option>
             <option value="AJUSTE">AJUSTE</option>
-          </select>
-          <select
+          </Select>
+          <Select
             value={filtroOrigen}
             onChange={(e) => setFiltroOrigen(e.target.value as OrigenMovimiento | "")}
             className={inputFilterClass}
@@ -140,7 +141,7 @@ export default function MovimientosPage() {
             <option value="compra">Compra</option>
             <option value="venta">Venta</option>
             <option value="ajuste_manual">Ajuste manual</option>
-          </select>
+          </Select>
 
           {/* Separador visual entre grupos */}
           <div className="w-full flex flex-wrap items-center gap-3">

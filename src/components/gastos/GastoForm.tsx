@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createGasto, updateGasto } from "@/lib/gastos/actions";
 import MontoInput from "@/components/ui/MontoInput";
 import type { Gasto, GastoInput } from "@/lib/gastos/actions";
+import { Select } from "@/components/ui/Select";
 
 const fLabel = "block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1";
 const fInput =
@@ -115,7 +116,7 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
           </div>
           <div>
             <label className={fLabel}>Tipo</label>
-            <select
+            <Select
               name="tipo"
               value={form.tipo}
               onChange={handleChange}
@@ -123,7 +124,7 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
             >
               <option value="variable">Variable</option>
               <option value="fijo">Fijo</option>
-            </select>
+            </Select>
           </div>
           <div className="flex items-center gap-2">
             <input

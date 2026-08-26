@@ -15,6 +15,7 @@ import {
   partitionQuickReplyButtonGroups,
   validateQuickReplyGroupsMaxThree,
 } from "@/lib/chat/flow-button-groups";
+import { Select } from "@/components/ui/Select";
 
 type FlowNodeOption = {
   id: string;
@@ -1328,11 +1329,11 @@ export default function FlowEditorPage() {
         </div>
         <div className="min-w-[180px]">
           <label className="block text-xs text-slate-500 mb-1">Tipo de nodo</label>
-          <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={newNodeType} onChange={(e) => setNewNodeType(e.target.value)}>
+          <Select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={newNodeType} onChange={(e) => setNewNodeType(e.target.value)}>
             {NODE_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
-          </select>
+          </Select>
           <p className="mt-1 text-[11px] text-slate-500">{nodeTypeHelp(newNodeType)}</p>
         </div>
         <button
@@ -1497,20 +1498,20 @@ export default function FlowEditorPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Tipo de nodo</label>
-                  <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full" value={node.node_type} onChange={(e) => setNodes((prev) => prev.map((n) => n.id === node.id ? { ...n, node_type: e.target.value } : n))}>
+                  <Select className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full" value={node.node_type} onChange={(e) => setNodes((prev) => prev.map((n) => n.id === node.id ? { ...n, node_type: e.target.value } : n))}>
                     {NODE_TYPE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Siguiente paso</label>
-                  <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full" value={node.next_node_code ?? ""} onChange={(e) => setNodes((prev) => prev.map((n) => n.id === node.id ? { ...n, next_node_code: e.target.value || null } : n))}>
+                  <Select className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full" value={node.next_node_code ?? ""} onChange={(e) => setNodes((prev) => prev.map((n) => n.id === node.id ? { ...n, next_node_code: e.target.value || null } : n))}>
                     <option value="">(finaliza en este paso)</option>
                     {nodeCodes.filter((code) => code !== node.node_code).map((code) => (
                       <option key={code} value={code}>{nextStepLabel(code)}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -2163,7 +2164,7 @@ export default function FlowEditorPage() {
                             Destino al pulsar <strong>este</strong> botón (por opción); no depende del grupo.
                           </p>
                         )}
-                        <select
+                        <Select
                           className={`border rounded-lg px-2 py-1.5 text-sm w-full ${optionSaveError[opt.id] ? "border-amber-400 ring-1 ring-amber-300" : "border-slate-200"}`}
                           value={opt.next_node_code ?? ""}
                           onChange={(e) => {
@@ -2190,7 +2191,7 @@ export default function FlowEditorPage() {
                           {nodeCodes.filter((code) => code !== node.node_code).map((code) => (
                             <option key={code} value={code}>{nextStepLabel(code)}</option>
                           ))}
-                        </select>
+                        </Select>
                         {optionSaveError[opt.id] && (
                           <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mt-1">
                             {optionSaveError[opt.id]}
@@ -2653,7 +2654,7 @@ export default function FlowEditorPage() {
             </div>
             <div className="space-y-2">
               <label className="block text-xs text-slate-500">Tipo</label>
-              <select
+              <Select
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                 value={insertDraft.node_type}
                 onChange={(e) => setInsertDraft((d) => ({ ...d, node_type: e.target.value }))}
@@ -2663,7 +2664,7 @@ export default function FlowEditorPage() {
                     {opt.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="block text-xs text-slate-500">Mensaje al cliente (opcional)</label>
@@ -2711,7 +2712,7 @@ export default function FlowEditorPage() {
               {changeNextModal.kind === "node" ? "Cambiar siguiente paso" : "Cambiar destino de la opción"}
             </h2>
             <p className="text-sm text-slate-600">Elige el paso destino (por código). Vacío = sin siguiente.</p>
-            <select
+            <Select
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
               value={changeNextValue}
               onChange={(e) => setChangeNextValue(e.target.value)}
@@ -2722,7 +2723,7 @@ export default function FlowEditorPage() {
                   {nextStepLabel(code)}
                 </option>
               ))}
-            </select>
+            </Select>
             <div className="flex flex-wrap justify-end gap-2 pt-2">
               <button
                 type="button"
@@ -2768,7 +2769,7 @@ export default function FlowEditorPage() {
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[220px]">
               <label className="block text-xs text-slate-500 mb-1">Sorteo vinculado al flujo</label>
-              <select
+              <Select
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                 value={sorteoDraft}
                 onChange={(e) => setSorteoDraft(e.target.value)}
@@ -2779,7 +2780,7 @@ export default function FlowEditorPage() {
                     {s.nombre}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <button
               type="button"

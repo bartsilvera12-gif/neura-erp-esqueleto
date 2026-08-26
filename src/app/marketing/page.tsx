@@ -18,6 +18,7 @@ import {
   Target,
   Users,
 } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -290,7 +291,7 @@ export default function MarketingOpsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <Select
             value={mes}
             onChange={(e) => setMes(e.target.value)}
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white shadow-sm"
@@ -308,7 +309,7 @@ export default function MarketingOpsPage() {
                 </option>
               );
             })}
-          </select>
+          </Select>
           <button
             type="button"
             onClick={() => void cargar()}

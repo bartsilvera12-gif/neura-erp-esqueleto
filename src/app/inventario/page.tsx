@@ -9,6 +9,7 @@ import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import ImportExcelButton from "@/components/ui/ImportExcelButton";
 import EdgeScrollArea from "@/components/ui/EdgeScrollArea";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
+import { Select } from "@/components/ui/Select";
 
 const inputFilterClass =
   "border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none";
@@ -321,7 +322,7 @@ export default function InventarioPage() {
 
           <div className="min-w-[11rem]">
             <label className="mb-1 block text-xs font-medium text-slate-500">Categoría</label>
-            <select
+            <Select
               value={filtroCategoria}
               onChange={(e) => { setFiltroCategoria(e.target.value); setPagina(1); }}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
@@ -330,12 +331,12 @@ export default function InventarioPage() {
               {categorias.map((c) => (
                 <option key={c.id} value={c.id}>{c.nombre}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="min-w-[10rem]">
             <label className="mb-1 block text-xs font-medium text-slate-500">Tipo</label>
-            <select
+            <Select
               value={filtroTipoProd}
               onChange={(e) => { setFiltroTipoProd(e.target.value as typeof filtroTipoProd); setPagina(1); }}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
@@ -344,7 +345,7 @@ export default function InventarioPage() {
               <option value="reventa">Reventa</option>
               <option value="repuesto">Repuesto</option>
               <option value="servicio">Servicio</option>
-            </select>
+            </Select>
           </div>
 
           <div>
@@ -441,7 +442,7 @@ export default function InventarioPage() {
           <div className="hidden flex-wrap items-center gap-3">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Valuación</label>
-              <select
+              <Select
                 value={filtroValuacion}
                 onChange={(e) => setFiltroValuacion(e.target.value as MetodoValuacion | "")}
                 className={inputFilterClass}
@@ -450,7 +451,7 @@ export default function InventarioPage() {
                 <option value="CPP">CPP</option>
                 <option value="FIFO">FIFO</option>
                 <option value="LIFO">LIFO</option>
-              </select>
+              </Select>
             </div>
             {/* Filtro "Depósito / Ubicación" oculto: una sola sucursal, no aporta.
                 El state `filtroUbicacion` queda en "" y no filtra nada. */}
@@ -631,7 +632,7 @@ export default function InventarioPage() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <span>Mostrar</span>
-              <select
+              <Select
                 value={porPagina}
                 onChange={(e) => { setPorPagina(Number(e.target.value)); setPagina(1); }}
                 className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
@@ -640,7 +641,7 @@ export default function InventarioPage() {
                   <option key={n} value={n}>{n}</option>
                 ))}
                 <option value={0}>Todos</option>
-              </select>
+              </Select>
               <span>
                 — {desdeItem}‑{hastaItem} de {productos.length}
               </span>

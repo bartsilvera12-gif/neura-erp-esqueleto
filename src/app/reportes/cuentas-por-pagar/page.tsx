@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api/fetch-with-supabase-session";
 import { getProveedores } from "@/lib/proveedores/storage";
 import type { Proveedor } from "@/lib/proveedores/types";
+import { Select } from "@/components/ui/Select";
 
 interface Row {
   compra_id: string; numero_control: string; fecha: string | null; fecha_vencimiento: string | null;
@@ -106,16 +107,16 @@ export default function CuentasPorPagarPage() {
         <label className="text-xs font-semibold text-slate-500">Hasta
           <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm" /></label>
         <label className="text-xs font-semibold text-slate-500">Proveedor
-          <select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
+          <Select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
             <option value="">Todos</option>
             {proveedores.map((p) => <option key={p.id} value={String(p.id)}>{p.nombre}</option>)}
-          </select></label>
+          </Select></label>
         <label className="text-xs font-semibold text-slate-500">Estado
-          <select value={estado} onChange={(e) => setEstado(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
+          <Select value={estado} onChange={(e) => setEstado(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
             <option value="">Todas</option>
             <option value="vencidas">Vencidas</option>
             <option value="por_vencer">Por vencer</option>
-          </select></label>
+          </Select></label>
         <div className="flex items-end">
           <button onClick={load} className="w-full rounded-lg bg-[#4FAEB2] px-3 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91]">Aplicar</button>
         </div>

@@ -36,6 +36,7 @@ import type {
   MedioPagoCaja,
   TipoMovimientoCaja,
 } from "@/lib/caja/types";
+import { Select } from "@/components/ui/Select";
 
 function fmtGs(v: number) {
   return `Gs. ${Math.round(v || 0).toLocaleString("es-PY")}`;
@@ -997,7 +998,7 @@ function ModalMovimiento({
             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
               Medio de pago
             </label>
-            <select
+            <Select
               value={medio}
               onChange={(e) => setMedio(e.target.value as MedioPagoCaja)}
               className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20 outline-none bg-white"
@@ -1006,7 +1007,7 @@ function ModalMovimiento({
               <option value="tarjeta">Tarjeta</option>
               <option value="transferencia">Transferencia</option>
               <option value="otro">Otro</option>
-            </select>
+            </Select>
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { ChefHat, ArrowLeft, Loader2 } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 
 type Producto = {
   id: string;
@@ -119,7 +120,7 @@ export default function NuevaRecetaPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Producto vendible <span className="text-red-500">*</span>
             </label>
-            <select
+            <Select
               value={productoId}
               onChange={(e) => {
                 setProductoId(e.target.value);
@@ -134,7 +135,7 @@ export default function NuevaRecetaPage() {
                   {p.nombre} ({p.sku}) — Gs. {Number(p.precio_venta).toLocaleString("es-PY")}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div>

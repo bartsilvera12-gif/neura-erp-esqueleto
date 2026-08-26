@@ -16,6 +16,7 @@ import {
   getUnknownErrorKeys,
   serializeUnknownError,
 } from "@/lib/errors/serialize-unknown-error";
+import { Select } from "@/components/ui/Select";
 
 type EscalaRow = {
   id?: string;
@@ -480,7 +481,7 @@ export default function ConfiguracionComisionesPage() {
               </div>
               <div>
                 <label className={F_LABEL}>Estado</label>
-                <select
+                <Select
                   value={activo ? "1" : "0"}
                   onChange={(e) => setActivo(e.target.value === "1")}
                   disabled={!puedeEditar}
@@ -488,11 +489,11 @@ export default function ConfiguracionComisionesPage() {
                 >
                   <option value="1">Activa</option>
                   <option value="0">Inactiva</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={F_LABEL}>Base de cálculo (futuro)</label>
-                <select
+                <Select
                   value={baseCalculo}
                   onChange={(e) => setBaseCalculo(e.target.value)}
                   disabled={!puedeEditar}
@@ -503,7 +504,7 @@ export default function ConfiguracionComisionesPage() {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <ConfigHelpText>
                   Define la fuente cuando el motor calcule comisiones (habilitación próxima).
                 </ConfigHelpText>

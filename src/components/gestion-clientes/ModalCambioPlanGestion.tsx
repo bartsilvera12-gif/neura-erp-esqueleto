@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import type { CambioPlanContexto, ModoCambioPlan } from "@/lib/facturacion/cambio-plan-cliente-types";
+import { Select } from "@/components/ui/Select";
 
 const fInputClass =
   "w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white";
@@ -181,7 +182,7 @@ export function ModalCambioPlanGestion({
                     <label className="mb-0.5 block text-[11px] font-medium text-slate-500" htmlFor="cambio-plan-sel">
                       Nuevo plan
                     </label>
-                    <select
+                    <Select
                       id="cambio-plan-sel"
                       value={planId}
                       onChange={(e) => setPlanId(e.target.value)}
@@ -192,7 +193,7 @@ export function ModalCambioPlanGestion({
                           {p.nombre} — {p.moneda === "USD" ? "US$" : "Gs."} {p.moneda === "GS" ? formatGs(p.precio) : p.precio} / {p.moneda}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   {planElegido ? (
                     <p className="text-sm text-slate-700">

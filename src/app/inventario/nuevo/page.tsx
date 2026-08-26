@@ -7,6 +7,7 @@ import MontoInput from "@/components/ui/MontoInput";
 import SelectFromList from "@/components/inventario/SelectFromList";
 import { productoExiste, saveProducto } from "@/lib/inventario/storage";
 import type { MetodoValuacion } from "@/lib/inventario/types";
+import { Select } from "@/components/ui/Select";
 
 // Opciones estándar de unidad de medida para gastro
 const UNIDADES_OPCIONES = [
@@ -585,7 +586,7 @@ export default function NuevoProductoPage() {
 
             <div className={tipoGastro === "menu" ? "hidden" : ""}>
               <label className={labelClass}>Unidad de medida</label>
-              <select
+              <Select
                 name="unidad_medida"
                 value={form.unidad_medida}
                 onChange={handleChange}
@@ -595,7 +596,7 @@ export default function NuevoProductoPage() {
                 {UNIDADES_OPCIONES.map((u) => (
                   <option key={u} value={u}>{u}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -1001,7 +1002,7 @@ export default function NuevoProductoPage() {
               Se mantiene siempre 'CPP' (default del state form.metodo_valuacion) y se envía al backend tal cual. */}
           <div className="hidden">
             <label className={labelClass}>Método de valuación</label>
-            <select
+            <Select
               name="metodo_valuacion"
               value={form.metodo_valuacion}
               onChange={handleChange}
@@ -1010,7 +1011,7 @@ export default function NuevoProductoPage() {
               <option value="CPP">CPP — Costo Promedio Ponderado</option>
               <option value="FIFO">FIFO — Primero en entrar, primero en salir</option>
               <option value="LIFO">LIFO — Último en entrar, primero en salir</option>
-            </select>
+            </Select>
           </div>
 
           {/* Acciones */}

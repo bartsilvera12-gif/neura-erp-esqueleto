@@ -5,6 +5,7 @@ import { useState } from "react";
 import MontoInput from "@/components/ui/MontoInput";
 import { useRouter } from "next/navigation";
 import { savePlan } from "@/lib/planes/storage";
+import { Select } from "@/components/ui/Select";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -143,10 +144,10 @@ export default function NuevoPlanPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={fLabelClass}>Estado</label>
-                <select name="estado" value={form.estado} onChange={handleChange} className={fSelectClass}>
+                <Select name="estado" value={form.estado} onChange={handleChange} className={fSelectClass}>
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
-                </select>
+                </Select>
               </div>
             </div>
           </div>
@@ -171,19 +172,19 @@ export default function NuevoPlanPage() {
 
             <div>
               <label className={fLabelClass}>Moneda</label>
-              <select name="moneda" value={form.moneda} onChange={handleChange} className={fSelectClass}>
+              <Select name="moneda" value={form.moneda} onChange={handleChange} className={fSelectClass}>
                 <option value="GS">Guaraníes (GS)</option>
                 <option value="USD">Dólares (USD)</option>
-              </select>
+              </Select>
             </div>
 
             <div>
               <label className={fLabelClass}>Periodicidad</label>
-              <select name="periodicidad" value={form.periodicidad} onChange={handleChange} className={fSelectClass}>
+              <Select name="periodicidad" value={form.periodicidad} onChange={handleChange} className={fSelectClass}>
                 <option value="mensual">Mensual</option>
                 <option value="anual">Anual</option>
                 <option value="unico">Único (pago único)</option>
-              </select>
+              </Select>
             </div>
           </div>
         </section>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
+import { Select } from "@/components/ui/Select";
 
 type EstadoMes = "pagado" | "pendiente" | "sin_facturar";
 type EstadoCobro = "cobrada" | "parcial" | "sin_cobrar";
@@ -342,7 +343,7 @@ export default function ReporteSuscripcionesPage() {
           onChange={(e) => setQ(e.target.value)}
           className="min-w-[220px] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-[#4FAEB2]/60 focus:border-[#4FAEB2] focus:outline-none focus:ring-2 focus:ring-[#4FAEB2]/20"
         />
-        <select
+        <Select
           value={tipo}
           onChange={(e) => setTipo(e.target.value)}
           className="min-w-[160px] rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 shadow-sm hover:border-[#4FAEB2]/60 focus:border-[#4FAEB2] focus:outline-none focus:ring-2 focus:ring-[#4FAEB2]/20"
@@ -353,7 +354,7 @@ export default function ReporteSuscripcionesPage() {
               {label}
             </option>
           ))}
-        </select>
+        </Select>
         {(q || tipo || estadoFiltro) && (
           <button
             onClick={() => {

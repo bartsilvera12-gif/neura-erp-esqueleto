@@ -11,6 +11,7 @@ import PlanSelector from "@/components/crm/PlanSelector";
 import { cleanTelefono, formatTelefonoDisplay, isValidTelefono } from "@/lib/telefono";
 import type { EtapaCrm } from "@/lib/crm/etapas";
 import type { Plan } from "@/lib/planes/types";
+import { Select } from "@/components/ui/Select";
 
 // ── Estilos ────────────────────────────────────────────────────────────────────
 
@@ -294,7 +295,7 @@ export default function NuevoProspectoPage() {
               </div>
               <div>
                 <label className={labelClass}>Etapa inicial</label>
-                <select
+                <Select
                   name="etapa"
                   value={form.etapa}
                   onChange={handleChange}
@@ -303,7 +304,7 @@ export default function NuevoProspectoPage() {
                   {etapas.filter((e) => e.codigo !== "GANADO" && e.codigo !== "PERDIDO").map((e) => (
                     <option key={e.id} value={e.codigo}>{e.nombre}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
           </section>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api/fetch-with-supabase-session";
 import { getProveedores } from "@/lib/proveedores/storage";
 import type { Proveedor } from "@/lib/proveedores/types";
+import { Select } from "@/components/ui/Select";
 
 interface Row {
   origen_tipo: "compra" | "gasto";
@@ -132,24 +133,24 @@ export default function LibroComprasPage() {
           <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
         </label>
         <label className="text-xs font-semibold text-slate-500">Proveedor
-          <select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
+          <Select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
             <option value="">Todos</option>
             {proveedores.map((p) => <option key={p.id} value={String(p.id)}>{p.nombre}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="text-xs font-semibold text-slate-500">Origen
-          <select value={origen} onChange={(e) => setOrigen(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
+          <Select value={origen} onChange={(e) => setOrigen(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
             <option value="">Todos</option>
             <option value="compra">Compra</option>
             <option value="gasto">Gasto o Servicio</option>
-          </select>
+          </Select>
         </label>
         <label className="text-xs font-semibold text-slate-500">Condición
-          <select value={condicion} onChange={(e) => setCondicion(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
+          <Select value={condicion} onChange={(e) => setCondicion(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
             <option value="">Todas</option>
             <option value="contado">Contado</option>
             <option value="credito">Crédito</option>
-          </select>
+          </Select>
         </label>
         <div className="flex items-end">
           <button onClick={load} className="w-full rounded-lg bg-[#4FAEB2] px-3 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91]">Aplicar</button>

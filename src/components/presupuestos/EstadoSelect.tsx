@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Selector de estado de presupuesto: reemplaza el <select> nativo por un
+ * Selector de estado de presupuesto: reemplaza el <Select> nativo por un
  * dropdown vistoso (punto de color por estado + check en el actual). El panel
  * se posiciona con `position: fixed` anclado al trigger para no quedar recortado
  * por el `overflow-x-auto` del contenedor de la tabla.
@@ -9,6 +9,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, Loader2, Check } from "lucide-react";
 import { ESTADO_LABEL, type EstadoPresupuesto } from "@/lib/presupuestos/types";
+import { Select } from "@/components/ui/Select";
 
 const OPCIONES: EstadoPresupuesto[] = ["creado", "enviado", "aprobado", "rechazado"];
 

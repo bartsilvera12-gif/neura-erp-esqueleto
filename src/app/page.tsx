@@ -55,6 +55,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Select } from "@/components/ui/Select";
 
 // Selector "Viendo como" ocultado a pedido del negocio. true = reactivar.
 const MOSTRAR_VIENDO_COMO = false;
@@ -2299,18 +2300,22 @@ export default function DashboardPage() {
               <span className="text-[10px] uppercase tracking-wide" style={{ color: Z.muted }}>
                 Viendo como
               </span>
-              <select
+              {/* El estilo inline que tenia el <select> nativo (fondo y borde propios)
+                  ya no aplica: Select delega la apariencia en FancySelect, que trae la
+                  paleta comun a todos los selectores del ERP. */}
+              <Select
+                ariaLabel="Viendo como"
+                size="sm"
+                className="w-full sm:w-56"
                 value={usuarioId ?? ""}
                 onChange={(e) => handleUsuarioChange(parseInt(e.target.value, 10))}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-offset-0"
-                style={{ backgroundColor: Z.surface, color: Z.text, borderColor: "rgba(255,255,255,0.12)" }}
               >
                 {usuarios.map((u) => (
-                  <option key={u.id} value={u.id} style={{ backgroundColor: Z.surface }}>
+                  <option key={u.id} value={u.id}>
                     {u.nombre} ({u.nivel})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
           <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 p-1" style={{ backgroundColor: Z.surface }}>

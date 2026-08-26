@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import MontoInput from "@/components/ui/MontoInput";
 import { getProductos, saveMovimiento } from "@/lib/inventario/storage";
 import type { Producto, TipoMovimiento, OrigenMovimiento } from "@/lib/inventario/types";
+import { Select } from "@/components/ui/Select";
 
 export default function NuevoMovimientoPage() {
   const router = useRouter();
@@ -94,7 +95,7 @@ export default function NuevoMovimientoPage() {
           {/* Producto */}
           <div>
             <label className={labelClass}>Producto</label>
-            <select
+            <Select
               name="producto_id"
               value={form.producto_id}
               onChange={handleProductoChange}
@@ -107,14 +108,14 @@ export default function NuevoMovimientoPage() {
                   {p.nombre} — {p.sku} (stock actual: {p.stock_actual})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Tipo + Origen */}
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>Tipo de movimiento</label>
-              <select
+              <Select
                 name="tipo"
                 value={form.tipo}
                 onChange={handleTipoChange}
@@ -123,12 +124,12 @@ export default function NuevoMovimientoPage() {
                 <option value="ENTRADA">ENTRADA — aumenta stock</option>
                 <option value="SALIDA">SALIDA — disminuye stock</option>
                 <option value="AJUSTE">AJUSTE — corrección manual</option>
-              </select>
+              </Select>
             </div>
 
             <div>
               <label className={labelClass}>Origen</label>
-              <select
+              <Select
                 name="origen"
                 value={form.origen}
                 onChange={handleChange}
@@ -137,7 +138,7 @@ export default function NuevoMovimientoPage() {
                 <option value="compra">Compra</option>
                 <option value="venta">Venta</option>
                 <option value="ajuste_manual">Ajuste manual</option>
-              </select>
+              </Select>
             </div>
           </div>
 

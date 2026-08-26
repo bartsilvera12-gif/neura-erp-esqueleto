@@ -19,6 +19,7 @@ import {
 } from "@/lib/productos/unidades";
 import CantidadInput from "@/components/ui/CantidadInput";
 import type { Producto, MetodoValuacion } from "@/lib/inventario/types";
+import { Select } from "@/components/ui/Select";
 
 /** Miniatura de producto con fallback a un placeholder si no hay imagen o falla. */
 function ProductoThumb({ url, alt, size = "h-10 w-10" }: { url?: string | null; alt: string; size?: string }) {
@@ -1054,7 +1055,7 @@ export default function NuevaVentaPage() {
             {cajasAbiertas.length === 1 ? (
               <span className="text-sm font-bold text-slate-800">Caja {cajasAbiertas[0].numero_caja}</span>
             ) : (
-              <select
+              <Select
                 value={cajaActivaId}
                 onChange={(e) => setCajaActivaId(e.target.value)}
                 className="rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[#4FAEB2]/30"
@@ -1063,7 +1064,7 @@ export default function NuevaVentaPage() {
                 {cajasAbiertas.map((c) => (
                   <option key={c.id} value={c.id}>Caja {c.numero_caja}</option>
                 ))}
-              </select>
+              </Select>
             )}
           </div>
         )}
@@ -1702,7 +1703,7 @@ export default function NuevaVentaPage() {
                                     <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                       {p.metodo === "tarjeta" ? "Entidad / banco / POS" : "Entidad / banco"}
                                     </label>
-                                    <select
+                                    <Select
                                       value={p.entidadId}
                                       onChange={(e) => updatePagoMixto(p.key, { entidadId: e.target.value })}
                                       className={`h-9 w-full rounded-md border bg-white px-2 text-xs outline-none focus:border-[#0EA5E9] focus:ring-2 focus:ring-[#0EA5E9]/15 ${p.entidadId ? "border-slate-200" : "border-amber-300 bg-amber-50"}`}
@@ -1711,7 +1712,7 @@ export default function NuevaVentaPage() {
                                       {entidades.map((en) => (
                                         <option key={en.id} value={en.id}>{en.codigo ? `${en.codigo} · ` : ""}{en.nombre}</option>
                                       ))}
-                                    </select>
+                                    </Select>
                                   </div>
                                   <div className={p.metodo === "transferencia" ? "grid grid-cols-2 gap-2" : ""}>
                                     <div>

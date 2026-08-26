@@ -12,6 +12,7 @@ import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session"
 import { RegistrarPagoModal } from "@/components/pagos/RegistrarPagoModal";
 import type { Cliente } from "@/lib/clientes/types";
 import type { Factura } from "@/lib/gestion-clientes/types";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none bg-white text-sm";
@@ -285,7 +286,7 @@ function PagosPageInner() {
           </div>
           <div>
             <label className={labelClass}>Tipo de cliente</label>
-            <select
+            <Select
               value={filtroTipoCliente}
               onChange={(e) => setFiltroTipoCliente(e.target.value)}
               className={`${inputClass} min-w-[10.5rem] max-w-full sm:w-[14rem]`}
@@ -297,7 +298,7 @@ function PagosPageInner() {
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <button
             type="button"

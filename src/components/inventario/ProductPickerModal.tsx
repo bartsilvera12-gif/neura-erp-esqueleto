@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { parseCantidad, pasoCantidad, minimoCantidad, permiteDecimales } from "@/lib/productos/unidades";
+import { Select } from "@/components/ui/Select";
 
 export interface ProductoPickerItem {
   id: string;
@@ -481,7 +482,7 @@ export default function ProductPickerModal({
                       <label className="block text-[11px] uppercase text-slate-400 mb-1">
                         Presentación
                       </label>
-                      <select
+                      <Select
                         value={presentacionId}
                         onChange={(e) => handlePresentacionChange(e.target.value)}
                         className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white"
@@ -494,7 +495,7 @@ export default function ProductPickerModal({
                               : ""}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       {presSel && presSel.cantidad_base !== 1 && (
                         <p className="mt-1 text-[11px] text-slate-500">
                           1 {presSel.nombre} ={" "}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { ChefHat, ArrowLeft, Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 
 type Receta = {
   id: string;
@@ -391,7 +392,7 @@ export default function EditarRecetaPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-              <select
+              <Select
                 value={newInsumoId}
                 onChange={(e) => {
                   setNewInsumoId(e.target.value);
@@ -405,7 +406,7 @@ export default function EditarRecetaPage() {
                     {p.nombre} — {fmtGs(p.costo_promedio)}/{p.unidad_medida ?? ""} (stock {p.stock_actual})
                   </option>
                 ))}
-              </select>
+              </Select>
               <input
                 type="number"
                 step="0.01"

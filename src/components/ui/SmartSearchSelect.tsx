@@ -71,7 +71,7 @@ function highlight(text: string, terms: string[]) {
  * - Multi-término sin orden ("compresor 100" encuentra "Compresor power de 100 litros").
  * - Ignora acentos y mayúsculas; busca también en SKU/RUC (`sub` / `keywords`).
  * - Navegación con ↑ ↓, Enter para elegir, Esc para cerrar.
- * Reemplaza a un <select> sin cambiar la lógica del formulario.
+ * Reemplaza a un `<select>` sin cambiar la lógica del formulario.
  */
 export default function SmartSearchSelect({
   options,

@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { readSaasBriefData } from "@/lib/proyectos/brief-data";
 import ProyectoDetalleModal from "./components/ProyectoDetalleModal";
+import { Select } from "@/components/ui/Select";
 
 type EstadoRow = {
   id: string;
@@ -715,7 +716,7 @@ function ProjectCardView({
         <>
           <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
             <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Mover a</label>
-            <select
+            <Select
               className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 outline-none transition-colors hover:border-slate-300 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               value={p.estado_id}
               onPointerDown={(e) => e.stopPropagation()}
@@ -730,7 +731,7 @@ function ProjectCardView({
                   {e.nombre}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </>
       ) : null}

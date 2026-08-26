@@ -7,6 +7,7 @@ import { getTipificaciones, saveTipificacion } from "@/lib/gestion-clientes/stor
 import { useAutoClearFlag } from "@/hooks/useAutoClearFlag";
 import type { Cliente } from "@/lib/clientes/types";
 import type { Tipificacion, TipoGestion, ResultadoTipificacion } from "@/lib/gestion-clientes/types";
+import { Select } from "@/components/ui/Select";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -197,7 +198,7 @@ export default function TipificacionPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Tipo de gestión <span className="text-red-500">*</span>
               </label>
-              <select
+              <Select
                 name="tipo_gestion"
                 value={form.tipo_gestion}
                 onChange={handleChange}
@@ -206,7 +207,7 @@ export default function TipificacionPage() {
                 {TIPOS_GESTION.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Resultado */}
@@ -214,7 +215,7 @@ export default function TipificacionPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Resultado <span className="text-red-500">*</span>
               </label>
-              <select
+              <Select
                 name="resultado"
                 value={form.resultado}
                 onChange={handleChange}
@@ -223,7 +224,7 @@ export default function TipificacionPage() {
                 {RESULTADOS.map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 

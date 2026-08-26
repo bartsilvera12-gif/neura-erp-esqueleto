@@ -13,6 +13,7 @@ import {
   type DashboardViewCatalog,
 } from "@/lib/empresas/actions";
 import type { Modulo, UsuarioEmpresa } from "@/lib/empresas/actions";
+import { Select } from "@/components/ui/Select";
 
 const fLabel = "block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1";
 const fInput =
@@ -310,7 +311,7 @@ export default function EditarEmpresaPage() {
             </div>
             <div>
               <label className={fLabel}>Estado</label>
-              <select
+              <Select
                 name="estado"
                 value={form.estado}
                 onChange={handleChange}
@@ -318,7 +319,7 @@ export default function EditarEmpresaPage() {
               >
                 <option value="activo">Activo</option>
                 <option value="inactivo">Inactivo</option>
-              </select>
+              </Select>
             </div>
           </div>
         </section>
@@ -362,7 +363,7 @@ export default function EditarEmpresaPage() {
               </div>
               <div>
                 <label className={fLabel}>Estado</label>
-                <select
+                <Select
                   value={adminForm.estado}
                   onChange={(e) =>
                     setAdminForm((p) => ({ ...p, estado: e.target.value as "activo" | "inactivo" }))
@@ -371,7 +372,7 @@ export default function EditarEmpresaPage() {
                 >
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className={fLabel}>Módulos visibles para este usuario</label>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { getClientes } from "@/lib/clientes/storage";
 import type { NotaCreditoGlobalListItemDTO } from "@/lib/nota-credito/types";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#0EA5E9] text-sm bg-white";
@@ -166,44 +167,44 @@ export default function NotasCreditoListClient() {
           </div>
           <div>
             <label className={labelClass}>Cliente</label>
-            <select className={inputClass} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+            <Select className={inputClass} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
               <option value="">Todos</option>
               {clientes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.nombre}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Estado ERP</label>
-            <select className={inputClass} value={estadoErp} onChange={(e) => setEstadoErp(e.target.value)}>
+            <Select className={inputClass} value={estadoErp} onChange={(e) => setEstadoErp(e.target.value)}>
               <option value="">Todos</option>
               {ERP_OPTS.map((e) => (
                 <option key={e} value={e}>
                   {e}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Estado SIFEN</label>
-            <select className={inputClass} value={estadoSifen} onChange={(e) => setEstadoSifen(e.target.value)}>
+            <Select className={inputClass} value={estadoSifen} onChange={(e) => setEstadoSifen(e.target.value)}>
               <option value="">Todos</option>
               {SIFEN_OPTS.map((e) => (
                 <option key={e} value={e}>
                   {e}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Con error</label>
-            <select className={inputClass} value={conError} onChange={(e) => setConError(e.target.value)}>
+            <Select className={inputClass} value={conError} onChange={(e) => setConError(e.target.value)}>
               <option value="">Indistinto</option>
               <option value="1">Con error</option>
               <option value="0">Sin error</option>
-            </select>
+            </Select>
           </div>
           <div className="sm:col-span-2">
             <label className={labelClass}>Usuario creador (UUID)</label>

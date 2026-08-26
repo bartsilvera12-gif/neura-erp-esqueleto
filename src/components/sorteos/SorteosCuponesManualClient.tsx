@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
+import { Select } from "@/components/ui/Select";
 
 type SorteoListItem = {
   id: string;
@@ -240,7 +241,7 @@ export default function SorteosCuponesManualClient() {
 
               <label className="flex flex-col gap-1 text-xs text-slate-600">
                 Sorteo *
-                <select
+                <Select
                   name="sorteo_id"
                   value={form.sorteo_id}
                   onChange={onField}
@@ -254,7 +255,7 @@ export default function SorteosCuponesManualClient() {
                       {(s.estado ?? "") !== "activo" ? ` (${s.estado})` : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
 
               <div className="grid grid-cols-2 gap-2">

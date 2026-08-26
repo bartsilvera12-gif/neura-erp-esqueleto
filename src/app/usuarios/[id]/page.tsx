@@ -16,6 +16,7 @@ import {
   type UsuarioFormValues,
 } from "@/components/usuarios/UsuarioForm";
 import type { AreaUsuario, TipoContrato } from "@/lib/usuarios/types";
+import { Select } from "@/components/ui/Select";
 
 type ModuloOpt = { id: string; nombre: string; slug: string };
 
@@ -792,7 +793,7 @@ function UsuarioDetailContent() {
                     {form.dashboard_view_ids.length > 1 ? (
                       <div className="mt-4 max-w-md">
                         <label className={usuarioFormLabel}>Vista por defecto</label>
-                        <select
+                        <Select
                           value={
                             form.default_dashboard_view_id &&
                             form.dashboard_view_ids.includes(form.default_dashboard_view_id)
@@ -812,7 +813,7 @@ function UsuarioDetailContent() {
                                 {m.nombre}
                               </option>
                             ))}
-                        </select>
+                        </Select>
                       </div>
                     ) : null}
                   </SectionCard>
@@ -844,7 +845,7 @@ function UsuarioDetailContent() {
                     {omniAgent ? (
                       <div className="mt-4 max-w-md">
                         <label className={usuarioFormLabel}>Horario de trabajo</label>
-                        <select
+                        <Select
                           value={omniScheduleId}
                           onChange={(e) => setOmniScheduleId(e.target.value)}
                           className={`${usuarioFormInputGray} mt-1 w-full`}
@@ -858,7 +859,7 @@ function UsuarioDetailContent() {
                                 {String(s.time_end ?? "").slice(0, 5)})
                               </option>
                             ))}
-                        </select>
+                        </Select>
                         {usuario.omnicanal.schedules.length === 0 ? (
                           <p className="mt-2 text-xs text-amber-700">
                             No hay plantillas de horario. Creá una en{" "}

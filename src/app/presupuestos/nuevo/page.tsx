@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FileText, ArrowLeft, Plus, Trash2, Loader2, Search, ImageIcon } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { calcMontoIvaIncluido, type IvaTipoPresupuesto, type CondicionPresupuesto } from "@/lib/presupuestos/types";
+import { Select } from "@/components/ui/Select";
 
 /** Miniatura de producto con fallback a un placeholder si no hay imagen o falla. */
 function ProductoThumb({ url, alt }: { url?: string | null; alt: string }) {
@@ -352,12 +353,12 @@ export default function NuevoPresupuestoPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Cliente existente (opcional)</label>
-            <select value={clienteId} onChange={(e) => seleccionarCliente(e.target.value)} className={`${inputClass} bg-white`}>
+            <Select value={clienteId} onChange={(e) => seleccionarCliente(e.target.value)} className={`${inputClass} bg-white`}>
               <option value="">— Cargar manualmente —</option>
               {clientes.map((c) => (
                 <option key={c.id} value={c.id}>{c.nombre}{c.ruc ? ` (${c.ruc})` : ""}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Nombre / Razón social *</label>
@@ -482,9 +483,9 @@ export default function NuevoPresupuestoPage() {
                         <input type="number" min="0" step="1" value={it.precio_unitario} onChange={(e) => updItem(i, { precio_unitario: Number(e.target.value) })} className={inputClass} />
                       </td>
                       <td className="py-2 px-2">
-                        <select value={it.iva_tipo} onChange={(e) => updItem(i, { iva_tipo: e.target.value as IvaTipoPresupuesto })} className={`${inputClass} bg-white`}>
+                        <Select value={it.iva_tipo} onChange={(e) => updItem(i, { iva_tipo: e.target.value as IvaTipoPresupuesto })} className={`${inputClass} bg-white`}>
                           {IVAS.map((iv) => <option key={iv} value={iv}>{iv}</option>)}
-                        </select>
+                        </Select>
                       </td>
                       <td className="py-2 px-2">
                         <input type="number" min="0" step="1" value={it.descuento} onChange={(e) => updItem(i, { descuento: Number(e.target.value) })} className={inputClass} />

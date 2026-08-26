@@ -1,6 +1,7 @@
 "use client";
 
 import type { Cliente } from "@/lib/clientes/types";
+import { Select } from "@/components/ui/Select";
 
 const inputClass =
   "w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none bg-white text-sm";
@@ -89,7 +90,7 @@ export function ClienteDatosSifenReceptorForm({ value, onChange }: Props) {
           <div className="space-y-4">
             <div>
               <label className={labelClass}>Naturaleza del receptor (SIFEN)</label>
-              <select
+              <Select
                 className={inputClass}
                 value={value.sifen_receptor_naturaleza ?? ""}
                 onChange={(e) =>
@@ -107,11 +108,11 @@ export function ClienteDatosSifenReceptorForm({ value, onChange }: Props) {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className={labelClass}>Tipo de operación (iTiOpe)</label>
-              <select
+              <Select
                 className={inputClass}
                 value={value.sifen_ti_ope != null ? String(value.sifen_ti_ope) : ""}
                 onChange={(e) => {
@@ -125,11 +126,11 @@ export function ClienteDatosSifenReceptorForm({ value, onChange }: Props) {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className={labelClass}>Tipo de documento del receptor (iTipIDRec)</label>
-              <select
+              <Select
                 className={inputClass}
                 value={tipoDoc}
                 onChange={(e) => {
@@ -143,7 +144,7 @@ export function ClienteDatosSifenReceptorForm({ value, onChange }: Props) {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             {showDescTipo9 ? (
               <div>

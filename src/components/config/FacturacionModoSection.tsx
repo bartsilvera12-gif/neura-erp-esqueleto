@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAutoClearFlag } from "@/hooks/useAutoClearFlag";
+import { Select } from "@/components/ui/Select";
 
 type Modo = "sin_factura_fiscal" | "sifen" | "autoimpresor";
 type Impresion = "pdf_a4" | "pdf_media_hoja" | "ticket_80mm" | "ticket_58mm";
@@ -183,7 +184,7 @@ export default function FacturacionModoSection() {
         <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Tipo de impresión por defecto</label>
-            <select
+            <Select
               value={modo.impresion_tipo_default}
               onChange={(e) => guardarModo({ impresion_tipo_default: e.target.value as Impresion })}
               disabled={savingModo}
@@ -192,7 +193,7 @@ export default function FacturacionModoSection() {
               {(Object.keys(impresionLabels) as Impresion[]).map((k) => (
                 <option key={k} value={k}>{impresionLabels[k]}</option>
               ))}
-            </select>
+            </Select>
             <p className="mt-1 text-[11px] text-slate-400">
               {esTicket
                 ? "Ticket térmico: formato optimizado para impresoras 58/80 mm. La impresión usa la ventana del navegador."
@@ -271,11 +272,11 @@ function AutoimpresorForm({
 
       <div className="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         <Field label="Formato de impresión">
-          <select className={inputClass} value={f.formato_impresion_default} onChange={(e) => set("formato_impresion_default", e.target.value as Impresion)}>
+          <Select className={inputClass} value={f.formato_impresion_default} onChange={(e) => set("formato_impresion_default", e.target.value as Impresion)}>
             {(Object.keys(impresionLabels) as Impresion[]).map((k) => (
               <option key={k} value={k}>{impresionLabels[k]}</option>
             ))}
-          </select>
+          </Select>
         </Field>
         {esTicket && (
           <Field label="Leyenda papel térmico (pie)">
