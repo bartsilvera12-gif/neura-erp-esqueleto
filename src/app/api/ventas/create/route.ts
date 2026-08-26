@@ -202,6 +202,8 @@ export async function POST(request: NextRequest) {
       montoIvaDeclarado,
       totalDeclarado,
       pedidoCocina,
+      // Turno de caja. Opcional: con una sola caja abierta se resuelve solo.
+      cajaId: o.caja_id != null && String(o.caja_id).trim() !== "" ? String(o.caja_id) : null,
       // Auditoría de stock: todo movimiento queda con el usuario que lo generó.
       createdBy: auth.usuarioCatalogId ?? auth.user?.id ?? null,
       usuarioNombre: authRol?.nombre?.trim() || auth.user?.email || null,

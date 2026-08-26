@@ -17,14 +17,24 @@ Esta instancia expone **solo** estos módulos:
 | Módulo | Slug | Rutas |
 |---|---|---|
 | Dashboard | `dashboard` | `/` |
-| Caja | `ventas` | `/ventas`, `/ventas/nueva` |
+| Caja | `ventas` | `/ventas` (turno de caja + órdenes), `/ventas/nueva` |
 | Inventario (completo) | `inventario` | `/inventario`, `/inventario/movimientos`, `/inventario/categorias`, `/inventario/ubicaciones` |
 | Compras (completo) | `compras` | `/compras`, `/compras/ordenes`, `/proveedores` |
 | Presupuestos | `presupuestos` | `/presupuestos` |
 | Reportes | `reportes` | `/reportes` + estado de cuenta, cuentas por pagar, libro de compras, libro de ventas, suscripciones |
 
-**Caja** es el módulo **Ventas** de Instemaq (punto de venta / caja registradora):
-misma vista y mismo slug `ventas`, solo cambia la etiqueta del menú.
+**Caja** es el módulo **Ventas** de Instemaq (punto de venta), con el **turno de
+caja** portado de `stzautopartes-erp` encima: apertura con monto o arqueo por
+denominaciones, ingresos/egresos/retiros/ajustes manuales durante el turno, y
+cierre con conteo del efectivo y cálculo de diferencia. Mismo slug `ventas` y
+misma ruta `/ventas`; la pantalla ahora se titula “Caja”.
+
+Con el turno activo, **cada venta se imputa a la caja abierta** (`ventas.caja_id`).
+Si no hay ninguna caja abierta la venta se rechaza con un mensaje claro: una venta
+sin turno no entraría en el arqueo de cierre y aparecería como faltante de
+efectivo. Para volver al comportamiento anterior (vender sin abrir caja), sacar el
+`throw` de `cajasAbiertas.length === 0` en
+`src/lib/ventas/server/create-venta-pg.ts` y dejar `caja_id` en `null`.
 
 **Reportes** se portó desde `neura-erp-sistemas-propio`, quedándose únicamente con
 las vistas compatibles con este schema. Quedaron fuera, y por qué:
@@ -98,6 +108,7 @@ idempotentes y **solo escriben dentro de `esqueletoerp`** (nunca `public`,
 | 4 | `.../0004_empresa_modulos_seleccion.sql` | Deja activos solo los 6 módulos pedidos |
 | 5 | `.../0005_usuario_admin.sql` | Vincula `admin@erpesqueleto.com` (requiere crear antes el usuario de Auth) |
 | 6 | `.../0006_entidades_bancarias_iniciales.sql` | Entidades de cobro para Caja |
+| 7 | `.../0007_modulo_caja.sql` | Tablas `cajas` y `caja_movimientos` + `ventas.caja_id` |
 | — | `.../0099_verificacion.sql` | Verificación final, solo lectura |
 
 Los pasos 1 y 2 requieren rol propietario (`supabase_admin` / superusuario). Si

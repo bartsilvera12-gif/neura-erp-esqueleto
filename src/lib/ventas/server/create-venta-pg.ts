@@ -47,6 +47,10 @@ export interface CreateVentaPgParams {
   montoIvaDeclarado: number;
   totalDeclarado: number;
   pedidoCocina?: CreateVentaPedidoCocinaInput | null;
+  /** Turno de caja al que se imputa el cobro. Si se omite y hay una sola caja
+   *  abierta, se usa esa. Sin ninguna caja abierta la venta se rechaza: si no,
+   *  el arqueo de cierre no la contaría y daría faltante. */
+  cajaId?: string | null;
   /** Auditoría: quién registra la venta. Se propaga a los movimientos de stock. */
   createdBy?: string | null;
   usuarioNombre?: string | null;
@@ -183,6 +187,39 @@ export async function createVentaTransaccionalPg(
   const numeroControl = `VTA-${String(nextNum).padStart(6, "0")}`;
   const fechaIso = new Date().toISOString();
 
+  // 4b) Turno de caja al que se imputa el cobro.
+  //     - Si viene explícito, tiene que estar abierto.
+  //     - Si no viene y hay una sola abierta, se usa esa.
+  //     - Si hay varias y no se especificó, se pide elegir.
+  //     - Si no hay ninguna abierta, se bloquea: una venta sin turno no entra
+  //       en el arqueo de cierre y aparecería como faltante de efectivo.
+  const cQ = await sb
+    .from("cajas")
+    .select("id, numero_caja")
+    .eq("empresa_id", params.empresaId)
+    .eq("estado", "abierta")
+    .order("numero_caja", { ascending: true });
+  if (cQ.error) throw new Error(cQ.error.message);
+  const cajasAbiertas = (cQ.data ?? []) as Array<{ id: string; numero_caja: number | string }>;
+
+  const cajaPedida = params.cajaId ? String(params.cajaId).trim() : "";
+  let cajaIdActual: string;
+  if (cajaPedida) {
+    const match = cajasAbiertas.find((c) => String(c.id) === cajaPedida);
+    if (!match) {
+      throw new Error("La caja seleccionada no está abierta. Elegí una caja abierta para registrar la venta.");
+    }
+    cajaIdActual = String(match.id);
+  } else if (cajasAbiertas.length === 1) {
+    cajaIdActual = String(cajasAbiertas[0].id);
+  } else if (cajasAbiertas.length === 0) {
+    throw new Error("No hay ninguna caja abierta. Abrí la caja antes de registrar la venta.");
+  } else {
+    throw new Error(
+      `Hay ${cajasAbiertas.length} cajas abiertas. Indicá en cuál se cobra la venta.`
+    );
+  }
+
   // 5) Insertar venta
   const insVenta = await sb
     .from("ventas")
@@ -199,6 +236,7 @@ export async function createVentaTransaccionalPg(
       tipo_venta: params.tipoVenta,
       plazo_dias: params.plazoDias,
       metodo_pago: params.metodoPago,
+      caja_id: cajaIdActual,
       fecha: fechaIso,
       observaciones: params.observaciones,
     })

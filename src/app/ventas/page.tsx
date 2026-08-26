@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import EdgeScrollArea from "@/components/ui/EdgeScrollArea";
 import { FancySelect } from "@/components/ui/FancySelect";
 import { getVentas } from "@/lib/ventas/storage";
+import CajaControlPanel from "@/components/caja/CajaControlPanel";
 import type { Venta, TipoVenta, TipoIvaVenta } from "@/lib/ventas/types";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -204,9 +205,12 @@ export default function VentasPage() {
             Zentra · Operaciones
           </p>
         </div>
-        <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Ventas</h1>
-        <p className="mt-0.5 text-xs text-slate-500">Registro de ventas y salidas de inventario</p>
+        <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Caja</h1>
+        <p className="mt-0.5 text-xs text-slate-500">Turno de caja, cobros y salidas de inventario</p>
       </div>
+
+      {/* ── Turno de caja: apertura, movimientos y cierre con arqueo ─────────── */}
+      <CajaControlPanel />
 
       {/* ── Métricas del día ──────────────────────────────────────────────────── */}
       <div>
@@ -224,7 +228,7 @@ export default function VentasPage() {
             accent
           />
           <MetricCard
-            label="Ventas de hoy"
+            label="Cobros de hoy"
             value={String(metricas.cantidadVentas)}
             sub={metricas.cantidadVentas === 1 ? "orden registrada" : "órdenes registradas"}
           />
@@ -235,7 +239,7 @@ export default function VentasPage() {
                 ? `Gs. ${Math.round(metricas.ticketPromedio).toLocaleString("es-PY")}`
                 : "—"
             }
-            sub="Por orden de venta"
+            sub="Por cobro registrado"
           />
           <MetricCard
             label="Unidades vendidas"
