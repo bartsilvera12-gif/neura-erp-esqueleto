@@ -118,7 +118,8 @@ export default function NuevaCompraPage() {
   const [formProducto, setFormProducto] = useState({
     nombre: "", sku: "", unidad_medida: "Unidad", metodo_valuacion: "CPP" as MetodoValuacion,
     stock_minimo: "0", precio_venta_sugerido: "", tipo: "reventa" as "reventa" | "menu" | "materia",
-    tipo_producto: "reventa" as "reventa" | "repuesto",
+    // Fijo: el alta rápida desde Compras solo crea productos de reventa.
+    tipo_producto: "reventa" as const,
   });
   const [errorSku, setErrorSku] = useState<string | null>(null);
   const [generandoSku, setGenerandoSku] = useState(false);
@@ -539,20 +540,10 @@ export default function NuevaCompraPage() {
                 <InlineFormBox titulo="Nuevo producto" onCancel={handleCancelarProducto} onSave={handleAgregarProducto}
                   saveDisabled={!formProducto.nombre.trim() || !formProducto.sku.trim()}>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="col-span-2">
-                      <label className={labelSmClass}>Tipo de producto</label>
-                      <SegmentedControl<"reventa" | "repuesto"> small value={formProducto.tipo_producto}
-                        options={[
-                          { value: "reventa", label: "Reventa" },
-                          { value: "repuesto", label: "Repuesto" },
-                        ]}
-                        onChange={(v) => setFormProducto((prev) => ({ ...prev, tipo_producto: v }))} />
-                      <p className="mt-1.5 text-xs text-slate-500">
-                        {formProducto.tipo_producto === "repuesto"
-                          ? "Repuesto: entra al inventario y se descuenta al usarse en un servicio (no se detalla en la factura)."
-                          : "Reventa: mercadería que se compra y se revende tal cual."}
-                      </p>
-                    </div>
+                    {/* El alta rápida desde Compras crea SIEMPRE producto de reventa.
+                        El selector Reventa / Repuesto se sacó por pedido del negocio: acá
+                        solo se da de alta mercadería que se compra y se revende tal cual. */}
+
                     <div>
                       <label className={labelSmClass}>Nombre <span className="text-red-500">*</span></label>
                       <input type="text" name="nombre" value={formProducto.nombre} onChange={handleProductoInputChange}
