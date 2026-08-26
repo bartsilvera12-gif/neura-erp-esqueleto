@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Panel de Caja para /ventas: soporta MÚLTIPLES cajas activas (Caja 1, Caja 2, …).
+ * Panel de Caja para /ventas. Esta instancia opera con UNA sola caja: el turno es
+ * siempre el número 1 y no se ofrece elegir.
  * Muestra el estado de cada caja (abierta / en cierre), totales en vivo y modales
  * para abrir, registrar movimiento, pasar a cierre y cerrar (arqueo) por caja.
  *
@@ -18,12 +19,12 @@ import {
   ArrowDownRight,
   Wallet,
   Loader2,
-  X,
   CheckCircle2,
   AlertTriangle,
   Clock,
 } from "lucide-react";
 import MontoInput from "@/components/ui/MontoInput";
+import ModalBase from "@/components/ui/ModalBase";
 import ArqueoDenominaciones, {
   arqueoVacio,
   cantidadesAArqueo,
@@ -98,8 +99,6 @@ export default function CajaControlPanel({ onStateChange }: Props) {
   }
 
   const numerosOcupados = cajas.map((c) => c.caja.numero_caja);
-  let numeroSugerido = 1;
-  while (numerosOcupados.includes(numeroSugerido)) numeroSugerido++;
 
   async function handleAbrir(
     monto: number,
@@ -225,7 +224,6 @@ export default function CajaControlPanel({ onStateChange }: Props) {
             onClose={() => setModal(null)}
             onConfirm={handleAbrir}
             error={error}
-            numeroSugerido={numeroSugerido}
             numerosOcupados={numerosOcupados}
           />
         )}
@@ -359,7 +357,6 @@ export default function CajaControlPanel({ onStateChange }: Props) {
           onClose={() => setModal(null)}
           onConfirm={handleAbrir}
           error={error}
-          numeroSugerido={numeroSugerido}
           numerosOcupados={numerosOcupados}
         />
       )}
@@ -441,47 +438,6 @@ function ToastOk({ msg }: { msg: string }) {
 // Modales
 // ============================================================
 
-function ModalBase({
-  title,
-  subtitle,
-  onClose,
-  children,
-  maxWidthClass = "max-w-md",
-}: {
-  title: string;
-  subtitle?: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  /** Ancho máximo del modal (default max-w-md). El arqueo usa uno más ancho. */
-  maxWidthClass?: string;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className={`bg-white rounded-2xl shadow-2xl w-full ${maxWidthClass} border-2 border-[#4FAEB2]/20 overflow-hidden`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-[#4FAEB2]/5 to-transparent flex items-start justify-between">
-          <div>
-            <h3 className="text-base font-bold text-slate-800">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
-          </div>
-          <button
-            onClick={onClose}
-            className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 /** Modal de confirmación genérico (reemplaza al confirm() nativo). */
 function ModalConfirmar({
   title,
@@ -552,26 +508,25 @@ function ModalAbrir({
   onClose,
   onConfirm,
   error,
-  numeroSugerido,
   numerosOcupados,
 }: {
   onClose: () => void;
   onConfirm: (monto: number, obs: string | null, numeroCaja: number, arqueo: ArqueoItem[] | null) => Promise<void>;
   error: string | null;
-  numeroSugerido: number;
   numerosOcupados: number[];
 }) {
   const [modo] = useState<"arqueo" | "monto">("monto");
   const [monto, setMonto] = useState("0");
   const [cant, setCant] = useState<ArqueoCantidades>(arqueoVacio());
   const [obs, setObs] = useState("");
-  const [numero, setNumero] = useState(numeroSugerido);
+  // Caja unica: siempre el turno numero 1.
+  const numero = 1;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(error);
   const totalArq = totalArqueo(cant);
   async function submit() {
     if (numerosOcupados.includes(numero)) {
-      setErr(`La Caja ${numero} ya está activa. Elegí otro número.`);
+      setErr("La caja ya está abierta. Cerrala antes de abrir un turno nuevo.");
       return;
     }
     let montoFinal: number;
@@ -596,42 +551,17 @@ function ModalAbrir({
       setBusy(false);
     }
   }
-  // Opciones de caja: Caja 1 y Caja 2, deshabilitando las ya activas.
-  const opciones = [1, 2];
   return (
     <ModalBase
       title="Abrir caja"
-      subtitle="Elegí el número de caja y cargá el efectivo inicial del turno."
+      subtitle="Cargá el efectivo inicial del turno."
       onClose={busy ? () => {} : onClose}
       maxWidthClass={modo === "arqueo" ? "max-w-2xl" : "max-w-md"}
     >
       <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
-            Número de caja
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {opciones.map((n) => {
-              const ocupada = numerosOcupados.includes(n);
-              const sel = numero === n;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  disabled={ocupada}
-                  onClick={() => setNumero(n)}
-                  className={`rounded-lg border-2 px-3 py-1.5 text-sm font-bold transition-colors ${
-                    ocupada ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
-                    : sel ? "border-[#4FAEB2] bg-[#4FAEB2] text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  Caja {n}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* El selector Caja 1 / Caja 2 se saco: esta instancia opera con UNA sola
+            caja. `numero` queda fijo en 1 y la unicidad la garantiza igual el indice
+            parcial de la tabla (un turno activo por numero). */}
 
         {modo === "arqueo" ? (
           <div>

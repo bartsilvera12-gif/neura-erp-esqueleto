@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MontoInput from "@/components/ui/MontoInput";
 import SelectFromList from "@/components/inventario/SelectFromList";
+import CrearCategoriaModal from "@/components/inventario/CrearCategoriaModal";
+import CrearProveedorModal from "@/components/inventario/CrearProveedorModal";
 import { productoExiste, saveProducto } from "@/lib/inventario/storage";
 import type { MetodoValuacion } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
@@ -46,6 +48,11 @@ export default function NuevoProductoPage() {
   const [categoriaId, setCategoriaId] = useState<string | null>(null);
   const [ubicacionId, setUbicacionId] = useState<string | null>(null);
   const [proveedorId, setProveedorId] = useState<string | null>(null);
+
+  // Alta rapida sin salir del formulario: antes "+ Crear" era un link a otra
+  // pantalla y se perdia todo lo cargado del producto.
+  const [modalCategoria, setModalCategoria] = useState(false);
+  const [modalProveedor, setModalProveedor] = useState(false);
 
   // Clasificación gastronómica
   const [esVendible, setEsVendible] = useState(true);
@@ -665,12 +672,13 @@ export default function NuevoProductoPage() {
                   <span className="text-xs text-gray-400 truncate">
                     {categorias.length === 0 ? "Todavía no cargaste categorías." : `${categorias.length} disponibles`}
                   </span>
-                  <Link
-                    href="/inventario/categorias"
+                  <button
+                    type="button"
+                    onClick={() => setModalCategoria(true)}
                     className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 border border-sky-200 hover:bg-sky-50 px-2.5 py-1 rounded-md transition-colors"
                   >
                     + Crear
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -687,12 +695,13 @@ export default function NuevoProductoPage() {
                   <span className="text-xs text-gray-400 truncate">
                     {proveedores.length === 0 ? "Todavía no cargaste proveedores." : `${proveedores.length} disponibles`}
                   </span>
-                  <Link
-                    href="/proveedores/nuevo"
+                  <button
+                    type="button"
+                    onClick={() => setModalProveedor(true)}
                     className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 border border-sky-200 hover:bg-sky-50 px-2.5 py-1 rounded-md transition-colors"
                   >
                     + Crear
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -896,6 +905,30 @@ export default function NuevoProductoPage() {
 
         </form>
       </div>
+
+      {/* Altas rápidas: crean el registro por API, lo suman a la lista y lo dejan
+          seleccionado, sin desmontar el formulario del producto. */}
+      {modalCategoria && (
+        <CrearCategoriaModal
+          onClose={() => setModalCategoria(false)}
+          onCreada={(cat) => {
+            setCategorias((prev) => [...prev, { id: cat.id, nombre: cat.nombre }]);
+            setCategoriaId(cat.id);
+            setModalCategoria(false);
+          }}
+        />
+      )}
+
+      {modalProveedor && (
+        <CrearProveedorModal
+          onClose={() => setModalProveedor(false)}
+          onCreado={(prov) => {
+            setProveedores((prev) => [...prev, { id: prov.id, nombre: prov.nombre }]);
+            setProveedorId(prov.id);
+            setModalProveedor(false);
+          }}
+        />
+      )}
 
     </div>
   );
