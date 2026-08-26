@@ -14,14 +14,36 @@ Guía de despliegue y provisión de la instancia **Esqueleto ERP**. Sin secretos
 
 Esta instancia expone **solo** estos módulos:
 
-| Módulo | Slug | Ruta |
+| Módulo | Slug | Rutas |
 |---|---|---|
 | Dashboard | `dashboard` | `/` |
-| Caja | `caja` | `/caja` |
+| Caja | `ventas` | `/ventas`, `/ventas/nueva` |
 | Inventario (completo) | `inventario` | `/inventario`, `/inventario/movimientos`, `/inventario/categorias`, `/inventario/ubicaciones` |
 | Compras (completo) | `compras` | `/compras`, `/compras/ordenes`, `/proveedores` |
 | Presupuestos | `presupuestos` | `/presupuestos` |
-| Reportes | `reportes` | `/reportes` |
+| Reportes | `reportes` | `/reportes` + estado de cuenta, cuentas por pagar, libro de compras, libro de ventas, suscripciones |
+
+**Caja** es el módulo **Ventas** de Instemaq (punto de venta / caja registradora):
+misma vista y mismo slug `ventas`, solo cambia la etiqueta del menú.
+
+**Reportes** se portó desde `neura-erp-sistemas-propio`, quedándose únicamente con
+las vistas compatibles con este schema. Quedaron fuera, y por qué:
+
+| Vista descartada | Motivo |
+|---|---|
+| Libro Diario · Libro Mayor | Requieren el subsistema contable (`cuentas_contables`, asientos), que no existe en este schema. |
+| Campañas Meta | Depende del stack omnicanal / Meta Ads, fuera del alcance de este ERP. |
+| Conciliación · Ventas | En el repo de origen son pantallas placeholder, sin implementación. |
+
+Dos de las vistas portadas se **adaptaron** al modelo de datos de acá, donde
+`compras` es una tabla plana (una fila por línea, agrupada por `numero_control`)
+en vez de cabecera + `compra_items`:
+
+- **Cuentas por pagar**: agrupa por `numero_control` y suma totales. No hay pago en
+  cuotas, así que la cuota estimada coincide con el total del comprobante.
+- **Libro de compras**: agrupa por `numero_control` y suma el IVA de las líneas.
+  La mitad “Gastos y Servicios” del reporte original queda fuera porque la tabla
+  `gastos` de este schema no tiene datos fiscales (ni proveedor, ni timbrado, ni ítems).
 
 El código del resto de los módulos sigue en el repo pero no se lista en el
 Sidebar y `empresa_modulos` no los habilita. Con
@@ -46,7 +68,7 @@ NEURA_CLIENT_SCHEMA=esqueletoerp
 NEXT_PUBLIC_NEURA_CLIENT_SCHEMA=esqueletoerp
 NEURA_INSTANCE_MODE=single_client
 NEURA_CLIENT_NAME=Esqueleto
-NIXPACKS_NODE_VERSION=20
+NIXPACKS_NODE_VERSION=22
 NODE_ENV=production
 # SMTP (opcional, para invitaciones / reseteo de contraseña)
 SMTP_HOST=

@@ -16,8 +16,8 @@ import {
   ChevronLeft,
   Star,
   Search,
-  // BarChart3, // usado por el item "Reportes" (pendiente de portar)
-  // Wallet,    // usado por el item "Caja" (pendiente de portar)
+  BarChart3,
+  Wallet,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
@@ -83,10 +83,9 @@ function adminEmpresasMatchesQuery(queryRaw: string): boolean {
  */
 const MENU_STRUCTURE: MenuItem[] = [
   { key: "dashboard", slug: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
-  // PENDIENTE — Caja: el modulo esta habilitado en `empresa_modulos` y su slug ya
-  // esta mapeado en route-slug-map, pero la VISTA todavia no existe en este repo
-  // (hay que portarla de otra instancia). Descomentar apenas se agregue /caja.
-  // { key: "caja", slug: "caja", label: "Caja", href: "/caja", icon: Wallet },
+  // Caja = el modulo Ventas del ERP (punto de venta / caja registradora). Se reusa
+  // la vista /ventas tal cual viene de Instemaq; solo cambia la etiqueta del menu.
+  { key: "ventas", slug: "ventas", label: "Caja", href: "/ventas", icon: Wallet },
   { key: "inventario", slug: "inventario", label: "Inventario", href: "/inventario", icon: Package, children: [
     { label: "Productos", href: "/inventario" },
     { label: "Movimientos", href: "/inventario/movimientos" },
@@ -106,8 +105,13 @@ const MENU_STRUCTURE: MenuItem[] = [
     ],
   },
   { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },
-  // PENDIENTE — Reportes: idem Caja. Descomentar apenas se agregue /reportes.
-  // { key: "reportes", slug: "reportes", label: "Reportes", href: "/reportes", icon: BarChart3 },
+  { key: "reportes", slug: "reportes", label: "Reportes", href: "/reportes", icon: BarChart3, children: [
+    { label: "Estado de cuenta", href: "/reportes/estado-cuenta" },
+    { label: "Cuentas por pagar", href: "/reportes/cuentas-por-pagar" },
+    { label: "Libro de compras", href: "/reportes/libro-compras" },
+    { label: "Libro de ventas", href: "/reportes/libro-ventas" },
+    { label: "Suscripciones", href: "/reportes/suscripciones" },
+  ]},
 ];
 
 /**
@@ -117,7 +121,7 @@ const MENU_STRUCTURE: MenuItem[] = [
  */
 const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "inicio", titulo: "Inicio", keys: ["dashboard"] },
-  { id: "finanzas", titulo: "Finanzas", keys: ["caja"] },
+  { id: "finanzas", titulo: "Finanzas", keys: ["ventas"] },
   { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras"] },
   { id: "comercial", titulo: "Comercial", keys: ["presupuestos"] },
   { id: "analisis", titulo: "Análisis", keys: ["reportes"] },

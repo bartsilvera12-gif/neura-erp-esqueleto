@@ -31,11 +31,13 @@ BEGIN
   --    Se conserva el catalogo completo para que la app pueda resolver cualquier
   --    slug por FK; que un modulo APAREZCA en el ERP lo decide `empresa_modulos`
   --    (paso 4), no este catalogo.
-  --    `caja` es nuevo en esta instancia; `reportes` ya existia en el catalogo.
+  --    `Caja` es el modulo `ventas` renombrado; `reportes` ya existia en el catalogo.
   -- ---------------------------------------------------------------------------
   INSERT INTO esqueletoerp.modulos (id, nombre, slug, descripcion) VALUES
     ('7cb297a1-b49b-4ef5-9777-09f4518402a1','Dashboard','dashboard',NULL),
-    ('e3cf0a53-f5de-47fb-a641-4fe0fd6f1604','Caja','caja','Caja: apertura, cierre y arqueo de movimientos de dinero'),
+    -- Caja = el modulo Ventas del ERP (punto de venta). Mismo slug y mismas rutas
+    -- que en Instemaq; solo se renombra la etiqueta a "Caja".
+    ('3a1a6701-f6c5-48fd-b599-c6f88bc48374','Caja','ventas','Caja / punto de venta'),
     ('569781c8-7e1d-4ac9-b240-e7bb82a0b83b','Inventario','inventario',NULL),
     ('aea02686-46a2-4448-a9b3-fe83b4a03491','Compras','compras',NULL),
     ('3f4b07ed-668d-4f86-917f-d354329b5fc3','Presupuestos','presupuestos','Presupuestos / cotizaciones comerciales'),
@@ -45,7 +47,6 @@ BEGIN
     ('98d53199-0259-4ade-9dbc-e8f67918305c','Marketing Ops','marketing',NULL),
     ('c0f676ac-d879-48b2-a78a-6db59fabb100','Sorteos','sorteos',NULL),
     ('3cb40f93-1aed-4bcc-a800-a1b4ecabc0fe','Conversaciones','conversaciones',NULL),
-    ('3a1a6701-f6c5-48fd-b599-c6f88bc48374','Ventas','ventas',NULL),
     ('3b6391bb-e77a-464b-84ea-1f95884cffc3','Clientes','clientes',NULL),
     ('1a9717b9-8a8e-42f3-b46b-a9e559543d8b','Usuarios','usuarios',NULL),
     ('96f10ea8-a801-41a6-951f-83b7fcf5a0ab','Configuracion','configuracion',NULL),

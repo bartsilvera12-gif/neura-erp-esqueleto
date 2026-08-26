@@ -7,7 +7,7 @@ alcance funcional acotado.
 - **Schema Postgres:** `esqueletoerp`
 - **empresa_id:** `3c14fe00-d466-4f24-a010-1bbd7e37ccd6`
 - **URL:** http://erpesqueleto.neura.com.py
-- **Módulos:** Dashboard · Caja · Inventario · Compras · Presupuestos · Reportes
+- **Módulos:** Dashboard · Caja (Ventas) · Inventario · Compras · Presupuestos · Reportes
 
 La guía completa de despliegue y provisión está en
 [`docs/ESQUELETO_DEPLOY.md`](docs/ESQUELETO_DEPLOY.md).

@@ -24,7 +24,7 @@ DECLARE
   v_empresa_id uuid := '3c14fe00-d466-4f24-a010-1bbd7e37ccd6';
   v_slugs text[] := ARRAY[
     'dashboard',     -- Dashboard
-    'caja',          -- Caja
+    'ventas',        -- Caja (el modulo Ventas: punto de venta / caja)
     'inventario',    -- Inventario (productos, movimientos, categorias, depositos)
     'compras',       -- Compras + Ordenes de compra + Proveedores
     'presupuestos',  -- Presupuestos / cotizaciones
@@ -52,8 +52,8 @@ BEGIN
 END
 $mod$;
 
--- Verificacion: deben salir exactamente 6 filas (caja, compras, dashboard,
--- inventario, presupuestos, reportes).
+-- Verificacion: deben salir exactamente 6 filas (compras, dashboard, inventario,
+-- presupuestos, reportes, ventas).
 SELECT m.slug, m.nombre, em.activo
 FROM esqueletoerp.empresa_modulos em
 JOIN esqueletoerp.modulos m ON m.id = em.modulo_id

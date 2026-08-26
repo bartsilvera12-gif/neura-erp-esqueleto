@@ -7,7 +7,7 @@
 const SIDEBAR_SLUG_HREF_ORDER: { slug: string; href: string }[] = [
   // Esqueleto ERP: los 6 módulos habilitados van primero (definen el “home” tras login).
   { slug: "dashboard", href: "/" },
-  { slug: "caja", href: "/caja" },
+  { slug: "ventas", href: "/ventas" },   // Caja = modulo Ventas
   { slug: "inventario", href: "/inventario" },
   { slug: "compras", href: "/compras" },
   { slug: "presupuestos", href: "/presupuestos" },
@@ -17,7 +17,6 @@ const SIDEBAR_SLUG_HREF_ORDER: { slug: string; href: string }[] = [
   { slug: "historial-omnicanal", href: "/dashboard/historial-omnicanal" },
   { slug: "conversaciones-finalizadas", href: "/dashboard/conversaciones-finalizadas" },
   { slug: "monitoreo", href: "/dashboard/monitoreo" },
-  { slug: "ventas", href: "/ventas" },
   { slug: "recetas", href: "/dashboard/recetas" },
   { slug: "clientes", href: "/clientes" },
   { slug: "remision", href: "/notas-remision" },
@@ -146,7 +145,6 @@ export function pathRequiresModuleSlug(pathname: string): string | null {
   if (p.startsWith("/recepcion")) return "recepcion";
   if (p.startsWith("/recibos")) return "recibos";
   if (p.startsWith("/presupuestos")) return "presupuestos";
-  if (p.startsWith("/caja")) return "caja";
   if (p.startsWith("/reportes")) return "reportes";
   if (p.startsWith("/ventas")) return "ventas";
   if (p.startsWith("/inventario")) return "inventario";
