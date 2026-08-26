@@ -239,7 +239,7 @@ export default function DesdeOrdenRecepcionPage() {
       {err && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
 
       {/* Tabla de recepción producto por producto */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="zx-surface overflow-x-auto">
         <table className="w-full min-w-[980px] text-sm">
           <thead className="border-b-2 border-[#4FAEB2]/40 bg-[#E5F4F4]">
             <tr>
@@ -331,7 +331,7 @@ export default function DesdeOrdenRecepcionPage() {
       </div>
 
       {/* Datos de la compra (factura del proveedor) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="zx-surface p-5">
         <h2 className="text-sm font-bold text-slate-800">Datos de la compra</h2>
         <p className="mt-1 text-xs text-slate-500">
           Se genera una compra SOLO con lo confirmado como recibido arriba. Cargá los datos de la factura del proveedor.
@@ -415,7 +415,7 @@ export default function DesdeOrdenRecepcionPage() {
       {/* Modal de confirmación de excedente */}
       {excedentes && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div className="zx-surface w-full max-w-md p-6 shadow-xl">
             <h3 className="text-lg font-bold text-slate-900">Cantidad mayor a la pendiente</h3>
             <p className="mt-2 text-sm text-slate-600">
               Estás por recibir más cantidad que la pendiente en:

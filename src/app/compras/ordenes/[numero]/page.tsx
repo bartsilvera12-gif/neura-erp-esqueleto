@@ -141,7 +141,7 @@ export default function OrdenCompraDetallePage() {
       )}
 
       {/* Ítems */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="zx-surface overflow-x-auto">
         <table className="w-full min-w-[880px] text-sm">
           <thead className="border-b-2 border-[#4FAEB2]/40 bg-[#E5F4F4]">
             <tr>
@@ -183,7 +183,7 @@ export default function OrdenCompraDetallePage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
           onClick={() => !procesando && setCancelOpen(false)}
         >
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-3 border-b border-slate-100 px-6 py-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 ring-1 ring-red-100">
                 <AlertTriangle className="h-5 w-5 text-red-600" />

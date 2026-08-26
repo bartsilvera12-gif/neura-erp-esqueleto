@@ -54,7 +54,7 @@ export function ClienteSearchSelect({ clientes, value, onChange }: Props) {
         />
         <button
           type="button"
-          className="whitespace-nowrap rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          className="zx-surface whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
           onClick={() => {
             onChange("");
             setQ("");
@@ -66,13 +66,13 @@ export function ClienteSearchSelect({ clientes, value, onChange }: Props) {
       </div>
 
       {open && q.trim() && filtered.length === 0 ? (
-        <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-lg">
+        <div className="zx-surface absolute left-0 right-0 z-20 mt-1 rounded-md px-3 py-2 text-sm text-slate-500 shadow-lg">
           Sin coincidencias
         </div>
       ) : null}
       {open && filtered.length > 0 ? (
         <ul
-          className="absolute left-0 right-0 z-20 mt-1 max-h-52 overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+          className="zx-surface absolute left-0 right-0 z-20 mt-1 max-h-52 overflow-auto rounded-md py-1 shadow-lg"
           role="listbox"
         >
           {filtered.slice(0, 100).map((c) => (

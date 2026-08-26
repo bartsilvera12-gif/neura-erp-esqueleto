@@ -527,7 +527,7 @@ export default function EditarSorteoPage() {
       )}
 
       <form noValidate onSubmit={handleSubmit} className="space-y-6">
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <section className="zx-surface p-6 space-y-4">
           <h2 className="text-sm font-semibold text-slate-800 border-b border-slate-100 pb-2">Datos del sorteo</h2>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
@@ -607,7 +607,7 @@ export default function EditarSorteoPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <section className="zx-surface p-6 space-y-4">
           <h2 className="text-sm font-semibold text-slate-800 border-b border-slate-100 pb-2">
             Numeración de cupones
           </h2>
@@ -693,7 +693,7 @@ export default function EditarSorteoPage() {
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Modo de respuesta</label>
             <Select
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+              className="zx-surface w-full px-3 py-2 text-sm"
               value={ticketDeliveryMode}
               onChange={(e) => setTicketDeliveryMode(e.target.value as SorteoTicketDeliveryMode)}
             >
@@ -808,7 +808,7 @@ export default function EditarSorteoPage() {
             )}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="mx-auto w-full max-w-xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="zx-surface mx-auto w-full max-w-xl overflow-hidden">
                 {templatePreviewSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -829,7 +829,7 @@ export default function EditarSorteoPage() {
             <div>
               <label className="block text-xs text-slate-600 mb-1">Caption WhatsApp de la imagen</label>
               <input
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                className="zx-surface w-full px-3 py-2 text-sm"
                 value={ticketCaption}
                 onChange={(e) => setTicketCaption(e.target.value)}
               />
@@ -837,7 +837,7 @@ export default function EditarSorteoPage() {
             <div>
               <label className="block text-xs text-slate-600 mb-1">Texto corto fallback (opcional)</label>
               <input
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                className="zx-surface w-full px-3 py-2 text-sm"
                 value={ticketStub}
                 onChange={(e) => setTicketStub(e.target.value)}
                 placeholder="Listo, generamos tu comprobante…"
@@ -851,7 +851,7 @@ export default function EditarSorteoPage() {
           </p>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <section className="zx-surface p-6 space-y-4">
           <h2 className="text-sm font-semibold text-slate-800 border-b border-slate-100 pb-2">Datos bancarios</h2>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Datos bancarios (JSON)</label>

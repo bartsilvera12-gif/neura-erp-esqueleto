@@ -112,7 +112,7 @@ export default function NuevoPlanPage() {
       <form onSubmit={handleSubmit} className="space-y-8">
 
         {/* Información general */}
-        <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <section className="zx-surface p-6">
           <SectionTitle>Información general</SectionTitle>
           <div className="space-y-4">
 
@@ -154,7 +154,7 @@ export default function NuevoPlanPage() {
         </section>
 
         {/* Precios */}
-        <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <section className="zx-surface p-6">
           <SectionTitle>Precio y periodicidad</SectionTitle>
           <div className="grid grid-cols-3 gap-4">
 
@@ -190,7 +190,7 @@ export default function NuevoPlanPage() {
         </section>
 
         {/* Límites */}
-        <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <section className="zx-surface p-6">
           <SectionTitle>Límites del plan</SectionTitle>
           <p className="text-xs text-gray-400 mb-4">
             Dejar en blanco para indicar que el límite es <strong>ilimitado</strong>.

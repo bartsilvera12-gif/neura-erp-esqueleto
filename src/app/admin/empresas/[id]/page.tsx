@@ -108,7 +108,7 @@ export default function VerEmpresaPage() {
 
       <div className="grid gap-6">
         {/* Datos principales */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="zx-surface overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200 bg-slate-50">
             <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
               Datos de la empresa
@@ -149,7 +149,7 @@ export default function VerEmpresaPage() {
         </div>
 
         {/* Módulos habilitados */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="zx-surface overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200 bg-slate-50">
             <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
               Módulos habilitados
@@ -174,7 +174,7 @@ export default function VerEmpresaPage() {
         </div>
 
         {/* Usuarios */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="zx-surface overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200 bg-slate-50">
             <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
               Usuarios de la empresa
@@ -187,7 +187,7 @@ export default function VerEmpresaPage() {
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="zx-thead">
                   <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">
                     Nombre
                   </th>
@@ -200,7 +200,7 @@ export default function VerEmpresaPage() {
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {usuarios.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={u.id} className="zx-row">
                     <td className="px-5 py-3.5 text-sm font-medium text-gray-800">{u.nombre}</td>
                     <td className="px-5 py-3.5 text-sm text-gray-600">{u.email}</td>
                     <td className="px-5 py-3.5 text-sm text-gray-600">{u.rol ?? "—"}</td>

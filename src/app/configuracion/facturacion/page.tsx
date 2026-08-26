@@ -147,7 +147,7 @@ export default function ConfiguracionFacturacionPage() {
               {gestionCargando ? (
                 <span className="text-xs text-slate-400">Cargando…</span>
               ) : (
-                <div className="w-full sm:w-auto rounded-xl border border-slate-200/80 bg-white px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <div className="zx-surface w-full sm:w-auto border-slate-200/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                   <span className="text-sm font-semibold text-slate-800 sm:whitespace-nowrap">
                     Activar gestión tributaria de clientes
                   </span>
@@ -221,7 +221,7 @@ export default function ConfiguracionFacturacionPage() {
 
               <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <span className="text-xs text-slate-500">Vista previa:</span>
-                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 font-mono text-sm font-bold text-slate-800">
+                <span className="zx-surface px-3 py-1 font-mono text-sm font-bold text-slate-800">
                   {facturaPreview}
                 </span>
                 <span className="text-xs text-slate-400">→</span>

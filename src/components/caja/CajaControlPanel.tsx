@@ -256,7 +256,7 @@ export default function CajaControlPanel({ onStateChange }: Props) {
         const c = cr.caja;
         const enCierre = c.estado === "en_cierre";
         return (
-          <div key={c.id} className="rounded-2xl border-2 border-[#4FAEB2]/25 bg-white shadow-[0_2px_10px_-2px_rgba(79,174,178,0.12)] overflow-hidden">
+          <div key={c.id} className="zx-surface border-2 border-[#4FAEB2]/25 shadow-[0_2px_10px_-2px_rgba(79,174,178,0.12)] overflow-hidden">
             {/* Header por caja */}
             <div className="px-5 py-4 border-b border-[#4FAEB2]/15 bg-gradient-to-r from-[#4FAEB2]/5 to-transparent flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
@@ -290,7 +290,7 @@ export default function CajaControlPanel({ onStateChange }: Props) {
                     <button
                       type="button"
                       onClick={() => { setTarget(cr); setModal("mov"); }}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold px-3 py-2 hover:border-[#4FAEB2] hover:text-[#3F8E91] hover:bg-[#4FAEB2]/5 transition-colors"
+                      className="zx-surface zx-surface-interactive inline-flex items-center gap-1.5 text-slate-700 text-xs font-semibold px-3 py-2 hover:text-[#3F8E91] hover:bg-[#4FAEB2]/5 transition-colors"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Movimiento

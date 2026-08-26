@@ -467,7 +467,7 @@ export function FacturaCorreccionFiscalNC({
               return (
                 <li
                   key={nc.id}
-                  className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden min-w-0"
+                  className="zx-surface overflow-hidden min-w-0"
                 >
                   <div className="px-3 sm:px-4 py-3 border-b border-slate-100 bg-slate-50/80 space-y-2">
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -569,7 +569,7 @@ export function FacturaCorreccionFiscalNC({
                             <span className="text-slate-400">(xml_path)</span>
                           </p>
                           <p
-                            className="font-mono text-[10px] text-slate-800 break-all select-all rounded border border-slate-200 bg-white px-2 py-1.5"
+                            className="zx-surface font-mono text-[10px] text-slate-800 break-all select-all rounded px-2 py-1.5"
                             title={nc.xml_path ?? undefined}
                           >
                             {nc.xml_path ?? "—"}
@@ -581,7 +581,7 @@ export function FacturaCorreccionFiscalNC({
                             <span className="text-slate-400">(xml_firmado_path)</span>
                           </p>
                           <p
-                            className="font-mono text-[10px] text-slate-800 break-all select-all rounded border border-slate-200 bg-white px-2 py-1.5"
+                            className="zx-surface font-mono text-[10px] text-slate-800 break-all select-all rounded px-2 py-1.5"
                             title={nc.xml_firmado_path ?? undefined}
                           >
                             {nc.xml_firmado_path ?? "—"}
@@ -622,7 +622,7 @@ export function FacturaCorreccionFiscalNC({
           aria-modal="true"
           aria-labelledby="nc-modal-title"
         >
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-5 space-y-3 border border-slate-200 max-h-[90vh] overflow-y-auto">
+          <div className="zx-surface shadow-xl max-w-lg w-full p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <h4 id="nc-modal-title" className="text-sm font-bold text-slate-900">
               Crear nota de crédito (borrador)
             </h4>

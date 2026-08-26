@@ -12,7 +12,7 @@ const fInput =
 const fSelect = fInput;
 
 function Card({ children }: { children: React.ReactNode }) {
-  return <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">{children}</div>;
+  return <div className="zx-surface p-6">{children}</div>;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -533,7 +533,7 @@ export default function FacturacionElectronicaSifenPage() {
                 setEditarFormulario(true);
                 setSuccess(null);
               }}
-              className="w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+              className="zx-surface w-full sm:w-auto border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
               Editar configuración
             </button>
@@ -751,7 +751,7 @@ export default function FacturacionElectronicaSifenPage() {
                   type="button"
                   disabled={!cfg || uploading}
                   onClick={() => certFileInputRef.current?.click()}
-                  className="w-fit rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="zx-surface w-fit border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Seleccionar archivo
                 </button>
@@ -815,7 +815,7 @@ export default function FacturacionElectronicaSifenPage() {
                   type="button"
                   disabled={!cfg || subiendoLogo || eliminandoLogo}
                   onClick={() => kudeLogoInputRef.current?.click()}
-                  className="w-fit rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="zx-surface w-fit border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {subiendoLogo ? "Subiendo…" : kudeLogoPathActual ? "Reemplazar logo" : "Subir logo"}
                 </button>
@@ -824,7 +824,7 @@ export default function FacturacionElectronicaSifenPage() {
                     type="button"
                     disabled={!cfg || eliminandoLogo || subiendoLogo}
                     onClick={restaurarLogoKude}
-                    className="w-fit rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="zx-surface w-fit border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {eliminandoLogo ? "Restaurando…" : "Restaurar logo por defecto"}
                   </button>
@@ -854,7 +854,7 @@ export default function FacturacionElectronicaSifenPage() {
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
-                    className="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white p-1"
+                    className="zx-surface h-10 w-12 cursor-pointer rounded p-1"
                     value={isHexColor(kudeColorPrimario) ? kudeColorPrimario : "#0ea5e9"}
                     onChange={(e) => setKudeColorPrimario(e.target.value)}
                   />
@@ -885,7 +885,7 @@ export default function FacturacionElectronicaSifenPage() {
                   <input
                     type="color"
                     disabled={derivarFill}
-                    className="h-10 w-12 cursor-pointer rounded border border-slate-200 bg-white p-1 disabled:cursor-not-allowed"
+                    className="zx-surface h-10 w-12 cursor-pointer rounded p-1 disabled:cursor-not-allowed"
                     value={isHexColor(kudeColorPrimarioFill) ? kudeColorPrimarioFill : "#eaf6fc"}
                     onChange={(e) => setKudeColorPrimarioFill(e.target.value)}
                   />
@@ -949,7 +949,7 @@ export default function FacturacionElectronicaSifenPage() {
                 setNuevaPassword("");
                 setLimpiarPassword(false);
               }}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="zx-surface border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Cancelar edición
             </button>

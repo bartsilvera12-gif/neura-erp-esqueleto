@@ -75,8 +75,8 @@ export default function ReportesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Reportes</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-semibold text-slate-900">Reportes</h1>
+        <p className="mt-1 text-sm text-slate-500">
           Reportería operativa y fiscal. Todos los reportes son de solo lectura y
           respetan el período que elijas en cada pantalla.
         </p>
@@ -89,21 +89,21 @@ export default function ReportesPage() {
             <Link
               key={r.href}
               href={r.href}
-              className="group flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md"
+              className="zx-surface zx-surface-interactive group flex flex-col gap-3 p-5"
             >
               <div className="flex items-start justify-between gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#4FAEB2]/10 text-[#3F8E91] ring-1 ring-[#4FAEB2]/20">
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   {r.familia}
                 </span>
               </div>
               <div>
-                <h2 className="text-base font-semibold text-gray-900 group-hover:text-blue-700">
+                <h2 className="text-base font-semibold text-slate-900 transition-colors group-hover:text-[#3F8E91]">
                   {r.titulo}
                 </h2>
-                <p className="mt-1 text-sm leading-relaxed text-gray-500">{r.descripcion}</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-500">{r.descripcion}</p>
               </div>
             </Link>
           );

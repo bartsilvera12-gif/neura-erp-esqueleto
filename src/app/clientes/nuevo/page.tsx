@@ -416,7 +416,7 @@ function NuevoClienteForm() {
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 max-w-3xl">
+      <div className="zx-surface p-6 max-w-3xl">
         <form className="space-y-8" onSubmit={handleSubmit}>
 
           {/* ── Identificación ───────────────────────────────────────────── */}
@@ -819,7 +819,7 @@ function NuevoClienteForm() {
                     <p className="text-xs text-slate-500 mt-0.5 max-w-xl">Expandir para IVA, IRE, honorarios y obligaciones. Los datos fiscales no reemplazan la ficha comercial.</p>
                   </div>
                   <span
-                    className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 group-open:bg-indigo-50 group-open:text-indigo-800 group-open:border-indigo-100"
+                    className="zx-surface shrink-0 px-2.5 py-1 text-xs font-medium text-slate-600 group-open:bg-indigo-50 group-open:text-indigo-800 group-open:border-indigo-100"
                     aria-hidden
                   >
                     Expandir

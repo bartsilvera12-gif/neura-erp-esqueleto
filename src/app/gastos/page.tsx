@@ -80,7 +80,7 @@ export default function GastosPage() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm ring-1 ring-[#4FAEB2]/15">
+      <div className="zx-surface zx-surface-accent overflow-hidden">
         {cargando ? (
           <div className="py-16 text-center text-gray-400 text-sm animate-pulse">Cargando gastos…</div>
         ) : gastos.length === 0 ? (
@@ -97,7 +97,7 @@ export default function GastosPage() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+              <tr className="zx-thead">
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Fecha</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Categoría</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Descripción</th>

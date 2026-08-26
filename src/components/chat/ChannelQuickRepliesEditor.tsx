@@ -93,14 +93,14 @@ export function ChannelQuickRepliesEditor({ channelId, disabled = false, hideInt
 
       <form
         onSubmit={(e) => void handleCreate(e)}
-        className="rounded-lg border border-slate-200 bg-white p-4 space-y-4"
+        className="zx-surface p-4 space-y-4"
       >
         <h4 className="text-sm font-semibold text-slate-800">Nueva respuesta rápida</h4>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nombre interno</label>
             <input
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="zx-surface w-full px-3 py-2 text-sm"
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
               placeholder="Ej: Saludo inicial"
@@ -112,7 +112,7 @@ export function ChannelQuickRepliesEditor({ channelId, disabled = false, hideInt
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Orden</label>
             <input
               type="number"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm tabular-nums"
+              className="zx-surface w-full px-3 py-2 text-sm tabular-nums"
               value={draftOrder}
               onChange={(e) => setDraftOrder(e.target.value)}
               min={0}
@@ -123,7 +123,7 @@ export function ChannelQuickRepliesEditor({ channelId, disabled = false, hideInt
         <div>
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Texto completo</label>
           <textarea
-            className="w-full min-h-[88px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm resize-y"
+            className="zx-surface w-full min-h-[88px] px-3 py-2 text-sm resize-y"
             value={draftBody}
             onChange={(e) => setDraftBody(e.target.value)}
             placeholder="Mensaje que se insertará en el campo de escritura…"
@@ -141,7 +141,7 @@ export function ChannelQuickRepliesEditor({ channelId, disabled = false, hideInt
         </div>
       </form>
 
-      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="bg-slate-50/90 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between gap-2">
           <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Respuestas definidas</span>
           <button

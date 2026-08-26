@@ -162,7 +162,7 @@ export default function ComprasPage() {
       </div>
 
       {/* Órdenes de compra por confirmar (revisar + recibir) */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-[#4FAEB2]/15 sm:p-5 lg:p-6">
+      <div className="zx-surface zx-surface-accent p-4 sm:p-5 lg:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-slate-800">
@@ -222,7 +222,7 @@ export default function ComprasPage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-[#4FAEB2]/15 sm:p-5 lg:p-6">
+      <div className="zx-surface zx-surface-accent p-4 sm:p-5 lg:p-6">
 
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-semibold">Compras registradas</h2>
@@ -266,7 +266,7 @@ export default function ComprasPage() {
         <EdgeScrollArea>
           <table className="w-full min-w-[760px] lg:min-w-0 text-left text-sm">
             <thead>
-              <tr className="border-b text-gray-500">
+              <tr className="zx-thead text-gray-500">
                 <th className="py-3 pr-4 font-medium">N° Control</th>
                 <th className="py-3 pr-4 font-medium">Proveedor</th>
                 <th className="py-3 pr-4 font-medium">Productos</th>
@@ -280,8 +280,10 @@ export default function ComprasPage() {
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400">
-                    {grupos.length === 0 ? "No hay compras registradas" : "Ninguna compra coincide con los filtros"}
+                  <td colSpan={8} className="p-4">
+                    <div className="zx-empty px-6 py-10 text-center text-sm text-slate-500">
+                      {grupos.length === 0 ? "No hay compras registradas" : "Ninguna compra coincide con los filtros"}
+                    </div>
                   </td>
                 </tr>
               ) : (

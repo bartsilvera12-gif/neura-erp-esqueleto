@@ -74,7 +74,7 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <div className="zx-surface p-6">
         <div className="flex items-center gap-2 mb-5 pb-2 border-b border-slate-200">
           <span className="text-base">📋</span>
           <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">

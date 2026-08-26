@@ -224,7 +224,7 @@ export default function SmartSearchSelect({
         <ul
           ref={listRef}
           role="listbox"
-          className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          className="zx-surface absolute z-50 mt-1 max-h-72 w-full overflow-y-auto py-1 shadow-lg"
         >
           {results.length === 0 ? (
             <li className="px-3 py-6 text-center text-xs text-slate-400">{emptyText}</li>

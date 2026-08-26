@@ -1322,7 +1322,7 @@ export default function FlowEditorPage() {
         </div>
       )}
 
-      <form onSubmit={createNode} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap gap-3 items-end shadow-sm">
+      <form onSubmit={createNode} className="zx-surface p-4 flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-[180px]">
           <label className="block text-xs text-slate-500 mb-1">Nombre del paso (código interno)</label>
           <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={newNodeCode} onChange={(e) => setNewNodeCode(e.target.value)} placeholder="ej: datos_pago" />
@@ -1429,7 +1429,7 @@ export default function FlowEditorPage() {
                   {node.node_type !== "buttons" && node.node_type !== "list" && (
                     <button
                       type="button"
-                      className="text-xs px-2 py-1 rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      className="zx-surface text-xs px-2 py-1 rounded-md text-slate-700 hover:bg-slate-50"
                       onClick={() => {
                         setChangeNextValue(node.next_node_code ?? "");
                         setChangeNextModal({ kind: "node", nodeId: node.id });
@@ -1584,7 +1584,7 @@ export default function FlowEditorPage() {
               )}
 
               {node.node_type === "media" && (
-                <div className="border border-fuchsia-100 rounded-lg p-4 space-y-3 bg-white shadow-sm ring-1 ring-fuchsia-100/80">
+                <div className="zx-surface border-fuchsia-100 p-4 space-y-3 ring-fuchsia-100/80">
                   <div className="text-sm font-semibold text-fuchsia-800">Mensaje con imagen</div>
                   <p className="text-xs text-slate-600">
                     WhatsApp envía una sola burbuja: imagen arriba y texto opcional debajo (caption).
@@ -1776,7 +1776,7 @@ export default function FlowEditorPage() {
                             <img
                               src={mediaUrl}
                               alt="Vista previa"
-                              className="max-h-40 w-auto rounded-lg border border-slate-200 bg-white shadow-sm"
+                              className="zx-surface max-h-40 w-auto"
                             />
                             <p className="text-sm text-slate-800 whitespace-pre-wrap">
                               {caption || "Sin texto bajo la imagen"}
@@ -1953,7 +1953,7 @@ export default function FlowEditorPage() {
                   ? node.blocks.filter((b) => b.block_type === "image")
                   : node.blocks
                 ).map((block, bi) => (
-                  <div key={block.id} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                  <div key={block.id} className="zx-surface p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-slate-500">Bloque #{bi + 1} ({block.block_type})</div>
                       <div className="flex gap-2">
@@ -2357,7 +2357,7 @@ export default function FlowEditorPage() {
                         </button>
                         <button
                           type="button"
-                          className="text-xs px-2 py-1 rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          className="zx-surface text-xs px-2 py-1 rounded-md text-slate-700 hover:bg-slate-50"
                           onClick={() => {
                             setChangeNextValue(opt.next_node_code ?? "");
                             setChangeNextModal({ kind: "option", nodeId: node.id, optionId: opt.id });
@@ -2546,7 +2546,7 @@ export default function FlowEditorPage() {
                           {`{{cantidad}}, {{producto}}, {{monto}}, {{promo_nombre}}, {{precio_regular}}, {{precio_fuente}}, {{opcion_label}}`}.
                         </p>
                       </div>
-                      <div className="md:col-span-4 text-xs text-slate-500 bg-white border border-slate-200 rounded px-2 py-1">
+                      <div className="zx-surface md:col-span-4 text-xs text-slate-500 rounded px-2 py-1">
                         {node.node_type === "list" ? "Opción" : "Botón"}: "{opt.label}" → va a: "{nextStepLabel(opt.next_node_code)}"
                       </div>
                     </div>
@@ -2629,7 +2629,7 @@ export default function FlowEditorPage() {
 
       {insertModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4 border border-slate-200">
+          <div className="zx-surface shadow-xl max-w-lg w-full p-6 space-y-4">
             <h2 className="text-lg font-semibold text-slate-800">Insertar paso en el grafo</h2>
             <p className="text-sm text-slate-600">
               Se creará un nuevo paso <strong>entre</strong>{" "}
@@ -2707,7 +2707,7 @@ export default function FlowEditorPage() {
 
       {changeNextModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-200">
+          <div className="zx-surface shadow-xl max-w-md w-full p-6 space-y-4">
             <h2 className="text-lg font-semibold text-slate-800">
               {changeNextModal.kind === "node" ? "Cambiar siguiente paso" : "Cambiar destino de la opción"}
             </h2>
@@ -2746,7 +2746,7 @@ export default function FlowEditorPage() {
         </div>
       )}
 
-      <details className="bg-white border border-slate-200 rounded-xl shadow-sm group">
+      <details className="zx-surface group">
         <summary className="cursor-pointer list-none px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-800 hover:bg-slate-50/80 rounded-xl [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
             <span className="text-slate-400 group-open:rotate-90 transition-transform">▸</span>

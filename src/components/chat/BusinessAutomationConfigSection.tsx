@@ -27,7 +27,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
 
   return (
     <div className="space-y-5">
-      <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3">
+      <label className="zx-surface flex items-start gap-3 px-3 py-3">
         <input
           type="checkbox"
           className="mt-1"
@@ -51,7 +51,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
             cuando actives el interruptor superior.
           </p>
         ) : null}
-        <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+        <div className="zx-surface p-4 space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h4 className="text-sm font-semibold text-slate-800">Mensaje de bienvenida</h4>
@@ -70,14 +70,14 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
             </label>
           </div>
           <textarea
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[88px] bg-white"
+            className="zx-surface w-full px-3 py-2 text-sm min-h-[88px]"
             value={s.welcome_message}
             onChange={(e) => patch({ welcome_message: e.target.value })}
             placeholder="Texto de bienvenida…"
           />
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+        <div className="zx-surface p-4 space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h4 className="text-sm font-semibold text-slate-800">Horario de atención</h4>
@@ -98,7 +98,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Zona horaria</label>
               <Select
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                className="zx-surface w-full px-3 py-2 text-sm"
                 value={
                   (COMMON_TZ as readonly string[]).includes(s.timezone) ? s.timezone : "__custom__"
                 }
@@ -120,7 +120,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Días</label>
               <Select
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                className="zx-surface w-full px-3 py-2 text-sm"
                 value={s.schedule_preset}
                 onChange={(e) => patch({ schedule_preset: e.target.value as BusinessHoursPreset })}
                 disabled={!s.hours_enabled}
@@ -133,7 +133,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Desde (24 h)</label>
               <input
                 type="time"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                className="zx-surface w-full px-3 py-2 text-sm"
                 value={s.day_start.length === 5 ? s.day_start : "08:00"}
                 onChange={(e) => patch({ day_start: e.target.value || "08:00" })}
                 disabled={!s.hours_enabled}
@@ -143,7 +143,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Hasta (24 h)</label>
               <input
                 type="time"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                className="zx-surface w-full px-3 py-2 text-sm"
                 value={s.day_end.length === 5 ? s.day_end : "18:00"}
                 onChange={(e) => patch({ day_end: e.target.value || "18:00" })}
                 disabled={!s.hours_enabled}
@@ -155,7 +155,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
               </label>
               <input
                 type="text"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                className="zx-surface w-full px-3 py-2 text-sm font-mono"
                 value={s.timezone}
                 onChange={(e) => patch({ timezone: e.target.value || DEFAULT_BUSINESS_AUTOMATION_TIMEZONE })}
                 placeholder={DEFAULT_BUSINESS_AUTOMATION_TIMEZONE}
@@ -165,7 +165,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+        <div className="zx-surface p-4 space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h4 className="text-sm font-semibold text-slate-800">Mensaje fuera de horario</h4>
@@ -184,7 +184,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
             </label>
           </div>
           <textarea
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[88px] bg-white"
+            className="zx-surface w-full px-3 py-2 text-sm min-h-[88px]"
             value={s.away_message}
             onChange={(e) => patch({ away_message: e.target.value })}
             placeholder="Ej: Volvé a escribirnos de 8 a 18 hs…"
@@ -197,7 +197,7 @@ export function BusinessAutomationConfigSection({ value: s, onChange }: Props) {
               type="number"
               min={15}
               max={10080}
-              className="w-full max-w-[200px] border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+              className="zx-surface w-full max-w-[200px] px-3 py-2 text-sm"
               value={s.away_cooldown_minutes}
               onChange={(e) =>
                 patch({

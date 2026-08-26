@@ -237,22 +237,22 @@ export default function EditarRecetaPage() {
       {/* Costeo summary */}
       {costeo && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="rounded-md bg-white border border-gray-200 p-4">
+          <div className="zx-surface rounded-md p-4">
             <div className="text-xs text-gray-500 uppercase">Costo total receta</div>
             <div className="text-lg font-semibold text-gray-900">{fmtGs(costeo.costo_total)}</div>
           </div>
-          <div className="rounded-md bg-white border border-gray-200 p-4">
+          <div className="zx-surface rounded-md p-4">
             <div className="text-xs text-gray-500 uppercase">Costo unitario</div>
             <div className="text-lg font-semibold text-gray-900">{fmtGs(costeo.costo_unitario)}</div>
           </div>
-          <div className="rounded-md bg-white border border-gray-200 p-4">
+          <div className="zx-surface rounded-md p-4">
             <div className="text-xs text-gray-500 uppercase">Margen</div>
             <div className={`text-lg font-semibold ${(costeo.margen_pct ?? 0) >= 0 ? "text-green-700" : "text-red-700"}`}>
               {costeo.margen_pct == null ? "—" : `${costeo.margen_pct}%`}
             </div>
             <div className="text-xs text-gray-500">{fmtGs(costeo.margen_abs)} / unidad</div>
           </div>
-          <div className="rounded-md bg-white border border-gray-200 p-4">
+          <div className="zx-surface rounded-md p-4">
             <div className="text-xs text-gray-500 uppercase">Unidades posibles</div>
             <div className="text-lg font-semibold text-gray-900">
               {costeo.unidades_posibles == null ? "—" : costeo.unidades_posibles}
@@ -269,7 +269,7 @@ export default function EditarRecetaPage() {
       )}
 
       {/* Header form */}
-      <div className="bg-white p-5 rounded-md border border-gray-200 mb-6">
+      <div className="zx-surface p-5 rounded-md mb-6">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Datos de la receta</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="md:col-span-3">
@@ -333,7 +333,7 @@ export default function EditarRecetaPage() {
       </div>
 
       {/* Items */}
-      <div className="bg-white p-5 rounded-md border border-gray-200">
+      <div className="zx-surface p-5 rounded-md">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Insumos</h2>
 
         {items.length === 0 && (

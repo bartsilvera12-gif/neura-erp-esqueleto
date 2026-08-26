@@ -96,7 +96,7 @@ export function GenericOmnichannelChannelForm({
       <div>
         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nombre visible</label>
         <input
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+          className="zx-surface w-full px-3 py-2 text-sm"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
         />
@@ -104,7 +104,7 @@ export function GenericOmnichannelChannelForm({
       <div>
         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Proveedor</label>
         <input
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+          className="zx-surface w-full px-3 py-2 text-sm"
           value={provider}
           onChange={(e) => setProvider(e.target.value)}
           placeholder={defaultProvider}
@@ -113,7 +113,7 @@ export function GenericOmnichannelChannelForm({
       <div>
         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Identificador externo</label>
         <input
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+          className="zx-surface w-full px-3 py-2 text-sm font-mono"
           value={externalId}
           onChange={(e) => setExternalId(e.target.value)}
           placeholder="Page ID, inbox ID, dominio, etc."
@@ -122,7 +122,7 @@ export function GenericOmnichannelChannelForm({
       <div>
         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Notas internas</label>
         <textarea
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white min-h-[88px]"
+          className="zx-surface w-full px-3 py-2 text-sm min-h-[88px]"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Contexto para el equipo o Etapa 2"

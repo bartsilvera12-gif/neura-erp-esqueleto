@@ -215,14 +215,14 @@ export default function MarketingOpsClient() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         {kpis.map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div key={label} className="zx-surface p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
             <p className="mt-2 text-2xl font-semibold text-slate-950 tabular-nums">{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="zx-surface p-4">
         <div className="grid gap-2 md:grid-cols-4 xl:grid-cols-8">
           <input
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm md:col-span-2"
@@ -291,7 +291,7 @@ export default function MarketingOpsClient() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="zx-surface overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -315,7 +315,7 @@ export default function MarketingOpsClient() {
                 <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500">Sin piezas para los filtros actuales.</td></tr>
               ) : (
                 piezas.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/70">
+                  <tr key={p.id} className="zx-row">
                     <td className="max-w-[280px] px-4 py-3">
                       <p className="font-semibold text-slate-950">{p.titulo}</p>
                       <p className="text-xs text-slate-500">{[p.tipo_pieza, p.canal].filter(Boolean).join(" · ") || "—"}</p>
@@ -395,7 +395,7 @@ function PiezaModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <button type="button" className="absolute inset-0 bg-black/50" aria-label="Cerrar" onClick={onClose} />
-      <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+      <div className="zx-surface relative max-h-[92vh] w-full max-w-3xl overflow-y-auto p-6 shadow-2xl">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-950">{draft.id ? "Editar pieza" : "Nueva pieza"}</h2>

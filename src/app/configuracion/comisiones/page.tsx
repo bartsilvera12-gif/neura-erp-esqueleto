@@ -414,7 +414,7 @@ export default function ConfiguracionComisionesPage() {
       )}
 
       {/* Una política por empresa (uq_comision_politicas_empresa). Varias políticas requerirían evolución de esquema. */}
-      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-slate-300">
+      <section className="zx-surface zx-surface-interactive mb-6 p-5 transition-all">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700">
@@ -450,7 +450,7 @@ export default function ConfiguracionComisionesPage() {
           <button
             type="button"
             onClick={() => setEditExpanded((e) => !e)}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="zx-surface inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
             {editExpanded ? "Ocultar edición" : "Editar configuración"}
             <ChevronDown

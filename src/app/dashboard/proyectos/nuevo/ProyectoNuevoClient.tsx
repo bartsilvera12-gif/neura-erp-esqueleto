@@ -152,7 +152,7 @@ export default function ProyectoNuevoClient() {
 
       {err ? <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
 
-      <form onSubmit={onSubmit} className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <form onSubmit={onSubmit} className="zx-surface space-y-6 p-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm">
             <span className="font-medium text-slate-700">Título</span>

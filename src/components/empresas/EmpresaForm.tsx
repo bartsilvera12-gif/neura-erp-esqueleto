@@ -131,7 +131,7 @@ export default function EmpresaForm() {
       )}
 
       {/* Datos empresa */}
-      <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      <section className="zx-surface p-6">
         <div className="flex items-center gap-2 mb-5 pb-2 border-b border-gray-100">
           <span className="text-base">🏢</span>
           <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Datos de la empresa</h3>
@@ -189,7 +189,7 @@ export default function EmpresaForm() {
       </section>
 
       {/* Usuario administrador */}
-      <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      <section className="zx-surface p-6">
         <div className="flex items-center gap-2 mb-5 pb-2 border-b border-gray-100">
           <span className="text-base">👤</span>
           <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Usuario administrador</h3>
@@ -236,7 +236,7 @@ export default function EmpresaForm() {
       </section>
 
       {/* Módulos habilitados */}
-      <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      <section className="zx-surface p-6">
         <div className="flex items-center gap-2 mb-5 pb-2 border-b border-gray-100">
           <span className="text-base">📦</span>
           <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Módulos habilitados</h3>
@@ -266,7 +266,7 @@ export default function EmpresaForm() {
         )}
       </section>
 
-      <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      <section className="zx-surface p-6">
         <div className="flex items-center gap-2 mb-5 pb-2 border-b border-gray-100">
           <span className="text-base">📊</span>
           <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">

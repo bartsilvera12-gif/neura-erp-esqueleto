@@ -377,7 +377,7 @@ export default function NuevoProductoPage() {
         <h1 className="text-3xl font-bold text-gray-800">Nuevo producto</h1>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-6 max-w-5xl">
+      <div className="zx-surface p-6 max-w-5xl">
         <form className="space-y-6" onSubmit={handleSubmit} noValidate>
 
           {/* Error general (validacion de codigo, duplicado de codigo barras, etc.) */}

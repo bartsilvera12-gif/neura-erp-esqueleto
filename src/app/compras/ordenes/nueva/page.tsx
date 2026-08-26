@@ -262,7 +262,7 @@ export default function NuevaOrdenCompraPage() {
 
       <form onSubmit={onSubmit} className="space-y-6">
         {/* Cabecera */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
+        <div className="zx-surface p-5 space-y-5">
           {/* Proveedor */}
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-600">Proveedor <span className="text-red-500">*</span></label>
@@ -357,7 +357,7 @@ export default function NuevaOrdenCompraPage() {
             autoComplete="off"
           />
           {searchOpen && q.trim().length >= 2 && (
-            <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-[50vh] overflow-y-auto rounded-2xl border-2 border-[#4FAEB2]/20 bg-white shadow-[0_16px_40px_-12px_rgba(15,23,42,0.28)]">
+            <div className="zx-surface absolute left-0 right-0 top-full z-30 mt-2 max-h-[50vh] overflow-y-auto border-2 border-[#4FAEB2]/20 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.28)]">
               {buscando && resultados.length === 0 ? (
                 <div className="px-4 py-6 text-center text-sm text-slate-400">Buscando…</div>
               ) : resultados.length === 0 ? (
@@ -401,7 +401,7 @@ export default function NuevaOrdenCompraPage() {
         </div>
 
         {/* Ítems */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="zx-surface overflow-hidden">
           {lineas.length === 0 ? (
             <p className="py-12 text-center text-sm text-slate-400">Buscá productos arriba y agregalos a la orden.</p>
           ) : (
@@ -484,7 +484,7 @@ export default function NuevaOrdenCompraPage() {
         {err && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
 
         {/* Total + submit */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="zx-surface flex flex-wrap items-center justify-between gap-4 p-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total estimado</p>
             <p className="text-2xl font-bold tabular-nums text-slate-900">{fmtGs(totalOc)}</p>

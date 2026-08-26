@@ -93,7 +93,7 @@ export default function RecetasListPage() {
       )}
 
       {!loading && recetas.length > 0 && (
-        <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
+        <div className="zx-surface overflow-hidden rounded-md">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
               <tr>

@@ -320,7 +320,7 @@ export function WhatsAppChannelForm({
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nombre en el ERP</label>
                 <input
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  className="zx-surface w-full px-3 py-2 text-sm"
                   value={form.nombre}
                   onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
                   placeholder="Ej: WhatsApp ventas"
@@ -336,7 +336,7 @@ export function WhatsAppChannelForm({
                     <input
                       type="password"
                       autoComplete="off"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={yc.ycloud_api_key}
                       onChange={(e) => setYc((p) => ({ ...p, ycloud_api_key: e.target.value }))}
                       placeholder={mode === "edit" ? "Dejar vacío para conservar la clave guardada" : ""}
@@ -347,7 +347,7 @@ export function WhatsAppChannelForm({
                     <input
                       type="password"
                       autoComplete="off"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={yc.ycloud_webhook_secret}
                       onChange={(e) => setYc((p) => ({ ...p, ycloud_webhook_secret: e.target.value }))}
                     />
@@ -358,7 +358,7 @@ export function WhatsAppChannelForm({
                         Sender / external ID
                       </label>
                       <input
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                        className="zx-surface w-full px-3 py-2 text-sm font-mono"
                         value={yc.ycloud_sender_id}
                         onChange={(e) => setYc((p) => ({ ...p, ycloud_sender_id: e.target.value }))}
                       />
@@ -368,7 +368,7 @@ export function WhatsAppChannelForm({
                         Channel ID YCloud
                       </label>
                       <input
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                        className="zx-surface w-full px-3 py-2 text-sm font-mono"
                         value={yc.ycloud_channel_id}
                         onChange={(e) => setYc((p) => ({ ...p, ycloud_channel_id: e.target.value }))}
                       />
@@ -379,7 +379,7 @@ export function WhatsAppChannelForm({
                       WABA ID (WhatsApp Business Account)
                     </label>
                     <input
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={yc.ycloud_waba_id}
                       onChange={(e) => setYc((p) => ({ ...p, ycloud_waba_id: e.target.value }))}
                       placeholder="ID de la cuenta de negocio (plantillas / campañas)"
@@ -398,7 +398,7 @@ export function WhatsAppChannelForm({
                     </label>
                     <input
                       required
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={form.meta_phone_number_id}
                       onChange={(e) => setForm((p) => ({ ...p, meta_phone_number_id: e.target.value }))}
                       placeholder="Ej: 123456789012345"
@@ -409,7 +409,7 @@ export function WhatsAppChannelForm({
                       Provider channel ID (opcional)
                     </label>
                     <input
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={form.provider_channel_id}
                       onChange={(e) => setForm((p) => ({ ...p, provider_channel_id: e.target.value }))}
                       placeholder="Por defecto se usa el mismo Phone number ID"
@@ -420,7 +420,7 @@ export function WhatsAppChannelForm({
                       Número visible (opcional)
                     </label>
                     <input
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm"
                       value={form.display_phone_number ?? ""}
                       onChange={(e) => setForm((p) => ({ ...p, display_phone_number: e.target.value }))}
                       placeholder="+595 981 000000"
@@ -434,7 +434,7 @@ export function WhatsAppChannelForm({
                       WhatsApp Business Account ID (WABA) — opcional
                     </label>
                     <input
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={form.meta_waba_id ?? ""}
                       onChange={(e) => setForm((p) => ({ ...p, meta_waba_id: e.target.value }))}
                       placeholder="ID de la cuenta de negocio en Meta"
@@ -445,7 +445,7 @@ export function WhatsAppChannelForm({
                       App ID Meta — opcional
                     </label>
                     <input
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={form.meta_app_id ?? ""}
                       onChange={(e) => setForm((p) => ({ ...p, meta_app_id: e.target.value }))}
                     />
@@ -455,7 +455,7 @@ export function WhatsAppChannelForm({
                       Verify token (referencia en ERP) — opcional
                     </label>
                     <input
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={form.meta_verify_token ?? ""}
                       onChange={(e) => setForm((p) => ({ ...p, meta_verify_token: e.target.value }))}
                       placeholder="Si usás verificación por token distinto al global del servidor"
@@ -473,7 +473,7 @@ export function WhatsAppChannelForm({
                     <input
                       type="password"
                       autoComplete="off"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                      className="zx-surface w-full px-3 py-2 text-sm font-mono"
                       value={form.whatsapp_access_token ?? ""}
                       onChange={(e) => setForm((p) => ({ ...p, whatsapp_access_token: e.target.value }))}
                       placeholder={

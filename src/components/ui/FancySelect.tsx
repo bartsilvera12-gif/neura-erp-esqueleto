@@ -250,7 +250,7 @@ export function FancySelect({
             id={listboxId}
             role="listbox"
             tabIndex={-1}
-            className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-[#4FAEB2]/15"
+            className="zx-surface zx-surface-accent max-h-[260px] overflow-y-auto p-1 shadow-xl"
           >
             {options.length === 0 ? (
               <li className="px-3 py-3 text-center text-xs text-slate-400">

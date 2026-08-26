@@ -717,7 +717,7 @@ function ProjectCardView({
           <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
             <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Mover a</label>
             <Select
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 outline-none transition-colors hover:border-slate-300 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              className="zx-surface zx-surface-interactive mt-1 w-full px-2 py-1.5 text-xs font-medium text-slate-700 outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               value={p.estado_id}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
@@ -828,7 +828,7 @@ function EstadoMetric({
   color: string;
 }) {
   return (
-    <div className="min-w-[120px] flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-2 shadow-sm">
+    <div className="zx-surface min-w-[120px] flex-1 px-2.5 py-2">
       <div className="mb-1 h-0.5 rounded-full" style={{ backgroundColor: color || "#94a3b8" }} />
       <div className="flex items-baseline justify-between gap-2">
         <span className="truncate text-[10px] font-medium uppercase tracking-wide text-slate-500" title={label}>

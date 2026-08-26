@@ -80,7 +80,7 @@ export default function AdminEmpresasPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="zx-surface overflow-hidden">
         {cargando ? (
           <div className="py-16 text-center text-gray-400 text-sm animate-pulse">Cargando empresas…</div>
         ) : empresas.length === 0 ? (
@@ -94,7 +94,7 @@ export default function AdminEmpresasPage() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+              <tr className="zx-thead">
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Empresa</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Plan</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">RUC</th>
@@ -105,7 +105,7 @@ export default function AdminEmpresasPage() {
             </thead>
             <tbody className="divide-y divide-slate-200">
               {empresas.map((e) => (
-                <tr key={e.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                <tr key={e.id} className="zx-row">
                   <td className="px-5 py-3.5">
                     <p className="text-sm font-semibold text-gray-800">{e.nombre_empresa}</p>
                   </td>

@@ -78,7 +78,7 @@ export default function ConfirmModal({
       onClick={() => { if (!loading) onCancel(); }}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        className="zx-surface w-full max-w-md p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-base font-bold text-slate-900">{title}</h2>

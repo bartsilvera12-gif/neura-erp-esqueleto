@@ -348,7 +348,7 @@ export default function NuevoPresupuestoPage() {
       {error && <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
 
       {/* Cliente */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <div className="zx-surface p-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Cliente</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -380,7 +380,7 @@ export default function NuevoPresupuestoPage() {
       </div>
 
       {/* Productos */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <div className="zx-surface p-5">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-gray-700">Productos</h2>
           <button type="button" onClick={agregarManual} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
@@ -403,7 +403,7 @@ export default function NuevoPresupuestoPage() {
             autoComplete="off"
           />
           {comboOpen && comboQuery.trim().length >= 2 && (
-            <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-[56vh] overflow-y-auto rounded-xl border-2 border-[#4FAEB2]/20 bg-white shadow-[0_16px_40px_-12px_rgba(15,23,42,0.28)]">
+            <div className="zx-surface absolute left-0 right-0 top-full z-30 mt-2 max-h-[56vh] overflow-y-auto border-2 border-[#4FAEB2]/20 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.28)]">
               {comboBuscando && comboHits.length === 0 ? (
                 <div className="px-4 py-5 text-center text-sm text-slate-400">Buscando…</div>
               ) : comboHits.length === 0 ? (
@@ -539,7 +539,7 @@ export default function NuevoPresupuestoPage() {
       </div>
 
       {/* Condiciones */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <div className="zx-surface p-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Condiciones comerciales</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
@@ -581,7 +581,7 @@ export default function NuevoPresupuestoPage() {
       </div>
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-        <Link href="/presupuestos" className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+        <Link href="/presupuestos" className="zx-surface inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
           Cancelar
         </Link>
         <button onClick={guardar} disabled={!valido || guardando} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#4FAEB2] px-5 py-2 text-sm font-medium text-white hover:bg-[#3F8E91] disabled:opacity-50">

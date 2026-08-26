@@ -114,7 +114,7 @@ export default function CategoriasProductosPage() {
       </div>
 
       {/* Alta */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 max-w-3xl">
+      <div className="zx-surface p-6 max-w-3xl">
         <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide font-semibold">
           Nueva categoría
         </p>
@@ -143,7 +143,7 @@ export default function CategoriasProductosPage() {
             <Select
               value={parentId}
               onChange={(e) => setParentId(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+              className="zx-surface w-full px-3 py-2 text-sm"
             >
               <option value="">— ninguna —</option>
               {items.filter((i) => i.activo).map((i) => (
@@ -167,7 +167,7 @@ export default function CategoriasProductosPage() {
       </div>
 
       {/* Lista */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         {loading ? (
           <p className="p-6 text-sm text-gray-400">Cargando...</p>
         ) : items.length === 0 ? (

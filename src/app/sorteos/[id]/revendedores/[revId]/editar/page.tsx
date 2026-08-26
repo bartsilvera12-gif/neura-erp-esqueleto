@@ -88,7 +88,7 @@ export default function EditarRevendedorPage() {
       {err && (
         <div className="bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg px-4 py-2">{err}</div>
       )}
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="zx-surface space-y-4 p-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
           <input

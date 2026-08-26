@@ -183,7 +183,7 @@ export default function PresupuestoDetallePage() {
       {ok && <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">✓ {ok}</div>}
 
       {/* Documento */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="zx-surface overflow-hidden">
         {/* Encabezado */}
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-6 py-5">
           <div className="flex items-center gap-3">
@@ -237,7 +237,7 @@ export default function PresupuestoDetallePage() {
         <div className="overflow-x-auto border-t border-slate-100">
           <table className="w-full min-w-[680px] text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+              <tr className="zx-thead text-[11px] uppercase tracking-wide text-slate-500">
                 <th className="py-3 pl-6 pr-4 text-left font-bold">Descripción</th>
                 <th className="px-4 py-3 text-center font-bold">Cant.</th>
                 <th className="px-4 py-3 text-right font-bold">Precio unit.</th>
@@ -248,7 +248,7 @@ export default function PresupuestoDetallePage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {items.map((it) => (
-                <tr key={it.id} className="transition-colors hover:bg-slate-50/60">
+                <tr key={it.id} className="zx-row">
                   <td className="py-3 pl-6 pr-4">
                     <span className="font-medium text-slate-800">{it.producto_nombre}</span>
                     {it.sku ? <span className="text-xs text-slate-400"> · {it.sku}</span> : null}
@@ -299,7 +299,7 @@ export default function PresupuestoDetallePage() {
       )}
 
       {(SIGUIENTES[presu.estado].length > 0 || presu.estado === "aprobado") && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="zx-surface p-5">
           <h2 className="mb-3 text-sm font-semibold text-slate-700">Acciones</h2>
           <div className="flex flex-wrap gap-2">
             {SIGUIENTES[presu.estado].map((s) => (

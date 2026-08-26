@@ -294,7 +294,7 @@ export default function MarketingOpsPage() {
           <Select
             value={mes}
             onChange={(e) => setMes(e.target.value)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white shadow-sm"
+            className="zx-surface text-sm px-3 py-2"
             aria-label="Mes operativo"
           >
             {Array.from({ length: 24 }, (_, i) => {
@@ -314,7 +314,7 @@ export default function MarketingOpsPage() {
             type="button"
             onClick={() => void cargar()}
             disabled={cargando}
-            className="inline-flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+            className="zx-surface inline-flex items-center gap-2 text-sm font-medium px-3 py-2 hover:bg-slate-50 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${cargando ? "animate-spin" : ""}`} />
             Actualizar
@@ -398,7 +398,7 @@ export default function MarketingOpsPage() {
           role="presentation"
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-100"
+            className="zx-surface shadow-2xl max-w-lg w-full p-6"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -451,7 +451,7 @@ export default function MarketingOpsPage() {
           className="fixed inset-0 bg-black/45 flex items-center justify-center z-50 p-4"
           onClick={() => setRegenerarCliente(null)}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-slate-900 mb-2">Regenerar tareas del mes</h3>
             <p className="text-sm text-slate-600 mb-4">
               Se eliminarán las <strong>tareas automáticas</strong> de{" "}
@@ -487,7 +487,7 @@ export default function MarketingOpsPage() {
 
       {modalTarea && (
         <div className="fixed inset-0 bg-black/45 flex items-center justify-center z-50 p-4" onClick={() => setModalTarea(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-100" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface shadow-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-slate-900 mb-2">¿Se cumplió esta tarea?</h3>
             <p className="text-sm text-slate-600 mb-4 capitalize">
               {modalTarea.tipo_contenido} — {modalTarea.fecha_entrega}
@@ -528,7 +528,7 @@ export default function MarketingOpsPage() {
 
         {clientesOps.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-10 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 mb-3">
+            <div className="zx-surface mx-auto flex h-12 w-12 items-center justify-center rounded-full text-slate-400 mb-3">
               <Users className="h-6 w-6" />
             </div>
             <p className="text-slate-800 font-semibold">No hay clientes en cartera marketing para este período</p>
@@ -564,7 +564,7 @@ export default function MarketingOpsPage() {
               return (
                 <div
                   key={c.id}
-                  className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+                  className="zx-surface overflow-hidden"
                 >
                   <button
                     type="button"
@@ -646,7 +646,7 @@ export default function MarketingOpsPage() {
                           Regenerar tareas de este cliente
                         </button>
                       </div>
-                      <div className="overflow-x-auto rounded-lg border border-slate-200/80 bg-white">
+                      <div className="zx-surface overflow-x-auto border-slate-200/80">
                         <div className="grid grid-cols-7 min-w-[640px] gap-1 p-2" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
                           {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((d) => (
                             <div key={d} className="text-center text-[10px] font-semibold text-slate-500 py-1">

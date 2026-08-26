@@ -118,7 +118,7 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition-all hover:border-[#4FAEB2]/60"
+            className="zx-surface zx-surface-interactive flex items-center gap-2 px-3 py-1.5 transition-all"
           >
             {/* Avatar: logo de la empresa (Esqueleto ERP); la inicial queda de respaldo. */}
             <div
@@ -144,7 +144,7 @@ export default function Header() {
           </button>
 
           {userMenuOpen ? (
-            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-[#4FAEB2]/15">
+            <div className="zx-surface zx-surface-accent absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden shadow-xl">
               {/* franja superior turquesa */}
               <span
                 aria-hidden="true"

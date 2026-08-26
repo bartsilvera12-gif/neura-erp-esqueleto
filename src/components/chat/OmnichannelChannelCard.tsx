@@ -84,7 +84,7 @@ export function OmnichannelChannelCard({
         : `/configuracion/canales/nuevo?tipo=${def.type}`;
 
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300 hover:shadow-md transition-all">
+    <article className="zx-surface zx-surface-interactive flex h-full flex-col p-5 transition-all">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-700">
@@ -112,7 +112,7 @@ export function OmnichannelChannelCard({
       <div className="mt-auto pt-5">
         <Link
           href={editHref}
-          className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+          className="zx-surface inline-flex w-full items-center justify-center px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
         >
           {ofType.length > 1 ? "Ver conexiones" : "Editar"}
         </Link>

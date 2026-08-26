@@ -180,7 +180,7 @@ export default function OmnicanalHorariosPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="zx-surface p-6">
         <div className="mb-4 flex items-center gap-2">
           <CalendarClock className="h-5 w-5 text-slate-400" aria-hidden />
           <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700">{draftId ? "Editar" : "Nuevo"} horario</h2>
@@ -259,7 +259,7 @@ export default function OmnicanalHorariosPage() {
         </form>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="zx-surface p-6">
         <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-700">Horarios configurados</h2>
         {loading || allowed === null ? (
           <p className="text-sm text-slate-400">Cargando…</p>
@@ -269,7 +269,7 @@ export default function OmnicanalHorariosPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
+                <tr className="zx-thead text-left text-xs text-slate-500">
                   <th className="pb-2 pr-3">Nombre</th>
                   <th className="pb-2 pr-3">Franja</th>
                   <th className="pb-2 pr-3">Días</th>

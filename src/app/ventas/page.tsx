@@ -250,7 +250,7 @@ export default function VentasPage() {
       </div>
 
       {/* ── Tabla de ventas ───────────────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm ring-1 ring-[#4FAEB2]/15 p-6">
+      <div className="zx-surface zx-surface-accent p-6">
 
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-xl font-semibold">Órdenes de venta</h2>
@@ -313,7 +313,7 @@ export default function VentasPage() {
         <EdgeScrollArea>
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-slate-50 text-slate-600 text-sm font-semibold">
+              <tr className="zx-thead text-slate-600 text-sm font-semibold">
                 <th className="py-3 pr-4 font-medium">Número</th>
                 <th className="py-3 pr-4 font-medium">Productos</th>
                 <th className="py-3 pr-4 font-medium text-center">Ítems</th>
@@ -329,10 +329,12 @@ export default function VentasPage() {
             <tbody>
               {filtradas.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-gray-400">
-                    {todas.length === 0
-                      ? "No hay ventas registradas"
-                      : "Ninguna venta coincide con los filtros"}
+                  <td colSpan={10} className="p-4">
+                    <div className="zx-empty px-6 py-10 text-center text-sm text-slate-500">
+                      {todas.length === 0
+                        ? "No hay ventas registradas"
+                        : "Ninguna venta coincide con los filtros"}
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -383,7 +385,7 @@ export default function VentasPage() {
                           href={`/api/ventas/${v.id}/ticket`}
                           target="_blank"
                           rel="noopener"
-                          className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                          className="zx-surface zx-surface-interactive inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                           title="Abrir comandas + ticket cliente"
                         >
                           Imprimir

@@ -544,7 +544,7 @@ export function FacturaElectronicaPanel({
   const busy = action !== null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 sm:p-6 w-full min-w-0">
+    <div className="zx-surface p-5 sm:p-6 w-full min-w-0">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-stretch">
         <div className="flex-1 min-w-0 space-y-5">
           <div>
@@ -580,7 +580,7 @@ export function FacturaElectronicaPanel({
                     type="button"
                     disabled={busy}
                     onClick={() => void regenerarDocumentoRechazado()}
-                    className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm font-semibold shadow-sm disabled:opacity-45 disabled:cursor-not-allowed hover:bg-slate-50"
+                    className="zx-surface inline-flex items-center justify-center px-5 py-2.5 border-slate-300 text-slate-900 text-sm font-semibold disabled:opacity-45 disabled:cursor-not-allowed hover:bg-slate-50"
                   >
                     {action === "xml" ? "Regenerando…" : "Regenerar documento"}
                   </button>
@@ -632,7 +632,7 @@ export function FacturaElectronicaPanel({
                       type="button"
                       disabled={!puedeBorrador || busy}
                       onClick={() => run("borrador")}
-                      className="px-2.5 py-1.5 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-800 disabled:opacity-40 hover:bg-slate-50"
+                      className="zx-surface px-2.5 py-1.5 text-[11px] font-semibold rounded-md text-slate-800 disabled:opacity-40 hover:bg-slate-50"
                     >
                       {action === "borrador" ? "…" : "Borrador"}
                     </button>
@@ -640,7 +640,7 @@ export function FacturaElectronicaPanel({
                       type="button"
                       disabled={!puedeGenerarXml || busy}
                       onClick={() => run("xml")}
-                      className="px-2.5 py-1.5 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-800 disabled:opacity-40 hover:bg-slate-50"
+                      className="zx-surface px-2.5 py-1.5 text-[11px] font-semibold rounded-md text-slate-800 disabled:opacity-40 hover:bg-slate-50"
                     >
                       {action === "xml" ? "…" : "XML"}
                     </button>
@@ -648,7 +648,7 @@ export function FacturaElectronicaPanel({
                       type="button"
                       disabled={!puedeFirmar || busy}
                       onClick={() => run("firmar")}
-                      className="px-2.5 py-1.5 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-800 disabled:opacity-40 hover:bg-slate-50"
+                      className="zx-surface px-2.5 py-1.5 text-[11px] font-semibold rounded-md text-slate-800 disabled:opacity-40 hover:bg-slate-50"
                     >
                       {action === "firmar" ? "…" : "Firmar"}
                     </button>
@@ -660,7 +660,7 @@ export function FacturaElectronicaPanel({
                           !(stStr === "error_envio" && Boolean(fe?.xml_firmado_path?.trim())))
                       }
                       onClick={() => void runEnviar()}
-                      className="px-2.5 py-1.5 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-800 disabled:opacity-40 hover:bg-slate-50"
+                      className="zx-surface px-2.5 py-1.5 text-[11px] font-semibold rounded-md text-slate-800 disabled:opacity-40 hover:bg-slate-50"
                     >
                       {action === "enviar" ? "…" : "Solo enviar"}
                     </button>
@@ -904,7 +904,7 @@ export function FacturaElectronicaPanel({
           aria-modal="true"
           aria-labelledby="sifen-cancel-title"
         >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-5 space-y-4 border border-slate-200">
+          <div className="zx-surface shadow-xl max-w-md w-full p-5 space-y-4">
             <h4 id="sifen-cancel-title" className="text-sm font-bold text-slate-900">
               {cancelModal === "reemitir"
                 ? "Cancelar documento y continuar en cliente"

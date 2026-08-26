@@ -488,14 +488,14 @@ export default function CampanasDetailClient({ campaignId }: { campaignId: strin
           ["Fallidos", campaign.failed_count],
           ["Respondieron", campaign.replied_count],
         ].map(([label, val]) => (
-          <div key={String(label)} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div key={String(label)} className="zx-surface p-4">
             <div className="text-xs font-medium uppercase text-slate-500">{String(label)}</div>
             <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{Number(val ?? 0)}</div>
           </div>
         ))}
       </div>
 
-      <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="zx-surface space-y-3 p-5">
         <h2 className="text-sm font-semibold text-slate-900">Importación (.xlsx / .csv)</h2>
         <input
           type="file"
@@ -518,7 +518,7 @@ export default function CampanasDetailClient({ campaignId }: { campaignId: strin
       </section>
 
       {placeholderSlots.length > 0 ? (
-        <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="zx-surface space-y-4 p-5">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">Mapeo de variables</h2>
             <p className="mt-1 text-xs text-slate-600">
@@ -576,7 +576,7 @@ export default function CampanasDetailClient({ campaignId }: { campaignId: strin
               type="button"
               disabled={busy || !canImport}
               onClick={() => void saveMapping()}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              className="zx-surface border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
             >
               Guardar mapeo
             </button>
@@ -613,7 +613,7 @@ export default function CampanasDetailClient({ campaignId }: { campaignId: strin
       ) : null}
 
       {quickReplyTemplateButtons.length > 0 ? (
-        <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="zx-surface space-y-4 p-5">
           <h2 className="text-sm font-semibold text-slate-900">Acciones de botones</h2>
           <p className="text-xs text-slate-600">
             Configurá qué hace cada respuesta rápida de la plantilla cuando el cliente la toca. El valor{" "}
@@ -762,7 +762,7 @@ export default function CampanasDetailClient({ campaignId }: { campaignId: strin
             type="button"
             disabled={savingButtonActions || busy || !canEditButtonActions}
             onClick={() => void saveButtonActions()}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+            className="zx-surface border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
           >
             {savingButtonActions ? "Guardando…" : "Guardar acciones de botones"}
           </button>
@@ -788,7 +788,7 @@ export default function CampanasDetailClient({ campaignId }: { campaignId: strin
         </button>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="zx-surface">
         <h2 className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">
           Destinatarios (primeras filas)
         </h2>
@@ -820,7 +820,7 @@ export default function CampanasDetailClient({ campaignId }: { campaignId: strin
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="zx-surface">
         <button
           type="button"
           className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-900"

@@ -1575,7 +1575,7 @@ export function ConversacionesClient({
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-xl p-5"
+            className="zx-surface w-full max-w-md shadow-xl p-5"
             onClick={(ev) => ev.stopPropagation()}
           >
             <p className="text-sm text-slate-800 font-medium">Confirmar aprobación</p>
@@ -1662,7 +1662,7 @@ export function ConversacionesClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="finalize-chat-title"
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+            className="zx-surface w-full max-w-md p-5 shadow-xl"
             onClick={(ev) => ev.stopPropagation()}
           >
             <h2 id="finalize-chat-title" className="text-lg font-semibold text-slate-900">
@@ -1766,7 +1766,7 @@ export function ConversacionesClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="transfer-chat-title"
-            className="w-full max-w-lg max-h-[min(92vh,720px)] overflow-hidden flex flex-col rounded-2xl border border-slate-200 bg-white shadow-xl"
+            className="zx-surface w-full max-w-lg max-h-[min(92vh,720px)] overflow-hidden flex flex-col shadow-xl"
             onClick={(ev) => ev.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 shrink-0">
@@ -1796,7 +1796,7 @@ export function ConversacionesClient({
                 <div className="flex flex-wrap gap-2">
                   <Select
                     disabled={opsBusy}
-                    className="flex-1 min-w-[12rem] border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white"
+                    className="zx-surface flex-1 min-w-[12rem] px-3 py-2.5 text-sm"
                     value={transferQueueTarget}
                     onChange={(e) => setTransferQueueTarget(e.target.value)}
                     aria-label="Cola destino y filtro de agentes"
@@ -1836,7 +1836,7 @@ export function ConversacionesClient({
                     value={transferAgentSearch}
                     onChange={(e) => setTransferAgentSearch(e.target.value)}
                     placeholder="Buscar"
-                    className="w-full max-w-[14rem] border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-sky-400/50 focus:border-sky-300"
+                    className="zx-surface w-full max-w-[14rem] px-3 py-2 text-sm placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-sky-400/50 focus:border-sky-300"
                     aria-label="Buscar agente"
                   />
                 </div>
@@ -1878,7 +1878,7 @@ export function ConversacionesClient({
                               ) : null}
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-slate-700 border border-slate-200">
+                              <span className="zx-surface text-[10px] px-2 py-0.5 rounded-full text-slate-700">
                                 {a.queue_nombre}
                               </span>
                               <span className="text-[11px] text-slate-500">
@@ -1888,7 +1888,7 @@ export function ConversacionesClient({
                             </div>
                             <div className="flex justify-end mt-2">
                               <span className="text-[11px] text-slate-600 tabular-nums">
-                                <span className="inline-flex items-center rounded border border-slate-200 bg-white px-1.5 py-0.5 font-semibold text-slate-800">
+                                <span className="zx-surface inline-flex items-center rounded px-1.5 py-0.5 font-semibold text-slate-800">
                                   {a.active_conversations}
                                 </span>{" "}
                                 Activos
@@ -2062,7 +2062,7 @@ export function ConversacionesClient({
             value={listSearch}
             onChange={(e) => setListSearch(e.target.value)}
             placeholder="Buscar por nombre o número"
-            className="flex-1 min-w-[12rem] border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 bg-white placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-sky-400/40 focus:border-sky-300"
+            className="zx-surface flex-1 min-w-[12rem] px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-sky-400/40 focus:border-sky-300"
             aria-label="Buscar por nombre o número"
           />
         </div>
@@ -2075,18 +2075,18 @@ export function ConversacionesClient({
             value={listSearch}
             onChange={(e) => setListSearch(e.target.value)}
             placeholder="Buscar por nombre o número"
-            className="flex-1 min-w-[12rem] border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 bg-white placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-sky-400/40 focus:border-sky-300"
+            className="zx-surface flex-1 min-w-[12rem] px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-sky-400/40 focus:border-sky-300"
             aria-label="Buscar en historial"
           />
         </div>
       ) : null}
 
       {(mode === "historial" || vista === "inbox") ? (
-        <div className="flex flex-wrap items-end gap-3 shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <div className="zx-surface flex flex-wrap items-end gap-3 shrink-0 px-3 py-2.5">
           <label className="flex flex-col gap-1 min-w-[12rem]">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Canal</span>
             <Select
-              className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white min-w-[12rem] max-w-[min(22rem,90vw)]"
+              className="zx-surface px-2 py-1.5 text-xs min-w-[12rem] max-w-[min(22rem,90vw)]"
               value={displayCanal}
               onChange={(e) => {
                 const v = e.target.value.trim();
@@ -2106,7 +2106,7 @@ export function ConversacionesClient({
           <label className="flex flex-col gap-1 min-w-[11rem]">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Cola</span>
             <Select
-              className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white min-w-[11rem]"
+              className="zx-surface px-2 py-1.5 text-xs min-w-[11rem]"
               value={displayCola}
               onChange={(e) => {
                 const v = e.target.value.trim();
@@ -2128,7 +2128,7 @@ export function ConversacionesClient({
           <label className="flex flex-col gap-1 min-w-[11rem]">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Asignación</span>
             <Select
-              className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white min-w-[11rem]"
+              className="zx-surface px-2 py-1.5 text-xs min-w-[11rem]"
               value={displayAsignacion}
               onChange={(e) => {
                 const v = e.target.value;
@@ -2179,7 +2179,7 @@ export function ConversacionesClient({
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0 border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+      <div className="zx-surface flex flex-1 min-h-0 overflow-hidden">
         {/* Lista */}
         {!listColumnHidden ? (
         <div className="w-full max-w-[min(360px,40vw)] shrink-0 border-r border-slate-200 flex flex-col min-h-0 bg-slate-50/80">
@@ -2340,7 +2340,7 @@ export function ConversacionesClient({
                             <button
                               type="button"
                               onClick={() => setListColumnHidden(false)}
-                              className="shrink-0 text-[9px] font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded px-1 py-0.5 bg-white"
+                              className="zx-surface shrink-0 text-[9px] font-medium text-slate-600 hover:text-slate-900 rounded px-1 py-0.5"
                               title="Mostrar lista de chats"
                             >
                               Chats
@@ -2412,7 +2412,7 @@ export function ConversacionesClient({
                           type="button"
                           disabled={opsBusy || finalizeSaving}
                           onClick={() => void openFinalizeModal()}
-                          className="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                          className="zx-surface inline-flex items-center rounded-md border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
                         >
                           Finalizar
                         </button>
@@ -2435,7 +2435,7 @@ export function ConversacionesClient({
                           type="button"
                           disabled={releasingBot}
                           onClick={() => void handleReleaseToBot()}
-                          className="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          className="zx-surface inline-flex items-center rounded-md border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                         >
                           {releasingBot ? "…" : "Modo bot"}
                         </button>
@@ -2509,7 +2509,7 @@ export function ConversacionesClient({
                           {compVals.map((v) => (
                             <li
                               key={v.id}
-                              className="flex flex-wrap items-center gap-1.5 text-[11px] bg-white border border-slate-200 rounded-md px-1.5 py-1"
+                              className="zx-surface flex flex-wrap items-center gap-1.5 text-[11px] rounded-md px-1.5 py-1"
                             >
                               <span className="font-mono text-slate-600">{v.estado_validacion}</span>
                               {v.monto_validacion_status != null && v.monto_validacion_status !== "" ? (
@@ -2632,7 +2632,7 @@ export function ConversacionesClient({
                                 <img
                                   src={attachUrl}
                                   alt="Imagen del chat"
-                                  className="max-h-52 rounded-lg border border-white/30 bg-white object-contain"
+                                  className="zx-surface max-h-52 border-white/30 object-contain"
                                 />
                               </button>
                               {m.content && m.content !== "[imagen]" ? (
@@ -2740,7 +2740,7 @@ export function ConversacionesClient({
                                       <img
                                         src={parsed.url}
                                         alt="Imagen enviada"
-                                        className="max-h-52 rounded-lg border border-white/30 bg-white object-contain"
+                                        className="zx-surface max-h-52 border-white/30 object-contain"
                                       />
                                     </button>
                                   ) : null}
@@ -2844,7 +2844,7 @@ export function ConversacionesClient({
                           <Zap className="w-[18px] h-[18px]" aria-hidden />
                         </button>
                         {quickReplyOpen ? (
-                          <div className="absolute bottom-full left-0 z-30 mb-1 flex w-[min(calc(100vw-2rem),20rem)] max-h-72 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                          <div className="zx-surface absolute bottom-full left-0 z-30 mb-1 flex w-[min(calc(100vw-2rem),20rem)] max-h-72 flex-col overflow-hidden shadow-xl">
                             <div className="border-b border-slate-100 px-2 py-1.5">
                               <input
                                 type="search"

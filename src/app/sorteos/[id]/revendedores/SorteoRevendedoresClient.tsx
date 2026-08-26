@@ -125,7 +125,7 @@ export default function SorteoRevendedoresClient(props: {
         </div>
       )}
 
-      <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+      <section className="zx-surface p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">Nuevo revendedor</h2>
         <form onSubmit={handleCreate} className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -181,7 +181,7 @@ export default function SorteoRevendedoresClient(props: {
               return (
                 <li
                   key={r.id}
-                  className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3"
+                  className="zx-surface p-4 space-y-3"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
@@ -224,7 +224,7 @@ export default function SorteoRevendedoresClient(props: {
                           alt={`QR ${r.codigo_referido}`}
                           width={120}
                           height={120}
-                          className="border border-slate-200 rounded-lg bg-white"
+                          className="zx-surface"
                         />
                       ) : (
                         <span className="text-xs text-slate-400">QR disponible con URL base pública</span>

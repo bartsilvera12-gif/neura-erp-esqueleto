@@ -367,7 +367,7 @@ export default function EditarProductoPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-6 max-w-5xl">
+      <div className="zx-surface p-6 max-w-5xl">
         <form className="space-y-6" onSubmit={handleSubmit} noValidate>
           {errorGeneral && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">

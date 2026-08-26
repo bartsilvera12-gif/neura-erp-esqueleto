@@ -94,7 +94,7 @@ export function RegistrarPagoModal({
       role="presentation"
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+        className="zx-surface w-full max-w-md p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

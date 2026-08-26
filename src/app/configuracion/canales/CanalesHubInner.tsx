@@ -165,7 +165,7 @@ export function CanalesHubInner() {
         <div className="flex flex-wrap gap-2 justify-end">
           <Link
             href="/configuracion/colas"
-            className="inline-flex items-center justify-center shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="zx-surface inline-flex items-center justify-center shrink-0 px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
             Colas y enrutamiento
           </Link>
@@ -204,7 +204,7 @@ export function CanalesHubInner() {
 
           <section
             id="whatsapp-canales"
-            className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden scroll-mt-6"
+            className="zx-surface overflow-hidden scroll-mt-6"
           >
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3">
               <div>
@@ -290,7 +290,7 @@ export function CanalesHubInner() {
               Ver todos los canales
             </Link>
           </div>
-          <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+          <ul className="zx-surface divide-y divide-slate-200">
             {filteredRows.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">

@@ -82,7 +82,7 @@ export default function DesdeOrdenListaPage() {
         ← Compras
       </Link>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-[#4FAEB2]/15 sm:p-5 lg:p-6">
+      <div className="zx-surface zx-surface-accent p-4 sm:p-5 lg:p-6">
         <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-slate-100 pb-5">
           <input
             type="text"

@@ -110,7 +110,7 @@ export function BotWakeKeywordsSection({ value, onChange }: Props) {
         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Agregar palabra o frase</label>
         <div className="flex flex-col sm:flex-row gap-2 sm:items-stretch">
           <input
-            className="flex-1 min-w-0 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+            className="zx-surface flex-1 min-w-0 px-3 py-2 text-sm"
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);

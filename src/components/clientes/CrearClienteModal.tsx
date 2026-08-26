@@ -100,7 +100,7 @@ export default function CrearClienteModal({
       onClick={busy ? undefined : onClose}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl border-2 border-[#4FAEB2]/20 bg-white shadow-2xl"
+        className="zx-surface w-full max-w-lg overflow-hidden border-2 border-[#4FAEB2]/20 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-[#4FAEB2]/5 to-transparent px-5 py-4">

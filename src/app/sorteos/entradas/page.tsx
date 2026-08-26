@@ -206,14 +206,14 @@ export default async function SorteoEntradasPage({
         ) : null}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="zx-surface overflow-hidden">
         {rows.length === 0 && !queryError ? (
           <div className="py-16 text-center text-gray-400 text-sm">No hay entradas</div>
         ) : rows.length === 0 ? null : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[960px]">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="zx-thead">
                   <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Nº orden</th>
                   <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Sorteo</th>
                   <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Participante</th>
@@ -232,7 +232,7 @@ export default async function SorteoEntradasPage({
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/80">
+                  <tr key={r.id} className="zx-row">
                     <td className="px-5 py-3 text-sm font-mono font-semibold text-slate-800">
                       {typeof r.numero_orden === "number" ? r.numero_orden : "—"}
                     </td>

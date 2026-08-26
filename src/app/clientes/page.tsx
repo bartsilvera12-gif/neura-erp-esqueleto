@@ -425,13 +425,13 @@ export default function ClientesPage() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm ring-1 ring-[#4FAEB2]/15 p-4 flex flex-wrap gap-3 items-center">
+      <div className="zx-surface zx-surface-accent p-4 flex flex-wrap gap-3 items-center">
         <input
           type="text"
           placeholder="Buscar por nombre, código, email, RUC..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="flex-1 min-w-48 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none transition-all"
+          className="zx-surface flex-1 min-w-48 px-3 py-2 text-sm focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none transition-all"
         />
         <FancySelect
           value={filtroEstado}
@@ -511,7 +511,7 @@ export default function ClientesPage() {
             <button
               type="button"
               onClick={() => setColumnasOpen((v) => !v)}
-              className="inline-flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-medium shadow-sm transition-colors"
+              className="zx-surface inline-flex items-center gap-2 hover:bg-slate-50 text-slate-700 px-3 py-2 text-xs font-medium transition-colors"
               aria-expanded={columnasOpen}
             >
               <span>Columnas</span>
@@ -520,7 +520,7 @@ export default function ClientesPage() {
               </span>
             </button>
             {columnasOpen && (
-              <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-lg">
+              <div className="zx-surface absolute right-0 z-20 mt-2 w-80 shadow-lg">
                 <div className="p-4 border-b border-slate-100">
                   <p className="text-sm font-semibold text-slate-800">Columnas</p>
                   <p className="text-xs text-slate-500 mt-1">Personalizá qué información querés ver en esta tabla.</p>
@@ -564,7 +564,7 @@ export default function ClientesPage() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm ring-1 ring-[#4FAEB2]/15">
+      <div className="zx-surface zx-surface-accent overflow-hidden">
         {cargando ? (
           <div className="py-16 text-center text-gray-400 text-sm animate-pulse">Cargando clientes…</div>
         ) : filtrados.length === 0 ? (
@@ -583,7 +583,7 @@ export default function ClientesPage() {
           <EdgeScrollArea>
             <table className="w-full min-w-full">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="zx-thead">
                   {visibleColumns.map((col) => (
                     <th key={col.key} className={col.headerClassName}>
                       {col.label}

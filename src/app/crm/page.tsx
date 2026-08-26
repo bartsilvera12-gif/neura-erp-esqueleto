@@ -112,7 +112,7 @@ function ProspectoCard({
         e.dataTransfer.effectAllowed = "move";
         onDragStart(prospecto.id);
       }}
-      className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all select-none group"
+      className="zx-surface zx-surface-interactive p-2 cursor-grab active:cursor-grabbing transition-all select-none group"
     >
       <div className="flex items-start justify-between gap-1.5 mb-0.5">
         <div className="min-w-0">
@@ -286,7 +286,7 @@ function MetricCard({
 function TopProductosWidget({ items, total }: { items: { nombre: string; valor: number }[]; total: number }) {
   if (items.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm">
+      <div className="zx-surface p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <PieChart className="w-3.5 h-3.5 text-slate-500" />
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Top en negociación</p>

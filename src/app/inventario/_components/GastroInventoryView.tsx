@@ -135,10 +135,10 @@ export default function GastroInventoryView({
       </div>
 
       {/* Tabla */}
-      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
+      <div className="zx-surface overflow-x-auto rounded-md">
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50">
-            <tr className="text-xs uppercase text-gray-500">
+            <tr className="zx-thead text-xs uppercase text-gray-500">
               <th className="py-2.5 px-3 font-medium">Producto</th>
               <th className="py-2.5 px-3 font-medium">Tipo</th>
               <th className="py-2.5 px-3 font-medium text-right">Stock</th>
@@ -173,7 +173,7 @@ export default function GastroInventoryView({
                 estados.push({ label: "OK", cls: "bg-green-100 text-green-700" });
 
               return (
-                <tr key={p.id} className="hover:bg-gray-50">
+                <tr key={p.id} className="zx-row">
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{p.nombre}</div>
                     <div className="text-xs text-gray-400 font-mono">{p.sku}</div>

@@ -171,19 +171,21 @@ export default function PresupuestosPage() {
         <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         {loading ? (
           <div className="p-8 flex items-center gap-2 text-sm text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
           </div>
         ) : filtradas.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500">
-            No hay presupuestos {filtro !== "todos" ? `en estado "${ESTADO_LABEL[filtro as EstadoPresupuesto]}"` : "todavía"}.
+          <div className="p-4">
+            <div className="zx-empty px-6 py-10 text-center text-sm text-slate-500">
+              No hay presupuestos {filtro !== "todos" ? `en estado "${ESTADO_LABEL[filtro as EstadoPresupuesto]}"` : "todavía"}.
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-gray-500">
+              <thead className="text-xs uppercase text-slate-500">
                 <tr>
                   <th className="py-3 px-4 font-medium">Número</th>
                   <th className="py-3 px-4 font-medium">Cliente</th>
@@ -195,7 +197,7 @@ export default function PresupuestosPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtradas.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50">
+                  <tr key={r.id} className="zx-row">
                     <td className="py-3 px-4 font-mono font-medium text-gray-800">{r.numero_control}</td>
                     <td className="py-3 px-4 text-gray-700">{r.cliente_nombre}</td>
                     <td className="py-3 px-4 text-gray-600">{fmtFecha(r.fecha)}</td>

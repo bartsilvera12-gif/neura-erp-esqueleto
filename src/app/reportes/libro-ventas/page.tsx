@@ -96,7 +96,7 @@ export default function LibroVentasPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Libro de Ventas</h1>
           <p className="mt-1 text-sm text-slate-500">Solo comprobantes fiscales válidos (facturas con DTE aprobado) por fecha del comprobante. Las notas de crédito figuran como movimientos negativos. No incluye ventas POS ni documentos no fiscales.</p>
         </div>
-        <button onClick={exportar} className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-[#3F8E91] hover:bg-[#4FAEB2]/5">
+        <button onClick={exportar} className="zx-surface px-3.5 py-2 text-sm font-semibold text-[#3F8E91] hover:bg-[#4FAEB2]/5">
           Exportar Excel
         </button>
       </div>
@@ -110,7 +110,7 @@ export default function LibroVentasPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3 lg:grid-cols-7">
+      <div className="zx-surface grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 lg:grid-cols-7">
         <label className="text-xs font-semibold text-slate-500">Desde
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm" /></label>
         <label className="text-xs font-semibold text-slate-500">Hasta
@@ -139,7 +139,7 @@ export default function LibroVentasPage() {
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="zx-surface overflow-x-auto">
         <table className="w-full min-w-[1100px] text-xs">
           <thead className="border-b bg-slate-50 uppercase tracking-wide text-slate-500">
             <tr>

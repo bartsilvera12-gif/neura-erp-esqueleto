@@ -338,7 +338,7 @@ function ModalFacturacion({
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] flex flex-col"
+        className="zx-surface shadow-xl max-w-lg w-full max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 px-6 py-4 border-b border-gray-200">
@@ -502,7 +502,7 @@ function ClienteBusquedaGlobal({
             setQuery("");
             setOpen(true);
           }}
-          className="inline-flex max-w-full min-w-0 items-center gap-2 rounded-lg border border-slate-200/90 bg-white px-2.5 py-1.5 text-left text-xs font-medium text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+          className="zx-surface zx-surface-interactive inline-flex max-w-full min-w-0 items-center gap-2 border-slate-200/90 px-2.5 py-1.5 text-left text-xs font-medium text-slate-800 transition hover:bg-slate-50"
           title="Buscar otro cliente"
         >
           <IconoLupa className="h-3.5 w-3.5 shrink-0 text-slate-400" />
@@ -573,7 +573,7 @@ function ClienteBusquedaGlobal({
       </div>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="zx-surface absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden shadow-xl">
           <div className="max-h-64 overflow-y-auto overscroll-y-contain">
             {resultados.length === 0 ? (
               <div className="px-4 py-8 text-center text-xs text-slate-400">
@@ -601,11 +601,11 @@ function ClienteBusquedaGlobal({
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-[10px] text-slate-400">
             <span className="inline-flex items-center gap-1">
-              <kbd className="rounded border border-slate-200 bg-white px-1 py-0.5 font-mono text-[9px] leading-none">↵</kbd>
+              <kbd className="zx-surface rounded px-1 py-0.5 font-mono text-[9px] leading-none">↵</kbd>
               primer resultado
             </span>
             <span className="inline-flex items-center gap-1">
-              <kbd className="rounded border border-slate-200 bg-white px-1 py-0.5 font-mono text-[9px] leading-none">Esc</kbd>
+              <kbd className="zx-surface rounded px-1 py-0.5 font-mono text-[9px] leading-none">Esc</kbd>
               cerrar
             </span>
           </div>
@@ -813,7 +813,7 @@ function GestionClientesPageInner() {
       </header>
 
       <div
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/[0.03]"
+        className="zx-surface flex min-h-0 flex-1 flex-col overflow-hidden border-slate-200/90 ring-slate-900/[0.03]"
         style={{ minHeight: "min(560px, calc(100dvh - 10.5rem))" }}
       >
         {selected === null ? (
@@ -1025,15 +1025,15 @@ function GestionClientesPageInner() {
                   <div>
                     {facturasOrdenadas.length > 0 ? (
                       <div className="grid grid-cols-2 gap-1.5 border-b border-slate-100 bg-slate-50/50 p-2 sm:grid-cols-3 lg:grid-cols-6">
-                        <div className="rounded-lg border border-slate-100 bg-white px-2 py-1.5">
+                        <div className="zx-surface px-2 py-1.5">
                           <p className="text-[10px] text-slate-400">Facturas</p>
                           <p className="text-sm font-bold tabular-nums text-slate-800">{facturasOrdenadas.length}</p>
                         </div>
-                        <div className="rounded-lg border border-slate-100 bg-white px-2 py-1.5">
+                        <div className="zx-surface px-2 py-1.5">
                           <p className="text-[10px] text-slate-400">Monto total</p>
                           <p className="text-[11px] font-bold tabular-nums leading-snug text-slate-800">Gs. {formatGs(totalMonto)}</p>
                         </div>
-                        <div className="rounded-lg border border-slate-100 bg-white px-2 py-1.5">
+                        <div className="zx-surface px-2 py-1.5">
                           <p className="text-[10px] text-slate-400">Saldo pend.</p>
                           <p
                             className={`text-[11px] font-bold tabular-nums leading-snug ${
@@ -1055,7 +1055,7 @@ function GestionClientesPageInner() {
                           <p className="text-[10px] text-emerald-600">Pagadas</p>
                           <p className="text-sm font-bold text-emerald-700">{cntPagadas}</p>
                         </div>
-                        <div className="rounded-lg border border-teal-100 bg-white px-2 py-1.5">
+                        <div className="zx-surface border-teal-100 px-2 py-1.5">
                           <p className="text-[10px] text-teal-700">NC (SET)</p>
                           <p className="text-sm font-bold text-teal-800">{cntCorregidaNc}</p>
                         </div>

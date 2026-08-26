@@ -550,7 +550,7 @@ function KpiCard({
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className="rounded-2xl border border-[#4FAEB2]/30 bg-white p-6 shadow-sm ring-1 ring-[#4FAEB2]/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+      className="zx-surface zx-surface-interactive zx-surface-accent border-[#4FAEB2]/30 p-6 transition-all duration-200 hover:-translate-y-0.5"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="text-2xl">{icon}</div>
@@ -1387,7 +1387,7 @@ function DashFinanciero({
                       count: number;
                     };
                     return (
-                      <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 shadow-lg">
+                      <div className="zx-surface px-3 py-2 text-xs text-slate-800 shadow-lg">
                         <p className="font-medium text-slate-500">{formatFecha(row.fecha)}</p>
                         <p className="mt-1.5 text-sm font-semibold tabular-nums text-slate-900">
                           Gs. {formatGs(row.monto)}
@@ -1668,7 +1668,7 @@ function DashInventario({
 
       {/* Donut + Críticos */}
       <div className="grid grid-cols-3 gap-4">
-        <motion.div whileHover={{ y: -2 }} className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-6">
+        <motion.div whileHover={{ y: -2 }} className="zx-surface zx-surface-interactive hover:-translate-y-0.5 transition-all duration-200 p-6">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Estado del stock</h3>
           <DonutChart segments={[
             { label: "Saludable", value: cntSaludable, color: "#22c55e" },
@@ -1676,7 +1676,7 @@ function DashInventario({
             { label: "Crítico",   value: cntCritico,   color: "#ef4444" },
           ]} centerLabel="productos" />
         </motion.div>
-        <motion.div whileHover={{ y: -2 }} className="col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-6 transition-shadow hover:shadow-md">
+        <motion.div whileHover={{ y: -2 }} className="zx-surface zx-surface-interactive col-span-2 hover:-translate-y-0.5 transition-all duration-200 p-6 transition-shadow">
           {/* Esta tabla NO usa variantes `dark:`. La app fuerza fondos claros, pero
               Tailwind resuelve `dark:` por el tema del sistema operativo (no por la
               clase .dark de globals.css): en una PC en modo oscuro el texto salía
@@ -1709,7 +1709,7 @@ function DashInventario({
                   {criticos.map(p => {
                     const critico = p.stock_actual <= 0;
                     return (
-                      <tr key={p.id} className="transition-colors hover:bg-slate-50">
+                      <tr key={p.id} className="zx-row">
                         {/* El estado se lee del punto de color y del badge, no de un
                             fondo tintado que competía con el texto. */}
                         <td className="px-4 py-2.5">
@@ -1760,7 +1760,7 @@ function DashInventario({
       </div>
 
       {/* Top por valor */}
-      <motion.div whileHover={{ y: -2 }} className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-6 transition-shadow hover:shadow-md">
+      <motion.div whileHover={{ y: -2 }} className="zx-surface zx-surface-interactive hover:-translate-y-0.5 transition-all duration-200 p-6 transition-shadow">
         {(() => {
           const totalValor = topPorValor.reduce((s, p) => s + p.valor, 0);
           const sinCosto = topPorValor.length > 0 && topPorValor.every((p) => !p.costo_promedio);
@@ -1945,7 +1945,7 @@ function DashVentas({
 
       {/* KPIs rentabilidad */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-start gap-3">
+        <div className="zx-surface p-5 flex items-start gap-3">
           <span className="text-2xl">💰</span>
           <div>
             <p className={`text-2xl font-bold tabular-nums ${gananciaHoy >= 0 ? "text-green-600" : "text-red-600"}`}>
@@ -1955,7 +1955,7 @@ function DashVentas({
             <p className="text-xs text-gray-400">precio venta − costo promedio × cant.</p>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-start gap-3">
+        <div className="zx-surface p-5 flex items-start gap-3">
           <span className="text-2xl">📊</span>
           <div>
             <p className={`text-2xl font-bold tabular-nums ${margenProm >= 20 ? "text-green-600" : margenProm >= 10 ? "text-amber-600" : "text-red-600"}`}>
@@ -1969,7 +1969,7 @@ function DashVentas({
 
       {/* Productos más vendidos + Ventas por hora */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div className="zx-surface p-5">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">
             Productos más vendidos
           </h3>
@@ -1978,7 +1978,7 @@ function DashVentas({
             : <HBarChart data={topProductos} color="bg-indigo-400" />
           }
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div className="zx-surface p-5">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">
             Ventas por hora — hoy
           </h3>
@@ -1990,7 +1990,7 @@ function DashVentas({
       </div>
 
       {/* Desglose por tipo */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <div className="zx-surface p-5">
         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">
           Desglose por tipo de venta
         </h3>
@@ -2007,7 +2007,7 @@ function DashVentas({
             </thead>
             <tbody className="divide-y divide-gray-50">
               {desglose.map(r => (
-                <tr key={r.tipo} className="hover:bg-gray-50/60 transition-colors">
+                <tr key={r.tipo} className="zx-row">
                   <td className="px-3 py-2.5">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.tipo === "CONTADO" ? "bg-[var(--badge-success-bg)] text-[var(--badge-success-text)]" : "bg-[#E0F2FE] text-[#0284C7]"}`}>
                       {r.tipo}

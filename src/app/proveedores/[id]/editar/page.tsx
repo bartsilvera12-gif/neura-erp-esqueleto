@@ -97,7 +97,7 @@ export default function EditarProveedorPage() {
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
       ) : (
-        <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+        <form onSubmit={handleSubmit} className="zx-surface p-6 space-y-6">
           <ProveedorForm values={form} onChange={setForm} disabled={saving} />
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>

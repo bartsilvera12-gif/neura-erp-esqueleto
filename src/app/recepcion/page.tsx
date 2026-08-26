@@ -128,7 +128,7 @@ function RecepcionNRPageInner() {
           </span>
         </div>
         <h1 className="mt-2 flex items-center gap-2.5 text-2xl font-bold text-slate-900">
-          <span className="rounded-lg bg-white p-1.5 ring-1 ring-sky-300/40 shadow-sm">
+          <span className="zx-surface p-1.5 ring-sky-300/40">
             <Inbox className="h-5 w-5 text-sky-700" />
           </span>
           Recepción de Nota de Remisión
@@ -149,7 +149,7 @@ function RecepcionNRPageInner() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="zx-surface p-6">
         <h2 className="text-sm font-semibold text-slate-800 mb-4">Buscar NR</h2>
         <div>
           <label className="text-xs font-medium text-slate-600">Nro. documento NR</label>
@@ -187,7 +187,7 @@ function RecepcionNRPageInner() {
       </div>
 
       {nr && (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="zx-surface">
           <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-800">NR {nr.numero}</h2>
@@ -208,7 +208,7 @@ function RecepcionNRPageInner() {
           <div className="overflow-hidden rounded-xl mx-5 mb-5 border border-slate-200">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr className="zx-thead text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-2.5">Producto</th>
                   <th className="px-4 py-2.5 text-right">Cantidad</th>
                 </tr>
@@ -252,7 +252,7 @@ function RecepcionNRPageInner() {
               <div className="flex flex-wrap justify-end gap-2 pt-2">
                 {!modoRechazo ? (
                   <>
-                    <button type="button" onClick={() => setModoRechazo(true)} disabled={procesando} className="rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60">Rechazar</button>
+                    <button type="button" onClick={() => setModoRechazo(true)} disabled={procesando} className="zx-surface rounded-md border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60">Rechazar</button>
                     <button type="button" onClick={aprobar} disabled={procesando} className="rounded-md bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 inline-flex items-center gap-1.5 disabled:opacity-60">
                       <CheckCircle2 className="h-4 w-4" />
                       {procesando ? "Procesando…" : "Aprobar recepción"}
@@ -260,7 +260,7 @@ function RecepcionNRPageInner() {
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={() => setModoRechazo(false)} className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Volver</button>
+                    <button type="button" onClick={() => setModoRechazo(false)} className="zx-surface rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Volver</button>
                     <button type="button" onClick={rechazar} disabled={procesando} className="rounded-md bg-rose-600 px-5 py-2 text-sm font-semibold text-white hover:bg-rose-700 inline-flex items-center gap-1.5 disabled:opacity-60">
                       <XCircle className="h-4 w-4" /> Confirmar rechazo
                     </button>
@@ -277,7 +277,7 @@ function RecepcionNRPageInner() {
                 <p className="text-xs text-rose-700">✕ Rechazada. Motivo: <strong>{nr.motivo_rechazo}</strong></p>
               )}
               <div className="mt-3">
-                <Link href="/notas-remision" className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Ir al historial</Link>
+                <Link href="/notas-remision" className="zx-surface rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Ir al historial</Link>
               </div>
             </div>
           )}

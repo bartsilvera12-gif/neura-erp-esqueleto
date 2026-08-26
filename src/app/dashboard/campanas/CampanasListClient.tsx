@@ -70,7 +70,7 @@ export default function CampanasListClient() {
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="zx-surface overflow-hidden">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
             <tr>
@@ -94,7 +94,7 @@ export default function CampanasListClient() {
               </tr>
             ) : (
               rows.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/80">
+                <tr key={r.id} className="zx-row">
                   <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
                   <td className="px-4 py-3 text-slate-600">{r.provider}</td>
                   <td className="px-4 py-3 text-slate-700">

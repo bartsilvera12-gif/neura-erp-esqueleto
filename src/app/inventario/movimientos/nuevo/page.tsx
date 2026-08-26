@@ -89,7 +89,7 @@ export default function NuevoMovimientoPage() {
         <p className="text-gray-600">Registra una entrada, salida o ajuste de stock</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-6 max-w-2xl">
+      <div className="zx-surface p-6 max-w-2xl">
         <form className="space-y-6" onSubmit={handleSubmit}>
 
           {/* Producto */}

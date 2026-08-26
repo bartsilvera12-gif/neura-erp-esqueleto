@@ -109,7 +109,7 @@ export default function PlanesPage() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
+      <div className="zx-surface p-4 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
@@ -119,14 +119,14 @@ export default function PlanesPage() {
             placeholder="Buscar por nombre, código…"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] bg-white"
+            className="zx-surface w-full pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
           />
         </div>
 
         <Select
           value={filtroEst}
           onChange={(e) => setFiltroEst(e.target.value as typeof filtroEst)}
-          className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] bg-white"
+          className="zx-surface text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
         >
           <option value="">Todos los estados</option>
           <option value="activo">Activo</option>
@@ -136,7 +136,7 @@ export default function PlanesPage() {
         <Select
           value={filtroPer}
           onChange={(e) => setFiltroPer(e.target.value as typeof filtroPer)}
-          className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] bg-white"
+          className="zx-surface text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]"
         >
           <option value="">Todas las periodicidades</option>
           <option value="mensual">Mensual</option>
@@ -161,7 +161,7 @@ export default function PlanesPage() {
       </p>
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         {filtrados.length === 0 ? (
           <div className="py-16 text-center text-sm text-gray-400">
             No se encontraron planes con los filtros aplicados.

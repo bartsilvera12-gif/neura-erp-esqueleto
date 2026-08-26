@@ -127,7 +127,7 @@ function ClienteFichaSkeleton() {
   return (
     <div className="space-y-6 max-w-5xl">
       <div className={`h-3 w-28 ${bar}`} aria-hidden />
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="h-40 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 animate-pulse" aria-hidden />
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 divide-x divide-gray-100 border-t border-gray-100">
           {Array.from({ length: 7 }).map((_, i) => (
@@ -138,7 +138,7 @@ function ClienteFichaSkeleton() {
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="flex gap-2 px-3 py-3 border-b border-gray-100">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className={`h-8 flex-1 max-w-[7rem] ${bar}`} />
@@ -952,7 +952,7 @@ export default function ClienteDetailPage() {
       </button>
 
       {/* ── Panel resumen ─────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="bg-gradient-to-r from-[#0284C7] to-[#0C4A6E] px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -1348,7 +1348,7 @@ export default function ClienteDetailPage() {
                     setErrorEliminar(null);
                   }}
                   placeholder="Ej: Cliente duplicado, solicitud del interesado..."
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-red-400 min-h-[60px]"
+                  className="zx-surface w-full px-3 py-2 text-sm focus:ring-2 focus:ring-red-400 min-h-[60px]"
                   rows={2}
                 />
                 {errorEliminar && <p className="text-xs text-red-600 mt-1">{errorEliminar}</p>}
@@ -1387,7 +1387,7 @@ export default function ClienteDetailPage() {
       )}
 
       {/* ── Pestañas ──────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         {/* Tab nav */}
         <div className="border-b border-gray-200 flex overflow-x-auto">
           {TABS.filter((tab) => !tab.showWhen || tab.showWhen(cliente)).map((tab) => (
@@ -1898,7 +1898,7 @@ export default function ClienteDetailPage() {
                         </p>
                       </div>
                       <span
-                        className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 group-open:bg-indigo-50 group-open:text-indigo-800 group-open:border-indigo-100"
+                        className="zx-surface shrink-0 px-2.5 py-1 text-xs font-medium text-slate-600 group-open:bg-indigo-50 group-open:text-indigo-800 group-open:border-indigo-100"
                         aria-hidden
                       >
                         Expandir
@@ -1947,7 +1947,7 @@ export default function ClienteDetailPage() {
                       setErrorFacturaContado(null);
                       setModalFacturaContado(true);
                     }}
-                    className="text-sm font-medium border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 px-3 py-1.5 rounded-lg"
+                    className="zx-surface text-sm font-medium text-slate-700 hover:bg-slate-50 px-3 py-1.5"
                   >
                     Emitir factura al contado
                   </button>
@@ -1987,7 +1987,7 @@ export default function ClienteDetailPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {facturas.map((f) => (
-                        <tr key={f.id} className="hover:bg-slate-50">
+                        <tr key={f.id} className="zx-row">
                           <td className="px-4 py-3 font-mono text-slate-800">
                             <Link href={`/facturas/${f.id}`} className="text-[#0EA5E9] hover:underline font-semibold">
                               {f.numero_factura}
@@ -2064,7 +2064,7 @@ export default function ClienteDetailPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {suscripciones.map((s) => (
-                        <tr key={s.id} className="hover:bg-slate-50">
+                        <tr key={s.id} className="zx-row">
                           <td className="px-4 py-3 font-medium text-slate-800">
                             {planes.find((p) => p.id === s.plan_id)?.nombre ?? s.plan_nombre ?? "—"}
                           </td>
@@ -2132,7 +2132,7 @@ export default function ClienteDetailPage() {
                               <Select
                                 value={t.estado}
                                 onChange={(e) => handleCambiarEstadoTask(t.id, e.target.value as MarketingTask["estado"])}
-                                className="text-xs border border-slate-200 rounded px-2 py-1 bg-white"
+                                className="zx-surface text-xs rounded px-2 py-1"
                               >
                                 {ESTADOS_TASK.map((est) => (
                                   <option key={est} value={est}>{est.replace("_", " ")}</option>
@@ -2193,7 +2193,7 @@ export default function ClienteDetailPage() {
                   }}
                   rows={3}
                   placeholder="Escribí una nota interna (Ctrl+Enter para guardar)..."
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none bg-white text-sm resize-none mb-3"
+                  className="zx-surface w-full px-3 py-2 outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none text-sm resize-none mb-3"
                 />
 <button
                 type="submit"
@@ -2229,7 +2229,7 @@ export default function ClienteDetailPage() {
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
           onClick={() => setModalFacturaContado(false)}
         >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-800 mb-1">Nueva factura al contado</h3>
             <p className="text-xs text-slate-500 mb-4">
               Compra puntual: no crea suscripción. El ítem se guarda en el servidor junto con la factura.
@@ -2312,7 +2312,7 @@ export default function ClienteDetailPage() {
       {/* Modal Nueva suscripción */}
       {modalSuscripcion && cliente && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setModalSuscripcion(false)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-800 mb-4">Nueva suscripción</h3>
             <form onSubmit={async (e) => {
               e.preventDefault();
@@ -2392,7 +2392,7 @@ export default function ClienteDetailPage() {
       {/* Modal Nueva tarea marketing */}
       {modalNuevaTarea && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setModalNuevaTarea(false)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-800 mb-4">Nueva tarea de marketing</h3>
             <form onSubmit={handleGuardarTarea} className="space-y-4">
               <div>
@@ -2470,7 +2470,7 @@ export default function ClienteDetailPage() {
       {/* Modal Registrar pago */}
       {modalPago && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setModalPago(false)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-800 mb-4">Registrar pago</h3>
             {facturaPago && <p className="text-sm text-slate-600 mb-4">Factura {facturaPago.numero_factura} — Saldo: Gs. {facturaPago.saldo.toLocaleString("es-PY")}</p>}
             <form onSubmit={async (e) => {

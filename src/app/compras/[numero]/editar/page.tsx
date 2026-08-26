@@ -223,7 +223,7 @@ export default function EditarCompraPage({ params }: { params: Promise<{ numero:
       ) : (
         <>
           {/* Productos */}
-          <section className="overflow-hidden rounded-2xl border-2 border-[#4FAEB2]/20 bg-white shadow-[0_2px_10px_-2px_rgba(79,174,178,0.12)]">
+          <section className="zx-surface overflow-hidden border-2 border-[#4FAEB2]/20 shadow-[0_2px_10px_-2px_rgba(79,174,178,0.12)]">
             <div className="flex items-center gap-2 border-b border-[#4FAEB2]/15 bg-gradient-to-r from-[#4FAEB2]/5 to-transparent px-5 py-3.5">
               <PackageIcon className="h-4 w-4 text-[#4FAEB2]" />
               <h2 className="text-[15px] font-bold text-slate-800">Productos</h2>
@@ -233,7 +233,7 @@ export default function EditarCompraPage({ params }: { params: Promise<{ numero:
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+                  <tr className="zx-thead text-[11px] uppercase tracking-wide text-slate-500">
                     <th className="px-5 py-3 font-semibold">Producto</th>
                     <th className="px-3 py-3 text-center font-semibold">Cantidad</th>
                     <th className="px-3 py-3 text-right font-semibold">Costo unit.</th>
@@ -256,7 +256,7 @@ export default function EditarCompraPage({ params }: { params: Promise<{ numero:
                           )}
                         </td>
                         <td className="px-3 py-3">
-                          <div className="mx-auto flex w-fit items-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+                          <div className="zx-surface mx-auto flex w-fit items-center overflow-hidden">
                             <input
                               type="number"
                               min={0}
@@ -303,7 +303,7 @@ export default function EditarCompraPage({ params }: { params: Promise<{ numero:
           </section>
 
           {/* Datos de la factura */}
-          <section className="overflow-hidden rounded-2xl border-2 border-[#4FAEB2]/20 bg-white shadow-[0_2px_10px_-2px_rgba(79,174,178,0.12)]">
+          <section className="zx-surface overflow-hidden border-2 border-[#4FAEB2]/20 shadow-[0_2px_10px_-2px_rgba(79,174,178,0.12)]">
             <div className="flex items-center gap-2 border-b border-[#4FAEB2]/15 bg-gradient-to-r from-[#4FAEB2]/5 to-transparent px-5 py-3.5">
               <FileText className="h-4 w-4 text-[#4FAEB2]" />
               <h2 className="text-[15px] font-bold text-slate-800">Datos de la factura</h2>

@@ -128,7 +128,7 @@ export default function FacturacionModoSection() {
   return (
     <div className="space-y-6">
       {/* MODO */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="zx-surface p-5">
         <div className="flex items-baseline justify-between mb-3">
           <h3 className="text-sm font-semibold text-slate-800">Modo de facturación</h3>
           {okModo && <span className="text-xs text-emerald-600">{okModo}</span>}
@@ -216,7 +216,7 @@ export default function FacturacionModoSection() {
 
       {/* AUTOIMPRESOR (solo si modo=autoimpresor) */}
       {modo.modo === "autoimpresor" && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="zx-surface p-5">
           <div className="flex items-baseline justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-800">Datos del autoimpresor / timbrado</h3>
             {okAuto && <span className="text-xs text-emerald-600">{okAuto}</span>}

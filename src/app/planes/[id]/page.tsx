@@ -243,7 +243,7 @@ function PlanDetailContent() {
 
       {/* Plan marketing (vista) */}
       {!editing && plan.es_plan_marketing && plan.plantilla_operativa?.items?.length && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <div className="zx-surface p-6">
           <SectionTitle>Plan de marketing</SectionTitle>
           <p className="text-sm text-slate-600 mb-3">Este plan genera tareas de contenido automáticamente.</p>
           <ul className="space-y-2">
@@ -262,7 +262,7 @@ function PlanDetailContent() {
 
       {/* Resumen de límites (vista) */}
       {!editing && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <div className="zx-surface p-6">
           <SectionTitle>Límites del plan</SectionTitle>
           <div className="grid grid-cols-3 gap-6">
             {[
@@ -291,7 +291,7 @@ function PlanDetailContent() {
             </div>
           )}
 
-          <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <section className="zx-surface p-6">
             <SectionTitle>Información general</SectionTitle>
             <div className="space-y-4">
               <div>
@@ -325,7 +325,7 @@ function PlanDetailContent() {
             </div>
           </section>
 
-          <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <section className="zx-surface p-6">
             <SectionTitle>Precio y periodicidad</SectionTitle>
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -356,7 +356,7 @@ function PlanDetailContent() {
             </div>
           </section>
 
-          <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <section className="zx-surface p-6">
             <SectionTitle>Plan de marketing</SectionTitle>
             <div className="space-y-4">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -482,7 +482,7 @@ function PlanDetailContent() {
             </div>
           </section>
 
-          <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <section className="zx-surface p-6">
             <SectionTitle>Límites del plan</SectionTitle>
             <p className="text-xs text-gray-400 mb-4">
               Dejar en blanco para indicar que el límite es <strong>ilimitado</strong>.

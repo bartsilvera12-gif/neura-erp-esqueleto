@@ -43,7 +43,7 @@ function KpiCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm min-w-[140px] flex-1">
+    <div className="zx-surface px-4 py-3 min-w-[140px] flex-1">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="text-xl font-bold tabular-nums text-slate-900 mt-1">{value}</p>
       {sub ? <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p> : null}
@@ -96,7 +96,7 @@ export default function SorteosListClient({ ventasKpis }: { ventasKpis: SorteosV
         <KpiCard label="Monto mes" value={formatGs(ventasKpis.montoMes)} sub="Ingresos del mes" />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="zx-surface overflow-hidden">
         {cargando ? (
           <div className="py-16 text-center text-gray-400 text-sm animate-pulse">Cargando…</div>
         ) : rows.length === 0 ? (
@@ -109,7 +109,7 @@ export default function SorteosListClient({ ventasKpis }: { ventasKpis: SorteosV
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+              <tr className="zx-thead">
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Nombre</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Estado</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Fecha sorteo</th>
@@ -121,7 +121,7 @@ export default function SorteosListClient({ ventasKpis }: { ventasKpis: SorteosV
             </thead>
             <tbody className="divide-y divide-slate-200">
               {rows.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50/80">
+                <tr key={s.id} className="zx-row">
                   <td className="px-5 py-3 text-sm text-slate-800 font-medium">{s.nombre}</td>
                   <td className="px-5 py-3">
                     <span

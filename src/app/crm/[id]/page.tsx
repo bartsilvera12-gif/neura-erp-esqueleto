@@ -367,7 +367,7 @@ export default function EditProspectoPage() {
       )}
 
       {/* ── Sección: Cambiar etapa ────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow p-5">
+      <div className="zx-surface p-5">
         <SectionTitle>Etapa del funnel</SectionTitle>
         <div className="flex flex-wrap gap-2">
           {etapas.map((e) => {
@@ -402,7 +402,7 @@ export default function EditProspectoPage() {
       </div>
 
       {/* ── Sección: Datos del prospecto ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow p-5">
+      <div className="zx-surface p-5">
         <SectionTitle>Datos del prospecto</SectionTitle>
 
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -603,7 +603,7 @@ export default function EditProspectoPage() {
       </div>
 
       {/* ── Sección: Notas internas ──────────────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow p-5">
+      <div className="zx-surface p-5">
         <SectionTitle>Notas internas ({prospecto.notas.length})</SectionTitle>
 
         <form onSubmit={handleAgregarNota} className="mb-5">

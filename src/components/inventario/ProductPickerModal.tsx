@@ -299,7 +299,7 @@ export default function ProductPickerModal({
       {/* dvh (dynamic viewport height) en lugar de vh: en iOS Safari el vh
           incluye el espacio del URL bar/safe-area y el modal queda parcialmente
           oculto debajo del browser chrome. dvh devuelve el viewport REAL visible. */}
-      <div className="w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[94dvh] sm:max-h-[88vh]" onClick={(e) => e.stopPropagation()}>
+      <div className="zx-surface w-full max-w-6xl shadow-2xl flex flex-col max-h-[94dvh] sm:max-h-[88vh]" onClick={(e) => e.stopPropagation()}>
         {/* Header con buscador */}
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center gap-3">
@@ -432,7 +432,7 @@ export default function ProductPickerModal({
                 {/* Middle: scrollable. flex-1 + overflow-y-auto + min-h-0
                     para que el footer no se aplaste. */}
                 <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 sm:space-y-4 min-h-0">
-                <div className="w-full h-28 sm:h-44 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+                <div className="zx-surface w-full h-28 sm:h-44 flex items-center justify-center overflow-hidden">
                   {sel.imagen_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={sel.imagen_url} alt={sel.nombre} className="w-full h-full object-contain" />
@@ -474,7 +474,7 @@ export default function ProductPickerModal({
                   </div>
                 )}
 
-                <div className="space-y-2 bg-white p-3 rounded-xl border border-slate-200">
+                <div className="zx-surface space-y-2 p-3">
                   {/* Presentacion de venta. Solo aparece si hay >1 activa.
                       Con 1 sola, la default se aplica silenciosamente. */}
                   {presentaciones.length > 1 && (
@@ -485,7 +485,7 @@ export default function ProductPickerModal({
                       <Select
                         value={presentacionId}
                         onChange={(e) => handlePresentacionChange(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white"
+                        className="zx-surface w-full px-2 py-1.5 text-sm"
                       >
                         {presentaciones.map((pp) => (
                           <option key={pp.id} value={pp.id}>

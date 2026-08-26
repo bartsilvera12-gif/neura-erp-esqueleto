@@ -397,7 +397,7 @@ export default function NuevaCompraPage() {
         <p className="text-gray-600">Una compra puede tener varios productos del mismo proveedor. Impacta el inventario al guardar.</p>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 max-w-4xl">
+      <div className="zx-surface p-6 max-w-4xl">
         <form className="space-y-8" onSubmit={handleSubmit}>
 
           {/* ── Cabecera ─────────────────────────────────────────────────────── */}
@@ -556,7 +556,7 @@ export default function NuevaCompraPage() {
                           placeholder="Ej: CHIA-500" className={`${inputSmClass} uppercase ${errorSku ? "border-red-300 bg-red-50" : ""}`} />
                         <button type="button" onClick={generarSku} disabled={generandoSku}
                           title="Generar el próximo SKU según el tipo (REV/MEN/MP)"
-                          className="shrink-0 rounded-lg border border-[#4FAEB2]/40 bg-white px-3 text-xs font-semibold text-[#3F8E91] transition-colors hover:bg-[#4FAEB2]/10 disabled:opacity-50 disabled:cursor-not-allowed">
+                          className="zx-surface shrink-0 border-[#4FAEB2]/40 px-3 text-xs font-semibold text-[#3F8E91] transition-colors hover:bg-[#4FAEB2]/10 disabled:opacity-50 disabled:cursor-not-allowed">
                           {generandoSku ? "…" : "Generar"}
                         </button>
                       </div>
@@ -832,11 +832,11 @@ function ProveedorBuscador({
         }}
         placeholder="Buscar proveedor por nombre o RUC…"
         autoComplete="off"
-        className="h-[42px] w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition-all placeholder:text-slate-400 hover:border-[#4FAEB2]/60 focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
+        className="zx-surface zx-surface-interactive h-[42px] w-full pl-9 pr-3 text-sm outline-none transition-all placeholder:text-slate-400 focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
       />
       {open && (
         <div className="absolute left-0 right-0 z-50 mt-1.5">
-          <ul ref={listRef} className="max-h-[260px] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-[#4FAEB2]/15">
+          <ul ref={listRef} className="zx-surface zx-surface-accent max-h-[260px] overflow-y-auto p-1 shadow-xl">
             {resultados.length === 0 ? (
               <li className="px-3 py-3 text-center text-xs text-slate-400">
                 {proveedores.length === 0 ? "No hay proveedores. Creá uno abajo." : "Sin proveedores que coincidan."}
@@ -868,7 +868,7 @@ function InlineFormBox({
   titulo: string; children: React.ReactNode; onSave: () => void; onCancel: () => void; saveDisabled: boolean;
 }) {
   return (
-    <div className="mt-4 border border-gray-200 rounded-xl p-4 bg-white space-y-4">
+    <div className="zx-surface mt-4 p-4 space-y-4">
       <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{titulo}</p>
       {children}
       <div className="flex gap-3 pt-1">

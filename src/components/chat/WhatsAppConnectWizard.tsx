@@ -78,7 +78,7 @@ export function WhatsAppConnectWizard({
         <button
           type="button"
           onClick={() => setConn("official")}
-          className="text-left rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm hover:border-[#0EA5E9] hover:shadow-md transition-all"
+          className="zx-surface zx-surface-interactive text-left border-2 p-5 transition-all"
         >
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Opción A</p>
           <p className="mt-1 text-lg font-bold text-slate-900">WhatsApp Cloud API oficial</p>

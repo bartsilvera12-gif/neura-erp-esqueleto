@@ -119,7 +119,7 @@ export default function RecibosPage() {
       </div>
 
       {/* Filtros */}
-      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="zx-surface mb-4 p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <label className={labelCls}>Desde</label>
@@ -169,15 +169,15 @@ export default function RecibosPage() {
 
       {/* Totales */}
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="zx-surface p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Recibos</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{totales.cantidad}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="zx-surface p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total guaraníes</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">Gs. {Math.round(totales.gs).toLocaleString("es-PY")}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="zx-surface p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total dólares</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">
             USD {totales.usd.toLocaleString("es-PY", { minimumFractionDigits: 2 })}
@@ -186,7 +186,7 @@ export default function RecibosPage() {
       </div>
 
       {/* Listado */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="zx-surface overflow-hidden">
         {error ? (
           <p className="px-4 py-8 text-center text-sm text-red-600">{error}</p>
         ) : cargando ? (
@@ -334,7 +334,7 @@ function ModalReciboManual({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+      <div className="zx-surface w-full max-w-lg shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
             <Receipt className="h-5 w-5 text-[#4FAEB2]" />

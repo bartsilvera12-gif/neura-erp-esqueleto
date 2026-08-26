@@ -494,7 +494,7 @@ export default function PhysicalCouponsPrintClient({
           </p>
         </div>
 
-        <div className="no-print rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+        <div className="zx-surface no-print p-4 space-y-2">
           <label className="flex flex-col gap-1 text-sm text-slate-700">
             <span className="font-semibold text-slate-800">Formato de impresión</span>
             <Select
@@ -690,21 +690,21 @@ export default function PhysicalCouponsPrintClient({
           <button
             type="button"
             onClick={() => router.push(`/sorteos/${encodeURIComponent(sorteoId)}/editar`)}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="zx-surface px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
             Volver al sorteo
           </button>
           <button
             type="button"
             onClick={() => router.push("/sorteos/cupones")}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="zx-surface px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
             Volver a Cupones
           </button>
         </div>
 
         <div
-          className="physical-coupons-print-area print-area rounded-xl border border-slate-200 bg-white p-4 print:border-0 print:p-0"
+          className="zx-surface physical-coupons-print-area print-area p-4 print:border-0 print:p-0"
           data-print-area="physical-coupons"
         >
           {rows.length === 0 && !error ? (

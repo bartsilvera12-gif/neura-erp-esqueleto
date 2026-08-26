@@ -24,7 +24,7 @@ function OnMissingSelect(props: {
 }) {
   return (
     <Select
-      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white"
+      className="zx-surface w-full px-2 py-1.5 text-xs"
       value={props.value}
       disabled={props.disabled}
       onChange={(e) => props.onChange(e.target.value as OnMissingBehavior)}
@@ -52,7 +52,7 @@ export function ComprobanteValidationPanelComprobantesCore({ value: s, onChange 
         Activar validación inteligente en este canal
       </label>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+      <div className="zx-surface p-4 space-y-3">
         <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
           Monto del comprobante vs monto elegido en el flujo
         </h4>
@@ -78,7 +78,7 @@ export function ComprobanteValidationPanelComprobantesCore({ value: s, onChange 
               type="number"
               min={0}
               max={1_000_000_000}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+              className="zx-surface w-full px-3 py-2 text-sm"
               value={s.monto_tolerancia_absoluta_gs}
               onChange={(e) =>
                 set({ monto_tolerancia_absoluta_gs: Math.max(0, Number(e.target.value) || 0) })
@@ -91,7 +91,7 @@ export function ComprobanteValidationPanelComprobantesCore({ value: s, onChange 
             </label>
             <input
               type="text"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono bg-white"
+              className="zx-surface w-full px-3 py-2 text-xs font-mono"
               value={s.monto_fields_prioridad.join(", ")}
               onChange={(e) => {
                 const next = e.target.value
@@ -170,7 +170,7 @@ export function ComprobanteValidationPanelComprobantesCore({ value: s, onChange 
             type="number"
             min={0}
             max={500}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+            className="zx-surface w-full px-3 py-2 text-sm"
             value={s.ocr_min_chars_sospecha}
             onChange={(e) => set({ ocr_min_chars_sospecha: Number(e.target.value) || 0 })}
           />
@@ -217,7 +217,7 @@ export function ComprobanteValidationPanelDatosBancarios({ value: s, onChange }:
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Titular esperado</label>
           <input
             type="text"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+            className="zx-surface w-full px-3 py-2 text-sm"
             value={s.datos_bancarios_esperados.titular}
             onChange={(e) =>
               set({
@@ -234,7 +234,7 @@ export function ComprobanteValidationPanelDatosBancarios({ value: s, onChange }:
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nº cuenta esperada</label>
           <input
             type="text"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white font-mono"
+            className="zx-surface w-full px-3 py-2 text-sm font-mono"
             value={s.datos_bancarios_esperados.numero_cuenta}
             onChange={(e) =>
               set({
@@ -251,7 +251,7 @@ export function ComprobanteValidationPanelDatosBancarios({ value: s, onChange }:
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Alias esperado</label>
           <input
             type="text"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+            className="zx-surface w-full px-3 py-2 text-sm"
             value={s.datos_bancarios_esperados.alias}
             onChange={(e) =>
               set({
@@ -272,7 +272,7 @@ export function ComprobanteValidationPanelDatosBancarios({ value: s, onChange }:
             type="number"
             min={1}
             max={3}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+            className="zx-surface w-full px-3 py-2 text-sm"
             value={s.min_coincidencias_bancarias}
             onChange={(e) =>
               set({
@@ -317,7 +317,7 @@ export function ComprobanteValidationPanelMensajesYOcr({ value: s, onChange }: P
           <div key={key}>
             <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
             <textarea
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[64px] bg-white"
+              className="zx-surface w-full px-3 py-2 text-sm min-h-[64px]"
               value={s.messages[key]}
               onChange={(e) => setMsg({ [key]: e.target.value })}
             />
@@ -330,7 +330,7 @@ export function ComprobanteValidationPanelMensajesYOcr({ value: s, onChange }: P
             </label>
             <input
               maxLength={20}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+              className="zx-surface w-full px-3 py-2 text-sm"
               value={s.messages.boton_otro_titulo}
               onChange={(e) => setMsg({ boton_otro_titulo: e.target.value })}
             />
@@ -341,7 +341,7 @@ export function ComprobanteValidationPanelMensajesYOcr({ value: s, onChange }: P
             </label>
             <input
               maxLength={20}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+              className="zx-surface w-full px-3 py-2 text-sm"
               value={s.messages.boton_asesor_titulo}
               onChange={(e) => setMsg({ boton_asesor_titulo: e.target.value })}
             />
@@ -353,10 +353,10 @@ export function ComprobanteValidationPanelMensajesYOcr({ value: s, onChange }: P
         <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
           Campos OCR (reglas por campo)
         </h4>
-        <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
+        <div className="zx-surface overflow-x-auto">
           <table className="w-full min-w-[720px] text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-left">
+              <tr className="zx-thead text-left">
                 <th className="px-2 py-2 font-semibold text-slate-600">Campo</th>
                 <th className="px-2 py-2 font-semibold text-slate-600">Analizar</th>
                 <th className="px-2 py-2 font-semibold text-slate-600">Duplicado</th>

@@ -115,7 +115,7 @@ export default function NuevaRecetaPage() {
       )}
 
       {!loading && productos.length > 0 && (
-        <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-md border border-gray-200">
+        <form onSubmit={handleSubmit} className="zx-surface space-y-4 p-6 rounded-md">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Producto vendible <span className="text-red-500">*</span>

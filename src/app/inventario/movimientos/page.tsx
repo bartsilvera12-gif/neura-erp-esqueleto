@@ -91,7 +91,7 @@ export default function MovimientosPage() {
         <p className="text-gray-600">Registro de entradas, salidas y ajustes de stock</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="zx-surface p-6">
 
         {/* Header */}
         <div className="flex justify-between items-center mb-5">
@@ -186,7 +186,7 @@ export default function MovimientosPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-[#4FAEB2]/20 bg-[#4FAEB2]/[0.06] text-slate-600">
+              <tr className="zx-thead border-[#4FAEB2]/20 bg-[#4FAEB2]/[0.06] text-slate-600">
                 <th className="py-3 pr-4 font-medium">Producto</th>
                 <th className="py-3 pr-4 font-medium">SKU</th>
                 <th className="py-3 pr-4 font-medium">Tipo</th>

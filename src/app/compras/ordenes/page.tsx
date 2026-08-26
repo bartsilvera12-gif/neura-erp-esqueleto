@@ -96,7 +96,7 @@ export default function OrdenesCompraPage() {
         </span>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-[#4FAEB2]/15 sm:p-5 lg:p-6">
+      <div className="zx-surface zx-surface-accent p-4 sm:p-5 lg:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-semibold">Órdenes de compra</h2>
           <Link href="/compras/ordenes/nueva"

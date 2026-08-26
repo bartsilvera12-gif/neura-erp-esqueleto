@@ -536,7 +536,7 @@ export function FlowRecontactAutomationsPanel(props: {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="zx-surface p-4">
         <h2 className="text-lg font-semibold text-slate-800">Automatizaciones</h2>
         <p className="text-sm text-slate-600 mt-1">
           Configurá recontactos automáticos para clientes que quedan detenidos en este flujo.
@@ -572,7 +572,7 @@ export function FlowRecontactAutomationsPanel(props: {
       ) : items.length === 0 ? (
         <p className="text-sm text-slate-600">No hay automatizaciones configuradas para este flujo.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="zx-surface overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -588,7 +588,7 @@ export function FlowRecontactAutomationsPanel(props: {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {items.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50/80">
+                <tr key={row.id} className="zx-row">
                   <td className="px-3 py-2 font-medium text-slate-800">{row.nombre}</td>
                   <td className="px-3 py-2">
                     <button
@@ -644,7 +644,7 @@ export function FlowRecontactAutomationsPanel(props: {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 space-y-4 border border-slate-200">
+          <div className="zx-surface shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 space-y-4">
             <div className="flex justify-between items-start gap-2">
               <h3 className="text-lg font-semibold text-slate-800">
                 {editingId ? "Editar automatización" : "Nueva automatización"}
@@ -917,7 +917,7 @@ export function FlowRecontactAutomationsPanel(props: {
                 ) : (
                   <div className="space-y-3">
                     {draft.message_buttons.map((btn, idx) => (
-                      <div key={btn.id} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2 shadow-sm">
+                      <div key={btn.id} className="zx-surface p-3 space-y-2">
                         <div className="flex justify-between items-center gap-2">
                           <span className="text-xs font-medium text-slate-600">Botón {idx + 1}</span>
                           <button
@@ -1042,7 +1042,7 @@ export function FlowRecontactAutomationsPanel(props: {
 
       {dryRunOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200">
+          <div className="zx-surface shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-start gap-2 px-5 py-4 border-b border-slate-100">
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">Simulación de recontacto</h3>
@@ -1109,7 +1109,7 @@ export function FlowRecontactAutomationsPanel(props: {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {dryRunData.rows.map((r) => (
-                          <tr key={r.conversation_id} className="hover:bg-slate-50/80">
+                          <tr key={r.conversation_id} className="zx-row">
                             <td className="px-2 py-2 text-slate-800 align-top">
                               <div className="font-medium">{r.contact_name ?? "—"}</div>
                               {r.phone_masked && <div className="text-[10px] text-slate-500">{r.phone_masked}</div>}

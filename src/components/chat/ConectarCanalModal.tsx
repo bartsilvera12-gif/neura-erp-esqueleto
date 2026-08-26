@@ -36,7 +36,7 @@ export function ConectarCanalModal({ open, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="conectar-canal-title"
-        className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+        className="zx-surface relative w-full max-w-md p-6 shadow-xl"
       >
         <h2 id="conectar-canal-title" className="text-lg font-bold text-slate-900">
           Conectar canal

@@ -159,7 +159,7 @@ export default function EmitirNRPage() {
             <button
               type="button"
               onClick={() => { setCreada(null); setCantidades({}); setProductosAgregados([]); setEmisor(""); setObs(""); }}
-              className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="zx-surface rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >Emitir otra</button>
             {/* Botón "Ir a Recepción" oculto junto con el módulo Recepción. */}
           </div>
@@ -177,7 +177,7 @@ export default function EmitirNRPage() {
           </span>
         </div>
         <h1 className="mt-2 flex items-center gap-2.5 text-2xl font-bold text-slate-900">
-          <span className="rounded-lg bg-white p-1.5 ring-1 ring-amber-300/40 shadow-sm">
+          <span className="zx-surface p-1.5 ring-amber-300/40">
             <Truck className="h-5 w-5 text-amber-700" />
           </span>
           Emitir Nota de Remisión
@@ -191,7 +191,7 @@ export default function EmitirNRPage() {
         <CrearClienteModal onClose={() => setModalClienteOpen(false)} onCreated={onClienteCreado} />
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+      <div className="zx-surface p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate-800">Datos generales</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Field label="Depósito Origen *">
@@ -284,7 +284,7 @@ export default function EmitirNRPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+      <div className="zx-surface p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate-800">Transporte (opcional)</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Field label="Transportista"><input type="text" value={transportista} onChange={(e) => setTransportista(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></Field>
@@ -297,7 +297,7 @@ export default function EmitirNRPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="zx-surface">
         <div className="border-b border-slate-100 px-5 py-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-slate-800">Productos a trasladar</h2>
@@ -321,7 +321,7 @@ export default function EmitirNRPage() {
                 .slice(0, 8);
               if (disponibles.length === 0) return null;
               return (
-                <div className="absolute z-10 mt-1 w-full max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                <div className="zx-surface absolute z-10 mt-1 w-full max-h-64 overflow-y-auto rounded-md shadow-lg">
                   {disponibles.map((p) => (
                     <button
                       key={p.producto_id}
@@ -347,7 +347,7 @@ export default function EmitirNRPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="zx-thead text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="px-5 py-3">Producto</th>
                 <th className="px-5 py-3 text-right">Disponible</th>
                 <th className="px-5 py-3 text-right w-40">Cantidad</th>
@@ -408,13 +408,13 @@ export default function EmitirNRPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="zx-surface p-6">
         <label className="text-xs font-medium text-slate-600">Observaciones</label>
         <textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm resize-none" />
       </div>
 
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={() => router.push("/notas-remision")} className="rounded-md border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
+        <button type="button" onClick={() => router.push("/notas-remision")} className="zx-surface rounded-md px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
         <button type="button" onClick={emitir} disabled={enviando} className="rounded-md bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:shadow-md inline-flex items-center gap-2 disabled:opacity-60">
           <Send className="h-4 w-4" />
           {enviando ? "Emitiendo…" : "Emitir NR"}

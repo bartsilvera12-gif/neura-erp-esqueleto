@@ -273,7 +273,7 @@ export default function EditarColaPage() {
         </button>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-5 space-y-4">
         <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Datos generales</h2>
         <div>
           <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nombre</label>
@@ -309,7 +309,7 @@ export default function EditarColaPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-5 space-y-4">
         <div>
           <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Estrategia de distribución</h2>
           <p className="text-sm text-slate-500 mt-1">Define cómo se reparten los chats nuevos entre los agentes de esta cola.</p>
@@ -338,7 +338,7 @@ export default function EditarColaPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-5 space-y-4">
         <div>
           <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Canales asociados a esta cola</h2>
           <p className="text-sm text-slate-500 mt-1">
@@ -396,7 +396,7 @@ export default function EditarColaPage() {
               Solo si aún no usás la asociación múltiple de canales: filtro histórico por tipo de canal.
             </p>
             <Select
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+              className="zx-surface w-full px-3 py-2 text-sm"
               value={legacyChannelType}
               onChange={(e) => setLegacyChannelType(e.target.value)}
             >
@@ -411,7 +411,7 @@ export default function EditarColaPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-5 space-y-4">
         <div>
           <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Redistribución por falta de respuesta inicial</h2>
           <p className="text-sm text-slate-500 mt-1">
@@ -495,7 +495,7 @@ export default function EditarColaPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-5 space-y-4">
         <div>
           <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Relación del cliente con el mismo asesor</h2>
           <p className="text-sm text-slate-500 mt-1">
@@ -563,7 +563,7 @@ export default function EditarColaPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-5 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Cierre de conversaciones</h2>
@@ -589,7 +589,7 @@ export default function EditarColaPage() {
                   <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Estado</label>
                   <input
                     type="text"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    className="zx-surface w-full px-3 py-2 text-sm"
                     value={row.label}
                     onChange={(e) =>
                       setClosureDraft((d) =>
@@ -613,7 +613,7 @@ export default function EditarColaPage() {
                   <div key={sj} className="flex gap-2 items-center">
                     <input
                       type="text"
-                      className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white"
+                      className="zx-surface flex-1 px-3 py-1.5 text-sm"
                       value={sub.label}
                       onChange={(e) =>
                         setClosureDraft((d) =>
@@ -674,7 +674,7 @@ export default function EditarColaPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-5 space-y-4">
         <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Agentes</h2>
         <div className="flex flex-wrap gap-2 items-end">
           <div className="flex-1 min-w-[200px]">
@@ -703,7 +703,7 @@ export default function EditarColaPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+              <tr className="zx-thead text-left text-xs text-slate-500">
                 <th className="pb-2 pr-2">Usuario</th>
                 <th className="pb-2 pr-2">Máx.</th>
                 <th className="pb-2 pr-2">Prior.</th>

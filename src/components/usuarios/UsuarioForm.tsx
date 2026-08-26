@@ -23,7 +23,7 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+    <section className="zx-surface p-6">
       <div className="flex items-center gap-2 mb-5 pb-2 border-b border-gray-100">
         <span className="text-base">{icon}</span>
         <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">{title}</h3>

@@ -263,7 +263,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
         <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">{info}</div>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-4 md:p-5 space-y-4">
         <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtros</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
@@ -289,7 +289,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
             <Select
               value={queueId}
               onChange={(e) => setQueueId(e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 bg-white"
+              className="zx-surface px-3 py-2 text-sm text-slate-900"
             >
               <option value="">Todas</option>
               {filterOptions.queues.map((qItem) => (
@@ -304,7 +304,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
             <Select
               value={assignedUsuarioId}
               onChange={(e) => setAssignedUsuarioId(e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 bg-white"
+              className="zx-surface px-3 py-2 text-sm text-slate-900"
             >
               <option value="">Todos</option>
               {filterOptions.agents.map((a) => (
@@ -319,7 +319,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
             <Select
               value={channelId}
               onChange={(e) => setChannelId(e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 bg-white"
+              className="zx-surface px-3 py-2 text-sm text-slate-900"
             >
               <option value="">Todos</option>
               {filterOptions.channels.map((c) => (
@@ -334,7 +334,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
             <Select
               value={stateLabel}
               onChange={(e) => setStateLabel(e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 bg-white"
+              className="zx-surface px-3 py-2 text-sm text-slate-900"
             >
               <option value="">Todos</option>
               {filterOptions.state_labels.map((s) => (
@@ -349,7 +349,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
             <Select
               value={substateLabel}
               onChange={(e) => setSubstateLabel(e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 bg-white"
+              className="zx-surface px-3 py-2 text-sm text-slate-900"
             >
               <option value="">Todos</option>
               {filterOptions.substate_labels.map((s) => (
@@ -381,7 +381,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
               <Select
                 value={closedByUsuarioId}
                 onChange={(e) => setClosedByUsuarioId(e.target.value)}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 bg-white"
+                className="zx-surface px-3 py-2 text-sm text-slate-900"
               >
                 <option value="">Todos</option>
                 {(filterOptions.closed_by_users ?? []).map((u) => (
@@ -423,14 +423,14 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
               setApplied({});
               setPage(1);
             }}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="zx-surface px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             Limpiar
           </button>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <section className="zx-surface overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[1000px] w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-200">
@@ -530,7 +530,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
           }}
         >
           <div
-            className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-xl border border-slate-200"
+            className="zx-surface relative w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 shrink-0">
@@ -630,7 +630,7 @@ export default function FinalizedClosuresClient({ filterOptions }: { filterOptio
               <button
                 type="button"
                 onClick={() => setDetail(null)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="zx-surface px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cerrar
               </button>

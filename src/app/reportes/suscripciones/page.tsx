@@ -113,7 +113,7 @@ function GaugePanel({
   labelActual: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-[#4FAEB2]/15">
+    <div className="zx-surface zx-surface-accent p-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{titulo}</p>
       <div className="mt-2 flex flex-col items-center gap-4 sm:flex-row sm:justify-around">
         <GaugeComparacion anterior={anterior} actual={actual} />
@@ -306,7 +306,7 @@ export default function ReporteSuscripcionesPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Suscripciones</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{baseFiltradas.length}</p>
         </button>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-[#4FAEB2]/15">
+        <div className="zx-surface zx-surface-accent p-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Mensual objetivo (Gs.)</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-700 tabular-nums">{fmtGs(mensualObjetivoBase)}</p>
         </div>
@@ -335,18 +335,18 @@ export default function ReporteSuscripcionesPage() {
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
+      <div className="zx-surface flex flex-wrap items-center gap-2 p-2.5">
         <input
           type="search"
           placeholder="Buscar por cliente, plan o vendedor…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="min-w-[220px] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-[#4FAEB2]/60 focus:border-[#4FAEB2] focus:outline-none focus:ring-2 focus:ring-[#4FAEB2]/20"
+          className="zx-surface zx-surface-interactive min-w-[220px] flex-1 px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#4FAEB2] focus:outline-none focus:ring-2 focus:ring-[#4FAEB2]/20"
         />
         <Select
           value={tipo}
           onChange={(e) => setTipo(e.target.value)}
-          className="min-w-[160px] rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 shadow-sm hover:border-[#4FAEB2]/60 focus:border-[#4FAEB2] focus:outline-none focus:ring-2 focus:ring-[#4FAEB2]/20"
+          className="zx-surface zx-surface-interactive min-w-[160px] px-3 py-1.5 text-xs text-slate-900 focus:border-[#4FAEB2] focus:outline-none focus:ring-2 focus:ring-[#4FAEB2]/20"
         >
           <option value="">Todos los tipos</option>
           {tiposDisponibles.map(([slug, label]) => (
@@ -370,7 +370,7 @@ export default function ReporteSuscripcionesPage() {
       </div>
 
       {/* Tabla */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-[#4FAEB2]/15">
+      <div className="zx-surface zx-surface-accent overflow-hidden">
         {loading ? (
           <div className="py-16 text-center text-sm text-slate-400">Cargando…</div>
         ) : err ? (

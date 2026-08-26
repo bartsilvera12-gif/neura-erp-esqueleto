@@ -117,7 +117,7 @@ export default function UbicacionesPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 max-w-3xl">
+      <div className="zx-surface p-6 max-w-3xl">
         <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide font-semibold">
           Nueva ubicación
         </p>
@@ -181,7 +181,7 @@ export default function UbicacionesPage() {
         {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         {loading ? (
           <p className="p-6 text-sm text-gray-400">Cargando...</p>
         ) : items.length === 0 ? (

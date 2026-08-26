@@ -163,7 +163,7 @@ export default function TipificacionPage() {
       </div>
 
       {/* ── Header del cliente ────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-6 py-4">
+      <div className="zx-surface px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">{clienteNombre(cliente)}</h1>
@@ -183,7 +183,7 @@ export default function TipificacionPage() {
       </div>
 
       {/* ── Formulario de nueva tipificación ─────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="bg-gray-50 border-b border-gray-200 px-6 py-3">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
             Nueva tipificación
@@ -202,7 +202,7 @@ export default function TipificacionPage() {
                 name="tipo_gestion"
                 value={form.tipo_gestion}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-gray-500 transition-colors bg-white"
+                className="zx-surface w-full px-4 py-2.5 text-sm outline-none focus:border-gray-500 transition-colors"
               >
                 {TIPOS_GESTION.map((t) => (
                   <option key={t} value={t}>{t}</option>
@@ -219,7 +219,7 @@ export default function TipificacionPage() {
                 name="resultado"
                 value={form.resultado}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-gray-500 transition-colors bg-white"
+                className="zx-surface w-full px-4 py-2.5 text-sm outline-none focus:border-gray-500 transition-colors"
               >
                 {RESULTADOS.map((r) => (
                   <option key={r} value={r}>{r}</option>
@@ -271,12 +271,12 @@ export default function TipificacionPage() {
       </div>
 
       {/* ── Historial de tipificaciones ───────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="bg-gray-50 border-b border-gray-200 px-6 py-3 flex items-center justify-between">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
             Historial de tipificaciones
           </p>
-          <span className="text-xs font-bold text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded-full">
+          <span className="zx-surface text-xs font-bold text-gray-600 px-2 py-0.5 rounded-full">
             {tipificaciones.length}
           </span>
         </div>
@@ -289,7 +289,7 @@ export default function TipificacionPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/40">
+                <tr className="zx-thead">
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Fecha</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Usuario</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Tipo</th>
@@ -299,7 +299,7 @@ export default function TipificacionPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {tipificaciones.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50/40 transition-colors">
+                  <tr key={t.id} className="zx-row">
                     <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
                       {formatFechaHora(t.fecha)}
                     </td>

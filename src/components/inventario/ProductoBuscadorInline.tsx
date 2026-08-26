@@ -148,11 +148,11 @@ export default function ProductoBuscadorInline({
         }}
         placeholder={placeholder}
         autoComplete="off"
-        className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm shadow-sm outline-none transition-all placeholder:text-slate-400 hover:border-[#4FAEB2]/60 focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
+        className="zx-surface zx-surface-interactive h-10 w-full pl-9 pr-9 text-sm outline-none transition-all placeholder:text-slate-400 focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
       />
       {open && (
         <div className="absolute left-0 right-0 z-50 mt-1.5">
-          <ul ref={listRef} className="max-h-[320px] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-[#4FAEB2]/15">
+          <ul ref={listRef} className="zx-surface zx-surface-accent max-h-[320px] overflow-y-auto p-1 shadow-xl">
             {error ? (
               <li className="px-3 py-3 text-center text-xs text-red-500">{error}</li>
             ) : loading && visibles.length === 0 ? (

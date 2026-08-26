@@ -203,7 +203,7 @@ export default function SorteosCuponesManualClient() {
           <div
             role="dialog"
             aria-modal="true"
-            className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200"
+            className="zx-surface shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
               <h2 className="text-lg font-semibold text-slate-800">Venta presencial (efectivo)</h2>

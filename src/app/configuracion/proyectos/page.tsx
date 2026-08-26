@@ -394,7 +394,7 @@ export default function ConfiguracionProyectosPage() {
           <button
             type="button"
             onClick={() => void loadEstados()}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="zx-surface px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             Recargar
           </button>
@@ -460,7 +460,7 @@ export default function ConfiguracionProyectosPage() {
                       <div className="flex gap-2">
                         <input
                           type="color"
-                          className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+                          className="zx-surface h-10 w-12 p-1"
                           value={draft.color}
                           disabled={!canEdit}
                           onChange={(e) => updateDraft(estado.id, "color", e.target.value)}
@@ -558,7 +558,7 @@ export default function ConfiguracionProyectosPage() {
         )}
 
         {canEdit ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+          <div className="zx-surface mt-6 border-dashed border-slate-300 p-4">
             <h3 className="text-sm font-bold text-slate-900">Crear columna</h3>
             <ConfigHelpText>
               El código técnico se define solo al crear. No uses un código existente y evitá cambiarlo luego por SQL.
@@ -586,7 +586,7 @@ export default function ConfiguracionProyectosPage() {
                 <span className={F_LABEL}>Color</span>
                 <input
                   type="color"
-                  className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+                  className="zx-surface h-10 w-12 p-1"
                   value={newColumn.color}
                   onChange={(e) => setNewColumn((prev) => ({ ...prev, color: e.target.value }))}
                 />
@@ -654,7 +654,7 @@ export default function ConfiguracionProyectosPage() {
           <button
             type="button"
             onClick={() => void loadPrioridades()}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="zx-surface px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             Recargar
           </button>
@@ -757,7 +757,7 @@ function ToggleField({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+    <label className="zx-surface flex items-center gap-2 px-3 py-2 text-sm text-slate-700">
       <input
         type="checkbox"
         className="h-4 w-4 rounded border-slate-300 text-slate-900"
@@ -796,7 +796,7 @@ function EstadoVisibilitySwitch({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+    <div className="zx-surface px-3 py-2">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-800">Estado visible en el tablero</p>
@@ -848,7 +848,7 @@ function ColorField({
       <div className="flex gap-2">
         <input
           type="color"
-          className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-1"
+          className="zx-surface h-10 w-12 p-1"
           value={safeValue}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}

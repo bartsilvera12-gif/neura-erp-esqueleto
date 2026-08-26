@@ -155,7 +155,7 @@ export default function NotasCreditoListClient() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+      <div className="zx-surface p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           <div>
             <label className={labelClass}>Desde</label>
@@ -262,7 +262,7 @@ export default function NotasCreditoListClient() {
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{err}</div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left min-w-[1100px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
@@ -295,7 +295,7 @@ export default function NotasCreditoListClient() {
                 </tr>
               ) : (
                 items.map((nc) => (
-                  <tr key={nc.id} className="hover:bg-slate-50/80">
+                  <tr key={nc.id} className="zx-row">
                     <td className="px-3 py-2 whitespace-nowrap text-slate-600">
                       {new Date(nc.created_at).toLocaleString("es-PY", { dateStyle: "short", timeStyle: "short" })}
                     </td>

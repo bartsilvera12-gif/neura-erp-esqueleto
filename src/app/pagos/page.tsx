@@ -307,7 +307,7 @@ function PagosPageInner() {
               setFiltroHasta("");
               setFiltroTipoCliente("");
             }}
-            className="border border-slate-300 bg-white px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="zx-surface border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
           >
             Limpiar filtros
           </button>
@@ -315,7 +315,7 @@ function PagosPageInner() {
       </div>
 
       {tab === "pendientes" && (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">Facturas pendientes de cobro</h2>
           <span className="text-xs text-slate-500">
@@ -374,7 +374,7 @@ function PagosPageInner() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pendientesVista.map((f) => (
-                  <tr key={f.id} className="hover:bg-slate-50">
+                  <tr key={f.id} className="zx-row">
                     <td className="whitespace-nowrap px-3 py-2.5 font-mono text-sm text-slate-800 first:pl-4 sm:px-4 sm:first:pl-5 lg:px-5">
                       {f.numero_factura}
                     </td>
@@ -472,7 +472,7 @@ function PagosPageInner() {
       )}
 
       {tab === "cobrados" && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="zx-surface overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-slate-700">Pagos registrados</h2>
@@ -536,7 +536,7 @@ function PagosPageInner() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {cobradosVista.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50">
+                    <tr key={p.id} className="zx-row">
                       <td className="whitespace-nowrap px-3 py-2.5 font-mono text-sm text-slate-800 first:pl-4 sm:px-4 sm:first:pl-5 lg:px-5">
                         {p.factura_numero}
                       </td>

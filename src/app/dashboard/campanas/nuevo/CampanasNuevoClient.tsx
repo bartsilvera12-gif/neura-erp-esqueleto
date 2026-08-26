@@ -187,7 +187,7 @@ export default function CampanasNuevoClient() {
 
       {err ? <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{err}</div> : null}
 
-      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="zx-surface space-y-4 p-5">
         <label className="block">
           <span className="text-sm font-medium text-slate-700">Nombre de la campaña</span>
           <input

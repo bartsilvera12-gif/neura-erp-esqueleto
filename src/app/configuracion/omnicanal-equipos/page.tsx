@@ -155,7 +155,7 @@ export default function OmnicanalEquiposPage() {
         </p>
       </div>
 
-      <form onSubmit={(e) => void handleAdd(e)} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <form onSubmit={(e) => void handleAdd(e)} className="zx-surface p-5 space-y-4">
         <h2 className="text-sm font-semibold text-slate-800">Nueva relación supervisor → agente</h2>
         <p className="text-xs text-slate-500 leading-relaxed">
           Supervisores: solo usuarios con perfil <strong className="text-slate-700">Supervisor</strong> en el ERP.
@@ -170,7 +170,7 @@ export default function OmnicanalEquiposPage() {
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Supervisor
               <Select
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+                className="zx-surface mt-1 w-full px-3 py-2 text-sm"
                 value={supervisorId}
                 onChange={(ev) => setSupervisorId(ev.target.value)}
                 required
@@ -195,7 +195,7 @@ export default function OmnicanalEquiposPage() {
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Agente a cargo
               <Select
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
+                className="zx-surface mt-1 w-full px-3 py-2 text-sm"
                 value={agentId}
                 onChange={(ev) => setAgentId(ev.target.value)}
                 required
@@ -241,7 +241,7 @@ export default function OmnicanalEquiposPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <section className="zx-surface overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-3 bg-slate-50">
           <h2 className="text-sm font-semibold text-slate-800">Equipo por supervisor</h2>
           <p className="text-xs text-slate-500 mt-0.5">

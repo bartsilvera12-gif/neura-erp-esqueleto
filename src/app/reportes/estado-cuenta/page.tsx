@@ -137,7 +137,7 @@ export default function ReporteEstadoCuentaPage() {
       </div>
 
       {/* Filtros */}
-      <div className="rounded-2xl border border-[#4FAEB2]/45 bg-white p-5 shadow-sm">
+      <div className="zx-surface border-[#4FAEB2]/45 p-5">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[10rem]">
             <label className={LABEL_CLS}>Desde</label>
@@ -157,7 +157,7 @@ export default function ReporteEstadoCuentaPage() {
           <button
             type="button"
             onClick={limpiar}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-[#4FAEB2]/60 hover:bg-[#4FAEB2]/5 hover:text-[#3F8E91]"
+            className="zx-surface zx-surface-interactive px-4 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-[#4FAEB2]/5 hover:text-[#3F8E91]"
           >
             Limpiar filtros
           </button>
@@ -297,7 +297,7 @@ function Kpi({
   const valueCls =
     accent === "featured" ? "text-[#3F8E91]" : accent === "warning" ? "text-amber-600" : "text-slate-900";
   return (
-    <div className="relative overflow-hidden rounded-xl border border-[#4FAEB2]/45 bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+    <div className="zx-surface zx-surface-interactive relative overflow-hidden border-[#4FAEB2]/45 px-3.5 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5">
       <div className="flex items-start gap-2.5">
         <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${chip}`}>{icon}</span>
         <div className="min-w-0 flex-1">
@@ -312,7 +312,7 @@ function Kpi({
 
 function TablaWrap({ headers, minW, children }: { headers: string[]; minW: string; children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#4FAEB2]/45 bg-white shadow-sm">
+    <div className="zx-surface overflow-hidden border-[#4FAEB2]/45">
       <div className="overflow-x-auto overscroll-x-contain">
         <table className="w-full table-auto border-separate border-spacing-0 text-sm" style={{ minWidth: minW }}>
           <thead className="bg-slate-50/80">
@@ -336,7 +336,7 @@ function TablaWrap({ headers, minW, children }: { headers: string[]; minW: strin
 
 function Cargando() {
   return (
-    <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#4FAEB2]/45 bg-white py-14 text-sm text-slate-500 shadow-sm">
+    <div className="zx-surface flex items-center justify-center gap-3 border-[#4FAEB2]/45 py-14 text-sm text-slate-500">
       <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#4FAEB2]" />
       Cargando…
     </div>
@@ -345,7 +345,7 @@ function Cargando() {
 
 function Vacio() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#4FAEB2]/45 bg-white px-6 py-14 text-center shadow-sm">
+    <div className="zx-surface flex flex-col items-center justify-center gap-3 border-[#4FAEB2]/45 px-6 py-14 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#4FAEB2]/25 bg-[#4FAEB2]/8 text-[#4FAEB2]">
         <Inbox className="h-6 w-6" />
       </span>

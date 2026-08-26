@@ -162,7 +162,7 @@ export default function EditarCanalPage() {
         </button>
       </div>
 
-      <section className="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
+      <section className="zx-surface w-full p-4 sm:p-6 lg:p-8">
         <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 lg:mb-6">
           Credenciales y opciones
         </h2>

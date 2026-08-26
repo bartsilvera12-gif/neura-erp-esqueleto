@@ -122,7 +122,7 @@ export default function MonitoreoPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="zx-surface p-5">
         <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
           <div className="min-w-0">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Chats sin asignar (recientes)</h2>
@@ -147,7 +147,7 @@ export default function MonitoreoPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                <tr className="zx-thead text-left text-xs text-slate-500">
                   <th className="pb-2 pr-3">Espera</th>
                   <th className="pb-2 pr-3">Contacto</th>
                   <th className="pb-2 pr-3">Canal</th>
@@ -186,7 +186,7 @@ export default function MonitoreoPage() {
                         <Link
                           href={buildMonitoreoInboxHref(r, {})}
                           title="Abrir en inbox"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-[#0EA5E9] hover:text-[#0284C7]"
+                          className="zx-surface zx-surface-interactive inline-flex h-8 w-8 items-center justify-center text-slate-600 hover:text-[#0284C7]"
                         >
                           <Eye className="h-4 w-4" aria-hidden />
                           <span className="sr-only">Ver en inbox</span>
@@ -194,7 +194,7 @@ export default function MonitoreoPage() {
                         <Link
                           href={buildMonitoreoInboxHref(r, { transferir: true })}
                           title="Transferir…"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-[#0EA5E9] hover:text-[#0284C7]"
+                          className="zx-surface zx-surface-interactive inline-flex h-8 w-8 items-center justify-center text-slate-600 hover:text-[#0284C7]"
                         >
                           <ArrowLeftRight className="h-4 w-4" aria-hidden />
                           <span className="sr-only">Transferir conversación</span>
@@ -210,7 +210,7 @@ export default function MonitoreoPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="zx-surface p-5">
         <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
           <div className="min-w-0">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
@@ -295,7 +295,7 @@ export default function MonitoreoPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="zx-surface p-5">
         <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-3">Agentes y carga</h2>
         {loading ? (
           <p className="text-sm text-slate-400">Cargando…</p>
@@ -331,7 +331,7 @@ export default function MonitoreoPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                <tr className="zx-thead text-left text-xs text-slate-500">
                   <th className="pb-2 pr-3">Cola</th>
                   <th className="pb-2 pr-3">Agente</th>
                   <th className="pb-2 pr-3">En línea</th>

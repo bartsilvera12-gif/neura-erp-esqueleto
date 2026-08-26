@@ -1058,7 +1058,7 @@ export default function NuevaVentaPage() {
               <Select
                 value={cajaActivaId}
                 onChange={(e) => setCajaActivaId(e.target.value)}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[#4FAEB2]/30"
+                className="zx-surface rounded-md px-2 py-1 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[#4FAEB2]/30"
               >
                 <option value="">— Elegí caja —</option>
                 {cajasAbiertas.map((c) => (
@@ -1089,7 +1089,7 @@ export default function NuevaVentaPage() {
       <form onSubmit={(e) => e.preventDefault()} className="space-y-6 max-w-7xl">
 
         {/* ── SECCIÓN 0: Datos de la venta (cliente opcional + condición) ────── */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 sm:p-6">
+        <div className="zx-surface p-4 sm:p-6">
           <SectionTitle>Datos de la venta</SectionTitle>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 
@@ -1118,7 +1118,7 @@ export default function NuevaVentaPage() {
                 )}
               </div>
               {clienteOpen && !clienteSel && (
-                <div className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                <div className="zx-surface absolute z-20 mt-1 w-full max-h-64 overflow-auto shadow-lg">
                   {clientesFiltrados.length === 0 ? (
                     <p className="px-3 py-2 text-xs text-gray-400">Sin clientes que coincidan.</p>
                   ) : (
@@ -1220,7 +1220,7 @@ export default function NuevaVentaPage() {
         </div>
 
         {/* ── SECCIÓN 3: Carrito + totales + confirmar ─────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 sm:p-6">
+        <div className="zx-surface p-4 sm:p-6">
           <div className="mb-3 flex items-center justify-between gap-2">
             <SectionTitle>Productos en esta venta</SectionTitle>
             <div className="flex shrink-0 items-center gap-2">
@@ -1259,7 +1259,7 @@ export default function NuevaVentaPage() {
               autoComplete="off"
             />
             {comboOpen && comboQuery.trim().length >= 2 && (
-              <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-[56vh] overflow-y-auto rounded-xl border-2 border-[#0EA5E9]/20 bg-white shadow-[0_16px_40px_-12px_rgba(15,23,42,0.28)]">
+              <div className="zx-surface absolute left-0 right-0 top-full z-30 mt-2 max-h-[56vh] overflow-y-auto border-2 border-[#0EA5E9]/20 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.28)]">
                 {comboBuscando && comboResultados.length === 0 ? (
                   <div className="px-4 py-5 text-center text-sm text-slate-400">Buscando…</div>
                 ) : comboResultados.length === 0 ? (
@@ -1321,7 +1321,7 @@ export default function NuevaVentaPage() {
               <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
                 <table className="w-full min-w-[900px] text-sm text-left">
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    <tr className="zx-thead text-[11px] font-bold uppercase tracking-wide text-slate-500">
                       <th className="px-3 py-3">Producto</th>
                       <th className="hidden px-3 py-3 md:table-cell">Precio</th>
                       <th className="hidden px-3 py-3 text-center md:table-cell">IVA</th>
@@ -1353,7 +1353,7 @@ export default function NuevaVentaPage() {
                                   onChange={(e) => updateItemCampo(idx, { producto_nombre: e.target.value })}
                                   rows={2}
                                   placeholder="Ej: Mantenimiento de compresor: cambio de pistones, aceite y válvulas"
-                                  className="w-full min-w-[18rem] resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800 outline-none focus:border-[#0EA5E9]"
+                                  className="zx-surface w-full min-w-[18rem] resize-y rounded-md px-2.5 py-1.5 text-sm text-slate-800 outline-none focus:border-[#0EA5E9]"
                                 />
                                 <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#0284C7]">
                                   Trabajo a mano · no descuenta stock
@@ -1410,7 +1410,7 @@ export default function NuevaVentaPage() {
                           </td>
                           {/* Cantidad */}
                           <td className="px-3 py-2.5">
-                            <div className="mx-auto flex w-fit items-center rounded-md border border-slate-200 bg-white">
+                            <div className="zx-surface mx-auto flex w-fit items-center rounded-md">
                               <button type="button" onClick={() => changeCantidadItem(idx, -1)} className="h-8 w-8 rounded-l-md text-slate-500 hover:bg-slate-100"><Minus className="mx-auto h-3.5 w-3.5" /></button>
                               <CantidadInput
                                 value={item.cantidad}
@@ -1433,7 +1433,7 @@ export default function NuevaVentaPage() {
                             <input
                               type="number" min={0} value={item.precio_venta}
                               onChange={(e) => updateItemCampo(idx, { precio_venta: Math.max(0, Number(e.target.value) || 0), precio_venta_original: Math.max(0, Number(e.target.value) || 0), precio_manual: true })}
-                              className="h-8 w-28 rounded-md border border-slate-200 bg-white px-2 text-right text-sm tabular-nums"
+                              className="zx-surface h-8 w-28 rounded-md px-2 text-right text-sm tabular-nums"
                             />
                           </td>
                           {/* Costo — solo en trabajos a mano (repuestos + mano de obra) */}
@@ -1447,7 +1447,7 @@ export default function NuevaVentaPage() {
                                 }}
                                 placeholder="0"
                                 title="Cuánto costó el trabajo por unidad (repuestos + mano de obra)"
-                                className="h-8 w-28 rounded-md border border-slate-200 bg-white px-2 text-right text-sm tabular-nums"
+                                className="zx-surface h-8 w-28 rounded-md px-2 text-right text-sm tabular-nums"
                               />
                             ) : (
                               <span className="text-xs text-slate-400">—</span>
@@ -1633,7 +1633,7 @@ export default function NuevaVentaPage() {
 
                       {/* Transferencia / Tarjeta: resumen compacto + editar */}
                       {(metodoPago === "transferencia" || metodoPago === "tarjeta") && (
-                        <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs space-y-1">
+                        <div className="zx-surface rounded-md px-3 py-2 text-xs space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-slate-700">
                               {metodoPago === "transferencia" ? "Transferencia" : "Tarjeta / Débito"}
@@ -1656,7 +1656,7 @@ export default function NuevaVentaPage() {
                       {metodoPago === "mixto" && (
                         <div className="space-y-2.5">
                           {pagosMixtos.map((p, i) => (
-                            <div key={p.key} className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+                            <div key={p.key} className="zx-surface p-2.5">
                               <div className="mb-1.5 flex items-center justify-between">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pago {i + 1}</span>
                                 {pagosMixtos.length > 1 && (
@@ -1829,7 +1829,7 @@ export default function NuevaVentaPage() {
       {/* Modal de cobro (transferencia / tarjeta-débito) */}
       {cobroModalOpen && (metodoPago === "transferencia" || metodoPago === "tarjeta") && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCobroModalOpen(false)}>
-          <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl space-y-3" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface w-full max-w-sm p-5 shadow-xl space-y-3" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-800">
                 {metodoPago === "transferencia" ? "Datos de transferencia" : "Datos de tarjeta / débito"}
@@ -1922,7 +1922,7 @@ export default function NuevaVentaPage() {
       {/* Modal de confirmación: venta sin stock suficiente */}
       {confirmSinStockOpen && faltantes.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setConfirmSinStockOpen(false)}>
-          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="zx-surface w-full max-w-lg p-5 shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
             {(() => {
               const hayBloqueante = faltantes.some((f) => f.bloqueante);
               return (
@@ -1945,7 +1945,7 @@ export default function NuevaVentaPage() {
             <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-600 text-xs">
+                  <tr className="zx-thead text-slate-600 text-xs">
                     <th className="py-2 px-3 font-medium">Producto / Insumo</th>
                     <th className="py-2 px-3 font-medium text-right">Stock actual</th>
                     <th className="py-2 px-3 font-medium text-right">Solicitado</th>
@@ -1993,7 +1993,7 @@ export default function NuevaVentaPage() {
       {/* Panel post-venta: abrir ticket y (si aplica) nota de remisión */}
       {postVenta && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl space-y-4 text-center">
+          <div className="zx-surface w-full max-w-md p-6 shadow-xl space-y-4 text-center">
             <div className="text-3xl">✅</div>
             <div>
               <h3 className="text-base font-semibold text-slate-800">Venta {postVenta.numero} registrada</h3>

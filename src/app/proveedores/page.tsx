@@ -70,7 +70,7 @@ export default function ProveedoresPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="zx-surface p-6">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <input
             type="search"
@@ -87,7 +87,7 @@ export default function ProveedoresPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-100 text-slate-600">
+              <tr className="zx-thead text-slate-600">
                 <th className="py-3 pr-4 font-semibold">Proveedor</th>
                 <th className="py-3 pr-4 font-semibold">RUC</th>
                 <th className="py-3 pr-4 font-semibold">Contacto</th>

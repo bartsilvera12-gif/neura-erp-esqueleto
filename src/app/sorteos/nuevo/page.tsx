@@ -137,7 +137,7 @@ export default function NuevoSorteoPage() {
         </div>
       )}
 
-      <form noValidate onSubmit={handleSubmit} className="space-y-4 bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+      <form noValidate onSubmit={handleSubmit} className="zx-surface space-y-4 p-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
           <input
@@ -241,7 +241,7 @@ export default function NuevoSorteoPage() {
                   min={0}
                   step={1}
                   placeholder="0"
-                  className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  className="zx-surface w-full max-w-xs px-3 py-2 text-sm"
                   value={Number.isFinite(couponStart) ? couponStart : 0}
                   onChange={(e) => setCouponStart(e.target.value === "" ? 0 : Number(e.target.value))}
                 />
@@ -249,7 +249,7 @@ export default function NuevoSorteoPage() {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Modo de generación</label>
                 <Select
-                  className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  className="zx-surface w-full max-w-xs px-3 py-2 text-sm"
                   value={couponMode}
                   onChange={(e) => setCouponMode(e.target.value as SorteoCouponNumberMode)}
                 >
@@ -270,7 +270,7 @@ export default function NuevoSorteoPage() {
                   type="number"
                   min={0}
                   step={1}
-                  className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  className="zx-surface w-full max-w-xs px-3 py-2 text-sm"
                   value={couponLimit}
                   onChange={(e) => setCouponLimit(e.target.value)}
                   placeholder={couponMode === "random" ? "Ej. 9999" : "Sin tope (vacío)"}

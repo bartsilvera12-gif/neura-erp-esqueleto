@@ -124,7 +124,7 @@ export default function SorteosTicketsPage() {
         Registro de generación y envío de comprobantes en imagen tras confirmar compras en WhatsApp.
       </p>
 
-      <div className="flex flex-wrap gap-2 items-end bg-white border border-slate-200 rounded-xl p-4">
+      <div className="zx-surface flex flex-wrap gap-2 items-end p-4">
         <div>
           <label className="block text-xs text-slate-500 mb-1">Sorteo ID</label>
           <input
@@ -173,7 +173,7 @@ export default function SorteosTicketsPage() {
       {loading ? (
         <div className="text-slate-400 text-sm animate-pulse py-8">Cargando…</div>
       ) : (
-        <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+        <div className="zx-surface overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>

@@ -96,7 +96,7 @@ export function ModalHistorialClienteGestion({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl"
+        className="zx-surface flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden shadow-xl"
         onClick={(ev) => ev.stopPropagation()}
       >
         <div className="shrink-0 border-b border-slate-200 px-5 py-4">

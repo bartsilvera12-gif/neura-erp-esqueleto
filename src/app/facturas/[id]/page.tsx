@@ -188,7 +188,7 @@ function FacturaDetalleInner() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
+      <div className="zx-surface p-5 space-y-3">
         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Resumen comercial</h2>
         <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
           <div>

@@ -182,14 +182,14 @@ export default async function SorteoCuponesPage({
         ) : null}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="zx-surface overflow-hidden">
         {rows.length === 0 && !queryError ? (
           <div className="py-16 text-center text-gray-400 text-sm">No hay órdenes con cupones</div>
         ) : rows.length === 0 ? null : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1140px]">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="zx-thead">
                   <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Nº orden</th>
                   <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Sorteo</th>
                   <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Cliente</th>
@@ -206,7 +206,7 @@ export default async function SorteoCuponesPage({
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {rows.map((r) => (
-                  <tr key={r.entrada_id} className="hover:bg-slate-50/80">
+                  <tr key={r.entrada_id} className="zx-row">
                     <td className="px-5 py-3 text-sm font-mono font-semibold text-slate-800">{r.numero_orden}</td>
                     <td className="px-5 py-3 text-sm text-slate-800">{r.sorteo_nombre}</td>
                     <td className="px-5 py-3 text-sm text-slate-800">{r.nombre_participante}</td>

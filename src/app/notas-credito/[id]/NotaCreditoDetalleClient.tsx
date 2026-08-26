@@ -100,7 +100,7 @@ export default function NotaCreditoDetalleClient() {
         </Link>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
+      <section className="zx-surface p-5 space-y-3">
         <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Datos generales</h2>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
@@ -148,7 +148,7 @@ export default function NotaCreditoDetalleClient() {
       </section>
 
       {ne && (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
+        <section className="zx-surface p-5 space-y-2">
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Documento electrónico (SIFEN)</h2>
           <dl className="grid grid-cols-1 gap-2 text-xs font-mono text-slate-600 break-all">
             <div>
@@ -189,7 +189,7 @@ export default function NotaCreditoDetalleClient() {
         </section>
       )}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="zx-surface p-5 space-y-4">
         <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Auditoría / eventos</h2>
         {data.eventos.length === 0 ? (
           <p className="text-sm text-slate-400">Sin eventos registrados.</p>

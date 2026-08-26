@@ -160,7 +160,7 @@ export default function NuevoProspectoPage() {
         <p className="text-gray-600 text-sm mt-1">Registrá una nueva oportunidad en el funnel comercial</p>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 max-w-2xl">
+      <div className="zx-surface p-6 max-w-2xl">
         <form className="space-y-8" onSubmit={handleSubmit}>
 
           {/* ── Empresa y contacto ───────────────────────────────────────── */}

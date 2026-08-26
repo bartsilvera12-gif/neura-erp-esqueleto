@@ -171,7 +171,7 @@ export default function DocumentoNRPage({ params }: { params: Promise<{ id: stri
           <div className="mt-6">
             <table className="w-full border-collapse text-[12px]">
               <thead>
-                <tr className="border-y-2 border-slate-800 text-slate-800">
+                <tr className="zx-thead border-y-2 border-slate-800 text-slate-800">
                   <th className="px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider">Código</th>
                   <th className="px-2 py-2 text-right text-[10px] font-semibold uppercase tracking-wider">Cantidad</th>
                   <th className="px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider">Detalle de mercadería</th>

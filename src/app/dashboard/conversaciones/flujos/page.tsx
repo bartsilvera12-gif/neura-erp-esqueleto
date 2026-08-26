@@ -267,7 +267,7 @@ function FlowsListContent() {
       {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</div>}
       {success && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">{success}</div>}
 
-      <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+      <div className="zx-surface p-5 space-y-4">
         <form noValidate onSubmit={handleCreate} className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
             <div className="flex-1 min-w-0 space-y-1">
@@ -324,7 +324,7 @@ function FlowsListContent() {
                     id="flow-code-manual"
                     type="text"
                     autoComplete="off"
-                    className="w-full max-w-md border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                    className="zx-surface w-full max-w-md px-3 py-2 text-sm font-mono"
                     placeholder="Vacío = se genera desde el nombre del flujo"
                     value={manualFlowCode}
                     onChange={(e) => setManualFlowCode(e.target.value)}
@@ -337,7 +337,7 @@ function FlowsListContent() {
                   <input
                     id="flow-duplicate-from"
                     type="text"
-                    className="w-full max-w-md border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono bg-white"
+                    className="zx-surface w-full max-w-md px-3 py-2 text-sm font-mono"
                     placeholder="ID interno del flujo plantilla"
                     value={duplicateFrom}
                     onChange={(e) => setDuplicateFrom(e.target.value)}
@@ -349,7 +349,7 @@ function FlowsListContent() {
         </form>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="zx-surface overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-200 text-sm font-semibold text-slate-700">Listado</div>
         {loading ? (
           <div className="p-6 text-sm text-slate-400 animate-pulse">Cargando...</div>

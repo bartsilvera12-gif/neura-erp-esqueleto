@@ -112,7 +112,7 @@ export default function EstadoSelect({ value, updating, onChange, label }: Props
           ref={panelRef}
           role="listbox"
           style={{ position: "fixed", top: coords.top, left: coords.left, width: PANEL_W }}
-          className="z-50 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.28)]"
+          className="zx-surface z-50 overflow-hidden p-1 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.28)]"
         >
           {OPCIONES.map((s) => {
             const activo = s === value;

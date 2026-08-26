@@ -155,7 +155,7 @@ export default function HistorialPage() {
         </Link>
       </div>
 
-      <div className="border border-slate-200 rounded-xl bg-white p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div className="zx-surface p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
         <input
           className="md:col-span-2 border border-slate-200 rounded-lg px-3 py-2 text-sm"
           placeholder="Buscar por nombre o teléfono"
@@ -198,7 +198,7 @@ export default function HistorialPage() {
 
       {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</div>}
 
-      <div className="flex flex-1 min-h-0 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      <div className="zx-surface flex flex-1 min-h-0 overflow-hidden">
         <aside className="w-full max-w-[360px] border-r border-slate-200 bg-slate-50/80 overflow-y-auto">
           <div className="p-3 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide">
             Contactos encontrados
@@ -266,7 +266,7 @@ export default function HistorialPage() {
 
               <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-slate-50/40">
                 {detail.conversations.map((conv) => (
-                  <article key={conv.id} className="border border-slate-200 rounded-xl bg-white">
+                  <article key={conv.id} className="zx-surface">
                     <header className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
                       <div className="text-sm text-slate-700">
                         <strong>{conv.channel_name}</strong> · estado {conv.status}

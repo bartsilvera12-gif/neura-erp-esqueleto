@@ -270,7 +270,7 @@ export default function InventarioPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm ring-1 ring-[#4FAEB2]/15 p-6">
+      <div className="zx-surface zx-surface-accent p-6">
 
         <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
           <div className="flex items-center gap-3 flex-wrap">
@@ -305,7 +305,7 @@ export default function InventarioPage() {
                 placeholder="Nombre o SKU… (ej: «compresor 100» o «INS-0006»)"
                 value={busqueda}
                 onChange={(e) => { setBusqueda(e.target.value); setPagina(1); }}
-                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
+                className="zx-surface w-full py-2 pl-9 pr-8 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
               />
               {busqueda && (
                 <button
@@ -325,7 +325,7 @@ export default function InventarioPage() {
             <Select
               value={filtroCategoria}
               onChange={(e) => { setFiltroCategoria(e.target.value); setPagina(1); }}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
+              className="zx-surface w-full px-3 py-2 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
             >
               <option value="">Todas</option>
               {categorias.map((c) => (
@@ -339,7 +339,7 @@ export default function InventarioPage() {
             <Select
               value={filtroTipoProd}
               onChange={(e) => { setFiltroTipoProd(e.target.value as typeof filtroTipoProd); setPagina(1); }}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
+              className="zx-surface w-full px-3 py-2 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
             >
               <option value="">Todos</option>
               <option value="reventa">Reventa</option>
@@ -500,7 +500,7 @@ export default function InventarioPage() {
 
             {/* Cabecera fija: al scrollear una lista larga no se pierde la referencia. */}
             <thead className="sticky top-0 z-10">
-              <tr className="border-b border-slate-200 bg-slate-50/95 text-[11px] uppercase tracking-wide text-slate-500 backdrop-blur">
+              <tr className="zx-thead text-[11px] uppercase tracking-wide text-slate-500">
                 <th className="py-2.5 pl-4 pr-4 font-semibold">Producto</th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Costo prom.</th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Precio venta</th>
@@ -585,7 +585,7 @@ export default function InventarioPage() {
                       <div className="inline-flex items-center gap-2">
                         <Link
                           href={`/inventario/${p.id}/editar`}
-                          className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                          className="zx-surface zx-surface-interactive inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                         >
                           Editar
                         </Link>
@@ -605,20 +605,22 @@ export default function InventarioPage() {
               {/* Sin resultados: antes la tabla quedaba en blanco, sin explicación. */}
               {!cargandoLista && productosPagina.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center">
-                    <p className="text-sm text-slate-500">
-                      {todos.length === 0
-                        ? "Todavía no cargaste productos."
-                        : "Ningún producto coincide con los filtros."}
-                    </p>
-                    {hayFiltrosActivos && (
-                      <button
-                        onClick={limpiarFiltros}
-                        className="mt-2 text-sm font-medium text-[#0284C7] hover:underline"
-                      >
-                        Limpiar filtros
-                      </button>
-                    )}
+                  <td colSpan={7} className="p-4">
+                    <div className="zx-empty px-6 py-10 text-center">
+                      <p className="text-sm text-slate-500">
+                        {todos.length === 0
+                          ? "Todavía no cargaste productos."
+                          : "Ningún producto coincide con los filtros."}
+                      </p>
+                      {hayFiltrosActivos && (
+                        <button
+                          onClick={limpiarFiltros}
+                          className="mt-2 text-sm font-medium text-[#3F8E91] hover:underline"
+                        >
+                          Limpiar filtros
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -635,7 +637,7 @@ export default function InventarioPage() {
               <Select
                 value={porPagina}
                 onChange={(e) => { setPorPagina(Number(e.target.value)); setPagina(1); }}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
+                className="zx-surface px-2 py-1.5 text-xs outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
               >
                 {[25, 50, 100].map((n) => (
                   <option key={n} value={n}>{n}</option>
