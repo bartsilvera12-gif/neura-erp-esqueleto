@@ -36,7 +36,18 @@ import {
 import { INBOX_HEARTBEAT_INTERVAL_MS } from "@/lib/chat/agent-presence";
 import { formatWaitHuman } from "@/lib/chat/format-wait-human";
 import { listActiveQuickRepliesForChannel } from "@/lib/chat/quick-replies-actions";
-import { ArrowLeftRight, Flame, Mic, Paperclip, RefreshCw, Square, UserRound, Zap } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  Flame,
+  Mic,
+  Paperclip,
+  Play,
+  RefreshCw,
+  Square,
+  UserRound,
+  Zap,
+} from "lucide-react";
 import {
   finalizeConversationWithClosure,
   loadFinalizeOptionsForConversation,
@@ -2485,7 +2496,7 @@ export function ConversacionesClient({
                     className="w-full text-left px-2 py-1 text-xs font-medium text-amber-900 flex items-center justify-between gap-2 hover:bg-amber-50/80"
                   >
                     <span>
-                      ⚠️ Validaciones ({compLoading ? "…" : compVals.length})
+                      <AlertTriangle className="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden /> Validaciones ({compLoading ? "…" : compVals.length})
                     </span>
                     <span className="text-slate-500 tabular-nums shrink-0" aria-hidden>
                       {compValidacionesOpen ? "▲" : "▼"}
@@ -2673,7 +2684,7 @@ export function ConversacionesClient({
                                   }`}
                                 >
                                   <span className="text-2xl leading-none shrink-0 select-none" aria-hidden>
-                                    {m.message_type === "video" ? "▶️" : "📎"}
+                                    {m.message_type === "video" ? <Play className="h-3.5 w-3.5" aria-hidden /> : <Paperclip className="h-3.5 w-3.5" aria-hidden />}
                                   </span>
                                   <span className="min-w-0 flex-1">
                                     <span

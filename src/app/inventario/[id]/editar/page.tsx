@@ -9,6 +9,7 @@ import type { MetodoValuacion } from "@/lib/inventario/types";
 import ProductImageUploader from "@/components/inventario/ProductImageUploader";
 import SelectFromList from "@/components/inventario/SelectFromList";
 import { Select } from "@/components/ui/Select";
+import { ShoppingBag, ChefHat, Wheat } from "lucide-react";
 
 // Opciones estándar de unidad de medida (UX simplificada gastro)
 const UNIDADES_OPCIONES = [
@@ -16,9 +17,9 @@ const UNIDADES_OPCIONES = [
 ] as const;
 
 const TIPO_SUMMARY = {
-  reventa: { titulo: "Producto de reventa", descripcion: "Se compra y se vende tal cual. Controla stock y descuenta al vender.", icono: "🥤" },
-  menu:    { titulo: "Producto del menú",   descripcion: "Se vende en Ventas y genera pedido. No descuenta stock directo.",     icono: "🍕" },
-  materia: { titulo: "Materia prima / insumo", descripcion: "Se usa para recetas y costeo. No aparece como producto de venta.", icono: "🌾" },
+  reventa: { titulo: "Producto de reventa", descripcion: "Se compra y se vende tal cual. Controla stock y descuenta al vender.", icono: ShoppingBag },
+  menu:    { titulo: "Producto del menú",   descripcion: "Se vende en Ventas y genera pedido. No descuenta stock directo.",     icono: ChefHat },
+  materia: { titulo: "Materia prima / insumo", descripcion: "Se usa para recetas y costeo. No aparece como producto de venta.", icono: Wheat },
 } as const;
 
 interface CatRow { id: string; nombre: string }
@@ -358,7 +359,9 @@ export default function EditarProductoPage() {
 
       <div className="bg-white rounded-xl border border-amber-200 shadow-sm p-5 max-w-5xl">
         <div className="flex items-start gap-4">
-          <div className="text-3xl">{summary.icono}</div>
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#4FAEB2]/10 text-[#3F8E91] ring-1 ring-[#4FAEB2]/20">
+            <summary.icono className="h-5 w-5" aria-hidden />
+          </span>
           <div className="flex-1 min-w-0">
             <div className="text-base font-semibold text-slate-900">{summary.titulo}</div>
             <div className="text-sm text-slate-600 mt-0.5">{summary.descripcion}</div>

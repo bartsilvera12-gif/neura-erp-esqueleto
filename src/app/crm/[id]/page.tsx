@@ -11,6 +11,7 @@ import type { EtapaCrm } from "@/lib/crm/etapas";
 import type { Nota, Prospecto } from "@/lib/crm/types";
 import type { Plan } from "@/lib/planes/types";
 import { getBrowserSupabaseForEmpresaData } from "@/lib/supabase/browser-data-client";
+import { AlertTriangle } from "lucide-react";
 
 // ── Estilos ────────────────────────────────────────────────────────────────────
 
@@ -580,7 +581,7 @@ export default function EditProspectoPage() {
 
           {errorForm && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              <span>⚠</span><span className="font-medium">{errorForm}</span>
+              <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden /><span className="font-medium">{errorForm}</span>
             </div>
           )}
 

@@ -2,7 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Minus, Trash2, ImageIcon, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ImageIcon,
+  Minus,
+  Plus,
+  Search,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import MontoInput from "@/components/ui/MontoInput";
 import { FancySelect } from "@/components/ui/FancySelect";
 import ProductPickerModal, { type ProductoPickerItem, type AgregarVentaPayload } from "@/components/inventario/ProductPickerModal";
@@ -1778,7 +1787,7 @@ export default function NuevaVentaPage() {
           {/* Error confirmar */}
           {errorVenta && (
             <div className="mt-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-xs text-red-700">
-              <span className="text-base leading-none mt-0.5">⚠</span>
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span className="font-medium">{errorVenta}</span>
             </div>
           )}
@@ -1927,7 +1936,7 @@ export default function NuevaVentaPage() {
               const hayBloqueante = faltantes.some((f) => f.bloqueante);
               return (
               <div className="flex items-start gap-2">
-                <span className={`${hayBloqueante ? "text-red-500" : "text-amber-500"} text-xl leading-none`}>⚠</span>
+                <AlertTriangle className={`${hayBloqueante ? "text-red-500" : "text-amber-500"} h-5 w-5 shrink-0`} aria-hidden />
                 <div>
                   <h3 className="text-sm font-semibold text-slate-800">
                     {hayBloqueante ? "No se puede vender sin stock" : "Hay productos/insumos sin stock suficiente"}
@@ -1994,7 +2003,7 @@ export default function NuevaVentaPage() {
       {postVenta && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="zx-surface w-full max-w-md p-6 shadow-xl space-y-4 text-center">
-            <div className="text-3xl">✅</div>
+            <CheckCircle2 className="h-8 w-8 text-emerald-500" aria-hidden />
             <div>
               <h3 className="text-base font-semibold text-slate-800">Venta {postVenta.numero} registrada</h3>
               {postVenta.credito && (

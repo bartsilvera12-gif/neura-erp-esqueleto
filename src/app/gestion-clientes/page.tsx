@@ -4,13 +4,19 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   Calendar,
+  CalendarClock,
   ChevronDown,
   ChevronUp,
+  ClipboardList,
   FileDown,
   FileText,
+  History,
+  Link2,
   Printer,
   Receipt,
+  RefreshCw,
   SlidersHorizontal,
 } from "lucide-react";
 import { ModalCambioPlanGestion } from "@/components/gestion-clientes/ModalCambioPlanGestion";
@@ -192,15 +198,13 @@ function FacturaRowAccionesSifen({
 
 function BotonOperativo({
   label,
-  icon,
   iconNode,
   activo = false,
   href,
   onClick,
 }: {
   label:    string;
-  icon:     string;
-  iconNode?: React.ReactNode;
+  iconNode: React.ReactNode;
   activo?:  boolean;
   href?:    string;
   onClick?: () => void;
@@ -209,7 +213,7 @@ function BotonOperativo({
     "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-medium transition-colors";
   const activeClass  = "border-gray-800 bg-gray-900 text-white hover:bg-gray-700";
   const disabledClass = "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed";
-  const iconEl = iconNode ?? <span>{icon}</span>;
+  const iconEl = iconNode;
 
   if (activo && href) {
     return (
@@ -364,7 +368,7 @@ function ModalFacturacion({
             <div className="space-y-4">
               {errorEmitir && (
                 <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  <span>⚠</span>
+                  <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                   <span>{errorEmitir}</span>
                 </div>
               )}
@@ -961,25 +965,24 @@ function GestionClientesPageInner() {
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
-                  <BotonOperativo label="Tipificación" icon="📋" activo href={`/clientes/${selected.id}/tipificacion`} />
+                  <BotonOperativo label="Tipificación" iconNode={<ClipboardList className="h-3.5 w-3.5" />} activo href={`/clientes/${selected.id}/tipificacion`} />
                   <BotonOperativo
                     label="Facturación"
-                    icon="📄"
-                    iconNode={<Calendar className="h-3.5 w-3.5" />}
+                    iconNode={<FileText className="h-3.5 w-3.5" />}
                     activo
                     onClick={() => setModalFacturacion(true)}
                   />
-                  <BotonOperativo label="Servicios asociados" icon="🔗" />
+                  <BotonOperativo label="Servicios asociados" iconNode={<Link2 className="h-3.5 w-3.5" />} />
                   <BotonOperativo
                     label="Cambio de plan"
-                    icon="🔄"
+                    iconNode={<RefreshCw className="h-3.5 w-3.5" />}
                     activo
                     onClick={() => setModalCambioPlan(true)}
                   />
-                  <BotonOperativo label="Cambio fecha venc." icon="📅" />
+                  <BotonOperativo label="Cambio fecha venc." iconNode={<CalendarClock className="h-3.5 w-3.5" />} />
                   <BotonOperativo
                     label="Historial cliente"
-                    icon="🕐"
+                    iconNode={<History className="h-3.5 w-3.5" />}
                     activo
                     onClick={() => setModalHistorialCliente(true)}
                   />

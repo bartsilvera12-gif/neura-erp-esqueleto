@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import type { AmbienteSifen, EmpresaSifenConfigDTO } from "@/lib/sifen/types";
 import { Select } from "@/components/ui/Select";
+import { CheckCircle2 } from "lucide-react";
 
 const fLabel = "block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1";
 const fInput =
@@ -478,7 +479,7 @@ export default function FacturacionElectronicaSifenPage() {
           <div className="rounded-xl border border-emerald-200 bg-gradient-to-b from-emerald-50/90 to-white px-5 py-5 space-y-4">
             <div className="flex flex-wrap items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-lg" aria-hidden>
-                ✅
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" aria-hidden />
               </span>
               <div className="min-w-0 flex-1 space-y-1">
                 <h2 className="text-lg font-bold text-emerald-950">Configuración SIFEN lista para operar</h2>

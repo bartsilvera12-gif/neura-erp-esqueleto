@@ -59,6 +59,12 @@ import {
 } from "@/components/clientes/ClientePerfilTributarioForm";
 import { ClienteDatosSifenReceptorForm } from "@/components/clientes/ClienteDatosSifenReceptorForm";
 import { Select } from "@/components/ui/Select";
+import {
+  AlertTriangle,
+  FolderKanban,
+  History,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 // ── Campos ocultados a pedido del negocio (Esqueleto ERP) ────────────────────────────
 // Se ocultan de la interfaz sin borrar lógica ni datos. true = reactivar.
@@ -111,10 +117,12 @@ function formatFechaHora(iso: string) {
 
 // ── Placeholder para pestañas futuras ─────────────────────────────────────────
 
-function PlaceholderTab({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function PlaceholderTab({ icon: Icon, title, desc }: { icon: LucideIcon; title: string; desc: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <span className="text-5xl mb-4">{icon}</span>
+      <span className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#4FAEB2]/10 text-[#3F8E91] ring-1 ring-[#4FAEB2]/20">
+        <Icon className="h-7 w-7" aria-hidden />
+      </span>
       <h3 className="text-base font-semibold text-gray-600 mb-2">{title}</h3>
       <p className="text-sm text-gray-400 max-w-xs">{desc}</p>
       <span className="mt-5 text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full">Próximamente</span>
@@ -1919,7 +1927,7 @@ export default function ClienteDetailPage() {
 
               {formError && (
                 <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                  <span>⚠</span><span className="font-medium">{formError}</span>
+                  <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden /><span className="font-medium">{formError}</span>
                 </div>
               )}
 
@@ -2161,7 +2169,7 @@ export default function ClienteDetailPage() {
           {/* ── PROYECTOS ────────────────────────────────────────────────── */}
           {activeTab === "proyectos" && (
             <PlaceholderTab
-              icon="📁"
+              icon={FolderKanban}
               title="Proyectos"
               desc="Proyectos en curso y finalizados asociados a este cliente, con etapas y responsables."
             />
@@ -2170,7 +2178,7 @@ export default function ClienteDetailPage() {
           {/* ── ACTIVIDAD ────────────────────────────────────────────────── */}
           {activeTab === "actividad" && (
             <PlaceholderTab
-              icon="🕐"
+              icon={History}
               title="Actividad"
               desc="Timeline completo de interacciones, cambios de estado, ventas y eventos del cliente."
             />

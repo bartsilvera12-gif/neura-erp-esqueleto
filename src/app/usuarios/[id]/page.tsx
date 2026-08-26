@@ -17,6 +17,7 @@ import {
 } from "@/components/usuarios/UsuarioForm";
 import type { AreaUsuario, TipoContrato } from "@/lib/usuarios/types";
 import { Select } from "@/components/ui/Select";
+import { User, Briefcase, ShieldCheck, MessageCircle, BarChart3, Package, KeyRound } from "lucide-react";
 
 type ModuloOpt = { id: string; nombre: string; slug: string };
 
@@ -486,7 +487,7 @@ function UsuarioDetailContent() {
 
       {!editing && (
         <div className="space-y-6">
-          <SectionCard title="Datos personales" icon="👤">
+          <SectionCard title="Datos personales" icon={User}>
             <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
               {[
                 { label: "Nombre", value: usuario.nombre ?? "—" },
@@ -502,7 +503,7 @@ function UsuarioDetailContent() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Datos laborales" icon="💼">
+          <SectionCard title="Datos laborales" icon={Briefcase}>
             <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
               {[
                 { label: "Fecha de ingreso", value: formatFecha(usuario.fecha_ingreso) },
@@ -523,7 +524,7 @@ function UsuarioDetailContent() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Accesos del sistema" icon="🔐">
+          <SectionCard title="Accesos del sistema" icon={ShieldCheck}>
             <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
               {[
                 { label: "Nivel", value: labelNivelDisplay(usuario.rol) },
@@ -538,7 +539,7 @@ function UsuarioDetailContent() {
           </SectionCard>
 
           {usuario.omnicanal && (
-            <SectionCard title="Omnicanal" icon="💬">
+            <SectionCard title="Omnicanal" icon={MessageCircle}>
               {omnicanalWarning ? (
                 <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                   {omnicanalWarning}
@@ -568,7 +569,7 @@ function UsuarioDetailContent() {
           )}
 
           {(usuario.dashboard_views_empresa?.length ?? 0) > 0 && (
-            <SectionCard title="Vistas del dashboard" icon="📊">
+            <SectionCard title="Vistas del dashboard" icon={BarChart3}>
               {usuario.es_admin_empresa ? (
                 <>
                   <p className="text-xs text-gray-500 mb-3">
@@ -611,7 +612,7 @@ function UsuarioDetailContent() {
           )}
 
           {(usuario.modulos_empresa?.length ?? 0) > 0 && (
-            <SectionCard title="Módulos del usuario" icon="📦">
+            <SectionCard title="Módulos del usuario" icon={Package}>
               {usuario.es_admin_empresa ? (
                 <>
                   <p className="text-xs text-gray-500 mb-3">
@@ -674,7 +675,7 @@ function UsuarioDetailContent() {
             extraSections={
               <>
                 {showResetPwd ? (
-                  <SectionCard title="Restablecer contraseña" icon="🔑">
+                  <SectionCard title="Restablecer contraseña" icon={KeyRound}>
                     <p className="text-xs text-gray-500 mb-4">
                       Definí una nueva contraseña para este usuario. Se actualiza en Supabase Auth de forma segura (mismo
                       mecanismo que al crear usuario o vincular correo existente).
@@ -737,7 +738,7 @@ function UsuarioDetailContent() {
                 ) : null}
 
                 {usuario.puede_editar_modulos && !usuario.es_admin_empresa && (usuario.modulos_empresa?.length ?? 0) > 0 ? (
-                  <SectionCard title="Módulos del usuario" icon="📦">
+                  <SectionCard title="Módulos del usuario" icon={Package}>
                     <p className="text-xs text-gray-500 mb-4">
                       Solo aplica a supervisores y usuarios. Marcá los módulos que esta persona puede usar (lo habilitado
                       para tu empresa).
@@ -767,7 +768,7 @@ function UsuarioDetailContent() {
                 {usuario.puede_editar_modulos &&
                 !usuario.es_admin_empresa &&
                 (usuario.dashboard_views_empresa?.length ?? 0) > 0 ? (
-                  <SectionCard title="Vistas del dashboard" icon="📊">
+                  <SectionCard title="Vistas del dashboard" icon={BarChart3}>
                     <p className="text-xs text-gray-500 mb-4">
                       Solo podés marcar vistas que tu empresa ya tenga habilitadas. Si tenés más de una, elegí cuál abrir
                       por defecto.
@@ -820,7 +821,7 @@ function UsuarioDetailContent() {
                 ) : null}
 
                 {usuario.puede_editar_modulos && usuario.omnicanal ? (
-                  <SectionCard title="Omnicanal" icon="💬">
+                  <SectionCard title="Omnicanal" icon={MessageCircle}>
                     {omnicanalWarning ? (
                       <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                         {omnicanalWarning}

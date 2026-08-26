@@ -13,6 +13,7 @@ import {
   isModuleSlugGranted,
   pathRequiresModuleSlug,
 } from "@/lib/modulos/route-slug-map";
+import { AlertTriangle } from "lucide-react";
 
 const PUBLIC_ROUTES = ["/login"];
 
@@ -154,7 +155,7 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center bg-gray-50">
         <div className="zx-surface max-w-md w-full p-8">
-          <div className="text-amber-500 text-4xl mb-3" aria-hidden>⚠</div>
+          <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-amber-500" aria-hidden />
           <h1 className="text-lg font-semibold text-gray-900 mb-2">
             Módulo no habilitado para esta empresa.
           </h1>

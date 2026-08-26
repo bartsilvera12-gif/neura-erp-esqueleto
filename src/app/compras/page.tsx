@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import {
+  Paperclip,
+  Pencil,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getCompras } from "@/lib/compras/storage";
 import { getOrdenesCompra } from "@/lib/ordenes-compra/storage";
@@ -320,7 +323,7 @@ export default function ComprasPage() {
                               onClick={(e) => e.stopPropagation()}
                               className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-[#4FAEB2] hover:text-[#3F8E91] hover:underline"
                             >
-                              📎 Ver comprobante
+                              <Paperclip className="h-3.5 w-3.5" aria-hidden /> Ver comprobante
                             </a>
                           )}
                         </td>

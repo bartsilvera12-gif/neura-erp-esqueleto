@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Users, Calendar, PieChart, DollarSign, Trophy } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  DollarSign,
+  MessageSquare,
+  PieChart,
+  Trophy,
+  User,
+  Users,
+} from "lucide-react";
 import { getProspectos, moveProspecto } from "@/lib/crm/storage";
 import { getEtapas, getEtapaClasses, normalizeEtapaCodigo, type EtapaCrm } from "@/lib/crm/etapas";
 import type { Prospecto } from "@/lib/crm/types";
@@ -126,7 +135,10 @@ function ProspectoCard({
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           {prospecto.notas.length > 0 && (
-            <span className="text-[10px] bg-gray-100 text-gray-500 px-1 py-0.5 rounded">{prospecto.notas.length}💬</span>
+            <span className="inline-flex items-center gap-0.5 rounded bg-gray-100 px-1 py-0.5 text-[10px] text-gray-500">
+                {prospecto.notas.length}
+                <MessageSquare className="h-2.5 w-2.5" aria-hidden />
+              </span>
           )}
           <Link
             href={`/crm/${prospecto.id}`}
@@ -142,10 +154,13 @@ function ProspectoCard({
       </div>
       <p className="text-[10px] text-gray-500 line-clamp-1 mb-0.5">{prospecto.servicio}</p>
       <p className="text-xs font-bold text-gray-900 tabular-nums mb-1">Gs. {prospecto.valor_estimado.toLocaleString("es-PY")}</p>
-      <div className="text-[10px] text-gray-600 truncate mb-1">👤 {prospecto.contacto}</div>
+      <div className="mb-1 flex items-center gap-1 truncate text-[10px] text-gray-600">
+              <User className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="truncate">{prospecto.contacto}</span>
+            </div>
       {prospecto.proxima_accion && (
         <div className="flex items-start gap-0.5 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5 mb-1">
-          <span className="text-amber-500 shrink-0">⏰</span>
+          <Clock className="h-3 w-3 shrink-0 text-amber-500" aria-hidden />
           <p className="text-[10px] text-amber-800 truncate">{prospecto.proxima_accion}</p>
         </div>
       )}

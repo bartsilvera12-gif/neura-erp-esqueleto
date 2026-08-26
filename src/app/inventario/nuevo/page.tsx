@@ -10,6 +10,7 @@ import CrearProveedorModal from "@/components/inventario/CrearProveedorModal";
 import { productoExiste, saveProducto } from "@/lib/inventario/storage";
 import type { MetodoValuacion } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
+import { AlertTriangle } from "lucide-react";
 
 // Opciones estándar de unidad de medida para gastro
 const UNIDADES_OPCIONES = [
@@ -607,7 +608,7 @@ export default function NuevoProductoPage() {
                 {/* Advertencia de pérdida */}
                 {esPerdida && (
                   <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-xs text-red-600">
-                    <span className="mt-0.5 text-base leading-none">⚠</span>
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                     <span>
                       El precio de venta es <strong>menor al costo</strong>. Cada unidad vendida generará una pérdida neta.
                     </span>

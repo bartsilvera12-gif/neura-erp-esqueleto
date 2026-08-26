@@ -12,6 +12,7 @@ import { cleanTelefono, formatTelefonoDisplay, isValidTelefono } from "@/lib/tel
 import type { EtapaCrm } from "@/lib/crm/etapas";
 import type { Plan } from "@/lib/planes/types";
 import { Select } from "@/components/ui/Select";
+import { AlertTriangle } from "lucide-react";
 
 // ── Estilos ────────────────────────────────────────────────────────────────────
 
@@ -367,7 +368,7 @@ export default function NuevoProspectoPage() {
           {/* Error */}
           {error && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              <span>⚠</span>
+              <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
               <span className="font-medium">{error}</span>
             </div>
           )}

@@ -3,6 +3,8 @@
 import MontoInput from "@/components/ui/MontoInput";
 import type { AreaUsuario, NivelUsuario, TipoContrato } from "@/lib/usuarios/types";
 import { Select } from "@/components/ui/Select";
+import { User, Briefcase, ShieldCheck, KeyRound } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 export const usuarioFormLabel =
   "block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1";
@@ -15,17 +17,20 @@ export const usuarioFormSelect =
 
 export function SectionCard({
   title,
-  icon,
+  icon: Icon,
   children,
 }: {
   title: string;
-  icon: string;
+  /** Ícono de lucide-react (el componente, no el elemento). */
+  icon: LucideIcon;
   children: React.ReactNode;
 }) {
   return (
     <section className="zx-surface p-6">
       <div className="flex items-center gap-2 mb-5 pb-2 border-b border-gray-100">
-        <span className="text-base">{icon}</span>
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#4FAEB2]/10 text-[#3F8E91] ring-1 ring-[#4FAEB2]/20">
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
         <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">{title}</h3>
       </div>
       {children}
@@ -127,7 +132,7 @@ export function UsuarioFormFields({
 
   return (
     <>
-      <SectionCard title="Datos personales" icon="👤">
+      <SectionCard title="Datos personales" icon={User}>
         <div className="space-y-4">
           <div>
             <label className={fLabel}>Nombre completo *</label>
@@ -175,7 +180,7 @@ export function UsuarioFormFields({
         </div>
       </SectionCard>
 
-      <SectionCard title="Datos laborales" icon="💼">
+      <SectionCard title="Datos laborales" icon={Briefcase}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -241,7 +246,7 @@ export function UsuarioFormFields({
         </div>
       </SectionCard>
 
-      <SectionCard title="Accesos del sistema" icon="🔐">
+      <SectionCard title="Accesos del sistema" icon={ShieldCheck}>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={fLabel}>Nivel de acceso</label>
@@ -290,7 +295,7 @@ export function UsuarioFormFields({
       {extraSections}
 
       {variant === "create" ? (
-        <SectionCard title="Seguridad" icon="🔑">
+        <SectionCard title="Seguridad" icon={KeyRound}>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={fLabel}>Contraseña *</label>
