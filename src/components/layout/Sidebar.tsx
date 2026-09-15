@@ -122,7 +122,10 @@ const MENU_STRUCTURE: MenuItem[] = [
   },
   { key: "remision", slug: "remision", label: "Remisiones", href: "/notas-remision", icon: Truck },
   { key: "recibos", slug: "recibos", label: "Recibos", href: "/recibos", icon: Receipt },
-  { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown },
+  { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown, children: [
+    { label: "Gastos", href: "/gastos", exactMatch: true },
+    { label: "Cajas chicas por local", href: "/cajas-chicas" },
+  ]},
   { key: "cobros", slug: "cobros", label: "Cobros / Pagos", href: "/pagos", icon: CreditCard, children: [
     { label: "Cobros y pagos", href: "/pagos", exactMatch: true },
     { label: "Movimientos bancarios", href: "/bancos/movimientos" },
