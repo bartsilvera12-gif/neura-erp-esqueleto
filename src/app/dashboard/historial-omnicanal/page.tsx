@@ -4,6 +4,8 @@ import { getChatDataSchemaForCurrentUser } from "@/lib/chat/empresa-chat-schema-
 import { getConversacionesInboxBootstrap } from "@/lib/chat/chat-ops-actions";
 import { ConversacionesClient } from "../conversaciones/ConversacionesClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function HistorialOmnicanalPage() {
   const [chatDataSchema, agentDisplayName, bootstrap] = await Promise.all([
     getChatDataSchemaForCurrentUser(),

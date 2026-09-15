@@ -4,6 +4,8 @@ import { getChatDataSchemaForCurrentUser } from "@/lib/chat/empresa-chat-schema-
 import { getConversacionesInboxBootstrap, type InboxCabeceraInsignia } from "@/lib/chat/chat-ops-actions";
 import { ConversacionesClient, type ConversacionesInitialOperationalPresence } from "./ConversacionesClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function ConversacionesInboxPage() {
   let chatDataSchema = "zentra_erp";
   try {
