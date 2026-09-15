@@ -27,6 +27,7 @@ import {
   UserCog,
   Kanban,
   Settings,
+  BookOpen,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
@@ -128,9 +129,18 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Libro de ventas", href: "/reportes/libro-ventas" },
     { label: "Suscripciones", href: "/reportes/suscripciones" },
   ]},
+  { key: "contabilidad", slug: "contabilidad", label: "Contabilidad", href: "/contabilidad", icon: BookOpen, children: [
+    { label: "Plan de cuentas", href: "/contabilidad/plan-de-cuentas" },
+    { label: "Libro diario", href: "/contabilidad/libro-diario" },
+    { label: "Libro mayor", href: "/contabilidad/libro-mayor" },
+    { label: "Conciliación bancaria", href: "/contabilidad/conciliacion" },
+  ]},
   { key: "crm", slug: "crm", label: "CRM", href: "/crm", icon: Handshake },
   { key: "gestion-clientes", slug: "gestion-clientes", label: "Gestión de clientes", href: "/gestion-clientes", icon: UserCog },
-  { key: "proyectos", slug: "proyectos", label: "Proyectos", href: "/dashboard/proyectos", icon: Kanban },
+  { key: "proyectos", slug: "proyectos", label: "Proyectos", href: "/dashboard/proyectos", icon: Kanban, children: [
+    { label: "Tablero", href: "/dashboard/proyectos", exactMatch: true },
+    { label: "Fondos por proyecto", href: "/dashboard/proyectos/fondos" },
+  ]},
   { key: "configuracion", slug: "configuracion", label: "Configuración", href: "/configuracion", icon: Settings },
 ];
 
@@ -146,6 +156,7 @@ const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos"] },
   { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
   { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
+  { id: "contabilidad", titulo: "Contabilidad", keys: ["contabilidad"] },
   { id: "analisis", titulo: "Análisis", keys: ["reportes"] },
   { id: "admin", titulo: "Administración", keys: ["configuracion"] },
 ];

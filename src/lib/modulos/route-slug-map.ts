@@ -36,6 +36,7 @@ const SIDEBAR_SLUG_HREF_ORDER: { slug: string; href: string }[] = [
   { slug: "sorteos", href: "/sorteos" },
   { slug: "campanas", href: "/dashboard/campanas" },
   { slug: "proyectos", href: "/dashboard/proyectos" },
+  { slug: "contabilidad", href: "/contabilidad" },
 ];
 
 const OMNICANAL_DASHBOARD_SLUGS = [
@@ -161,5 +162,6 @@ export function pathRequiresModuleSlug(pathname: string): string | null {
   if (p.startsWith("/crm")) return "crm";
   if (p.startsWith("/marketing")) return "marketing";
   if (p.startsWith("/sorteos")) return "sorteos";
+  if (p.startsWith("/contabilidad")) return "contabilidad";
   return null;
 }

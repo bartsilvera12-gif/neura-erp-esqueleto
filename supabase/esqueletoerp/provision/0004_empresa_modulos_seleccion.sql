@@ -45,6 +45,8 @@ DECLARE
     'gastos',
     'cobros',              -- pagos a proveedor (ruta /pagos)
     'proyectos',           -- fondos por proyecto
+    -- PDF §4 contabilidad (plan de cuentas, libro diario/mayor, conciliacion)
+    'contabilidad',
     -- Config general
     'configuracion'
   ];
