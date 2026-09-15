@@ -6,13 +6,15 @@ export function GlobalConfigSubpageShell({
   title,
   description,
   children,
+  maxWidthClassName = "max-w-6xl",
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
+  maxWidthClassName?: string;
 }) {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8 px-4 pb-10 pt-2 sm:px-6 lg:px-8">
+    <div className={`mx-auto w-full ${maxWidthClassName} space-y-8 px-4 pb-10 pt-2 sm:px-6 lg:px-8`}>
       <nav className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
         <Link href="/configuracion" className="hover:text-slate-800">
           Configuración Global
