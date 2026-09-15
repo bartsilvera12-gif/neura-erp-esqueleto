@@ -131,7 +131,7 @@ BEGIN
         updated_by                 uuid,
         updated_at                 timestamptz NOT NULL DEFAULT now()
       )
-    $f$, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch);
+    $f$, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch, r.sch);
 
     -- periodos_contables
     EXECUTE format($f$
