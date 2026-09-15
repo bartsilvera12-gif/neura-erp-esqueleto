@@ -510,7 +510,6 @@ export default function InventarioPage() {
                   </span>
                 </th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Stock</th>
-                <th className="py-2.5 pr-4 text-center font-semibold">Valuación</th>
                 <th className="w-32 py-2.5 pl-4 pr-4 text-right font-semibold">Acción</th>
               </tr>
             </thead>
@@ -575,11 +574,6 @@ export default function InventarioPage() {
                       </span>
                       <span className="ml-1 text-[11px] uppercase text-slate-400">{p.unidad_medida}</span>
                       <p className="text-[11px] text-slate-400">mín. {p.stock_minimo}</p>
-                    </td>
-                    <td className="py-3 pr-4 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${metodoBadge[p.metodo_valuacion]}`}>
-                        {p.metodo_valuacion}
-                      </span>
                     </td>
                     <td className="py-3 pl-4 pr-4 text-right">
                       <div className="inline-flex items-center gap-2">

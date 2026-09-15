@@ -161,7 +161,6 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Feriados y ausencias", href: "/rrhh/feriados-ausencias" },
     { label: "Nómina", href: "/rrhh/nomina" },
   ]},
-  { key: "integraciones", slug: "integraciones", label: "Integraciones", href: "/integraciones", icon: Plug },
   { key: "configuracion", slug: "configuracion", label: "Configuración", href: "/configuracion", icon: Settings },
 ];
 
@@ -180,7 +179,6 @@ const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "contabilidad", titulo: "Contabilidad", keys: ["contabilidad"] },
   { id: "rrhh", titulo: "Recursos Humanos", keys: ["rrhh"] },
   { id: "analisis", titulo: "Análisis", keys: ["reportes"] },
-  { id: "integraciones", titulo: "Integraciones", keys: ["integraciones"] },
   { id: "admin", titulo: "Administración", keys: ["configuracion"] },
 ];
 
