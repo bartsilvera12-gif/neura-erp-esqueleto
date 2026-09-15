@@ -13,18 +13,39 @@ export async function GET(request: NextRequest) {
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const empresaId = ctx.auth.empresa_id;
 
-    const { data, error } = await ctx.supabase
-      .from("movimientos_inventario")
-      .select(
-        "id, transferencia_id, producto_id, producto_nombre, producto_sku, tipo, cantidad, costo_unitario, referencia, fecha, observacion, ubicacion_origen_id, ubicacion_destino_id, created_by, usuario_nombre"
-      )
-      .eq("empresa_id", empresaId)
-      .eq("origen", "transferencia")
-      .order("fecha", { ascending: false })
-      .limit(1000);
-    if (error) throw new Error(error.message);
+    // Select tolerante: intentamos con todas las columnas de auditoria; si el
+    // schema no las tiene (created_by / usuario_nombre) reintentamos con el
+    // set minimo. Asi la vista funciona en esqueleto aunque le falte esa
+    // migracion opcional.
+    let data: Array<Record<string, unknown>> | null = null;
+    let selectError: { message: string } | null = null;
+    {
+      const q = await ctx.supabase
+        .from("movimientos_inventario")
+        .select(
+          "id, transferencia_id, producto_id, producto_nombre, producto_sku, tipo, cantidad, costo_unitario, referencia, fecha, observacion, ubicacion_origen_id, ubicacion_destino_id, created_by, usuario_nombre",
+        )
+        .eq("empresa_id", empresaId)
+        .eq("origen", "transferencia")
+        .order("fecha", { ascending: false })
+        .limit(1000);
+      if (!q.error) data = q.data as Array<Record<string, unknown>>;
+      else selectError = q.error;
+    }
+    if (!data) {
+      const q = await ctx.supabase
+        .from("movimientos_inventario")
+        .select(
+          "id, transferencia_id, producto_id, producto_nombre, producto_sku, tipo, cantidad, costo_unitario, referencia, fecha, observacion, ubicacion_origen_id, ubicacion_destino_id",
+        )
+        .eq("empresa_id", empresaId)
+        .eq("origen", "transferencia")
+        .order("fecha", { ascending: false })
+        .limit(1000);
+      if (q.error) throw new Error(q.error.message || selectError?.message || "Error");
+      data = q.data as Array<Record<string, unknown>>;
+    }
 
-    type Row = NonNullable<typeof data>[number];
     const grupos = new Map<
       string,
       {
@@ -42,27 +63,28 @@ export async function GET(request: NextRequest) {
       }
     >();
 
-    for (const m of (data ?? []) as Row[]) {
-      const tid = m.transferencia_id;
+    for (const raw of data ?? []) {
+      const m = raw as Record<string, unknown>;
+      const tid = m.transferencia_id as string | null;
       if (!tid) continue;
       const prev = grupos.get(tid) ?? {
         transferencia_id: tid,
-        referencia: m.referencia ?? null,
-        fecha: m.fecha,
-        producto_id: m.producto_id,
-        producto_nombre: m.producto_nombre,
-        producto_sku: m.producto_sku,
+        referencia: (m.referencia as string | null) ?? null,
+        fecha: String(m.fecha ?? ""),
+        producto_id: String(m.producto_id ?? ""),
+        producto_nombre: String(m.producto_nombre ?? ""),
+        producto_sku: String(m.producto_sku ?? ""),
         cantidad: Number(m.cantidad),
         ubicacion_origen_id: null,
         ubicacion_destino_id: null,
-        observacion: m.observacion ?? null,
-        usuario_nombre: m.usuario_nombre ?? null,
+        observacion: (m.observacion as string | null) ?? null,
+        usuario_nombre: (m.usuario_nombre as string | null) ?? null,
       };
       if (m.tipo === "SALIDA" && m.ubicacion_origen_id) {
-        prev.ubicacion_origen_id = m.ubicacion_origen_id;
+        prev.ubicacion_origen_id = m.ubicacion_origen_id as string;
       }
       if (m.tipo === "ENTRADA" && m.ubicacion_destino_id) {
-        prev.ubicacion_destino_id = m.ubicacion_destino_id;
+        prev.ubicacion_destino_id = m.ubicacion_destino_id as string;
       }
       grupos.set(tid, prev);
     }
