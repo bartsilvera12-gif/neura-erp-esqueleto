@@ -20,23 +20,13 @@ import {
   Wallet,
   Users,
   Truck,
-  PackageOpen,
   Receipt,
   TrendingDown,
   CreditCard,
-  Percent,
-  RotateCcw,
-  MessageSquare,
-  UserCog,
   Handshake,
-  Megaphone,
-  Rocket,
-  Send,
-  Ticket,
+  UserCog,
   Kanban,
   Settings,
-  Layers,
-  ChefHat,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
@@ -127,12 +117,9 @@ const MENU_STRUCTURE: MenuItem[] = [
     ],
   },
   { key: "remision", slug: "remision", label: "Remisiones", href: "/notas-remision", icon: Truck },
-  { key: "recepcion", slug: "recepcion", label: "Recepción", href: "/recepcion", icon: PackageOpen },
   { key: "recibos", slug: "recibos", label: "Recibos", href: "/recibos", icon: Receipt },
-  { key: "notas_credito", slug: "notas_credito", label: "Notas de crédito", href: "/notas-credito", icon: RotateCcw },
   { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown },
   { key: "cobros", slug: "cobros", label: "Cobros / Pagos", href: "/pagos", icon: CreditCard },
-  { key: "comisiones", slug: "comisiones", label: "Comisiones", href: "/comisiones", icon: Percent },
   { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },
   { key: "reportes", slug: "reportes", label: "Reportes", href: "/reportes", icon: BarChart3, children: [
     { label: "Estado de cuenta", href: "/reportes/estado-cuenta" },
@@ -141,23 +128,10 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Libro de ventas", href: "/reportes/libro-ventas" },
     { label: "Suscripciones", href: "/reportes/suscripciones" },
   ]},
-  { key: "conversaciones", slug: "conversaciones", label: "Omnicanal", href: "/dashboard/conversaciones", icon: MessageSquare, children: [
-    { label: "Conversaciones", href: "/dashboard/conversaciones", exactMatch: true },
-    { label: "Historial", href: "/dashboard/historial-omnicanal" },
-    { label: "Finalizadas", href: "/dashboard/conversaciones-finalizadas" },
-    { label: "Monitoreo", href: "/dashboard/monitoreo" },
-  ]},
-  { key: "recetas", slug: "recetas", label: "Recetas", href: "/dashboard/recetas", icon: ChefHat },
   { key: "crm", slug: "crm", label: "CRM", href: "/crm", icon: Handshake },
   { key: "gestion-clientes", slug: "gestion-clientes", label: "Gestión de clientes", href: "/gestion-clientes", icon: UserCog },
-  { key: "marketing", slug: "marketing", label: "Marketing", href: "/marketing", icon: Megaphone },
-  { key: "marketing_ops", slug: "marketing_ops", label: "Marketing Ops", href: "/dashboard/marketing-ops", icon: Rocket },
-  { key: "campanas", slug: "campanas", label: "Campañas WhatsApp", href: "/dashboard/campanas", icon: Send },
-  { key: "sorteos", slug: "sorteos", label: "Sorteos", href: "/sorteos", icon: Ticket },
   { key: "proyectos", slug: "proyectos", label: "Proyectos", href: "/dashboard/proyectos", icon: Kanban },
-  { key: "usuarios", slug: "usuarios", label: "Usuarios", href: "/usuarios", icon: Users },
   { key: "configuracion", slug: "configuracion", label: "Configuración", href: "/configuracion", icon: Settings },
-  { key: "planes", slug: "planes", label: "Planes", href: "/planes", icon: Layers },
 ];
 
 /**
@@ -167,14 +141,13 @@ const MENU_STRUCTURE: MenuItem[] = [
  */
 const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "inicio", titulo: "Inicio", keys: ["dashboard"] },
-  { id: "finanzas", titulo: "Finanzas", keys: ["ventas", "recibos", "cobros", "gastos", "comisiones"] },
-  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision", "recepcion"] },
-  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "notas_credito"] },
-  { id: "omnicanal", titulo: "Omnicanal", keys: ["conversaciones", "recetas"] },
-  { id: "crm-marketing", titulo: "CRM y Marketing", keys: ["crm", "gestion-clientes", "marketing", "marketing_ops", "campanas", "sorteos"] },
+  { id: "finanzas", titulo: "Finanzas", keys: ["ventas", "recibos", "cobros", "gastos"] },
+  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision"] },
+  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos"] },
+  { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
   { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
   { id: "analisis", titulo: "Análisis", keys: ["reportes"] },
-  { id: "admin", titulo: "Administración", keys: ["usuarios", "configuracion", "planes"] },
+  { id: "admin", titulo: "Administración", keys: ["configuracion"] },
 ];
 
 function modulosSyntheticFromMenu(): ModuloEmpresa[] {

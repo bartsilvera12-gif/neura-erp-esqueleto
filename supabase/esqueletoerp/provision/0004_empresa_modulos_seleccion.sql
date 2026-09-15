@@ -22,43 +22,31 @@
 DO $mod$
 DECLARE
   v_empresa_id uuid := '3c14fe00-d466-4f24-a010-1bbd7e37ccd6';
+  -- Alcance segun Requerimientos_Funcionales_Programacion_v2.pdf:
+  --   base 6 + los modulos ya construidos que el documento pide destapar
+  --   (Remisiones, Recibos, Clientes, Gastos, Cobros/Pagos, CRM, Gestion de
+  --   clientes, Proyectos) + Configuracion.
   v_slugs text[] := ARRAY[
     -- Base (6 originales)
     'dashboard',
-    'ventas',                       -- Caja / punto de venta
+    'ventas',              -- Caja / punto de venta
     'inventario',
     'compras',
     'presupuestos',
     'reportes',
-    -- Comercial / documentos
-    'clientes',
-    'remision',                     -- Notas de remision
-    'recepcion',                    -- Recepcion de mercaderia
+    -- PDF §1 documentos comerciales
+    'remision',            -- Notas de remision
     'recibos',
-    'notas_credito',
-    -- Finanzas
-    'gastos',
-    'cobros',                       -- Cuentas por cobrar / pagos a proveedor (ruta /pagos)
-    'comisiones',
-    -- Omnicanal
-    'conversaciones',
-    'historial-omnicanal',
-    'conversaciones-finalizadas',
-    'monitoreo',
-    'recetas',
-    -- CRM / marketing
+    -- PDF §6 CRM + historial por cliente
+    'clientes',
     'crm',
     'gestion-clientes',
-    'marketing',
-    'marketing_ops',
-    'campanas',
-    'sorteos',
-    -- Proyectos
-    'proyectos',
-    -- Administracion
-    'usuarios',
-    'configuracion',
-    'planes'
+    -- PDF §2 caja/fondos
+    'gastos',
+    'cobros',              -- pagos a proveedor (ruta /pagos)
+    'proyectos',           -- fondos por proyecto
+    -- Config general
+    'configuracion'
   ];
   v_faltan text[];
 BEGIN
