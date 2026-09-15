@@ -166,6 +166,7 @@ export function pathRequiresModuleSlug(pathname: string): string | null {
   if (p.startsWith("/contabilidad")) return "contabilidad";
   if (p.startsWith("/rrhh")) return "rrhh";
   if (p.startsWith("/bancos")) return "cobros"; // Movimientos bancarios bajo modulo cobros
+  if (p.startsWith("/tipos-cambio")) return "cobros"; // Multi-moneda tambien vive bajo cobros
   if (p.startsWith("/integraciones")) return "integraciones";
   if (p.startsWith("/cajas-chicas")) return "gastos"; // caja chica es capa de gastos
   if (p.startsWith("/fichar")) return null; // kiosco publico con token

@@ -129,6 +129,7 @@ const MENU_STRUCTURE: MenuItem[] = [
   { key: "cobros", slug: "cobros", label: "Cobros / Pagos", href: "/pagos", icon: CreditCard, children: [
     { label: "Cobros y pagos", href: "/pagos", exactMatch: true },
     { label: "Movimientos bancarios", href: "/bancos/movimientos" },
+    { label: "Tipos de cambio", href: "/tipos-cambio" },
   ]},
   { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },
   { key: "reportes", slug: "reportes", label: "Reportes", href: "/reportes", icon: BarChart3, children: [
