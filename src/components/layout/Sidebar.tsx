@@ -30,6 +30,7 @@ import {
   BookOpen,
   Briefcase,
   Plug,
+  Container,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
@@ -121,6 +122,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     ],
   },
   { key: "remision", slug: "remision", label: "Remisiones", href: "/notas-remision", icon: Truck },
+  { key: "importaciones", slug: "importaciones", label: "Importaciones", href: "/importaciones", icon: Container },
   { key: "recibos", slug: "recibos", label: "Recibos", href: "/recibos", icon: Receipt },
   { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown, children: [
     { label: "Gastos", href: "/gastos", exactMatch: true },
@@ -170,7 +172,7 @@ const MENU_STRUCTURE: MenuItem[] = [
 const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "inicio", titulo: "Inicio", keys: ["dashboard"] },
   { id: "finanzas", titulo: "Finanzas", keys: ["ventas", "recibos", "cobros", "gastos"] },
-  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision"] },
+  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision", "importaciones"] },
   { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos"] },
   { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
   { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
