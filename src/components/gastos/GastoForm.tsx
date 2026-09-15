@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createGasto, updateGasto } from "@/lib/gastos/actions";
 import MontoInput from "@/components/ui/MontoInput";
 import type { Gasto, GastoInput } from "@/lib/gastos/actions";
 import { Select } from "@/components/ui/Select";
+import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { ClipboardList } from "lucide-react";
 
 const fLabel = "block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1";
@@ -30,7 +31,25 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
     recurrente: gasto?.recurrente ?? false,
     frecuencia: gasto?.frecuencia ?? "",
     fecha: gasto?.fecha ?? new Date().toISOString().slice(0, 10),
+    proyecto_id: gasto?.proyecto_id ?? null,
   });
+
+  const [proyectos, setProyectos] = useState<{ id: string; titulo: string }[]>([]);
+
+  useEffect(() => {
+    fetchWithSupabaseSession("/api/proyectos", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`Error ${r.status}`))))
+      .then((j) => {
+        const arr = Array.isArray(j?.data?.proyectos) ? j.data.proyectos : (j?.data ?? []);
+        setProyectos(
+          (arr as Array<Record<string, unknown>>).map((p) => ({
+            id: String(p.id),
+            titulo: String(p.titulo ?? p.nombre ?? "(sin título)"),
+          })),
+        );
+      })
+      .catch(() => setProyectos([]));
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value, type } = e.target;
@@ -163,6 +182,25 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
               className={fInput}
               required
             />
+          </div>
+          <div>
+            <label className={fLabel}>Proyecto (opcional)</label>
+            <Select
+              name="proyecto_id"
+              value={form.proyecto_id ?? ""}
+              onChange={(e) => setForm((prev) => ({ ...prev, proyecto_id: e.target.value || null }))}
+              className={fInput}
+            >
+              <option value="">— Sin proyecto —</option>
+              {proyectos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.titulo}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-slate-500">
+              Cuando el gasto excede la caja chica, imputalo a un proyecto para verlo en Fondos por proyecto.
+            </p>
           </div>
         </div>
       </div>
