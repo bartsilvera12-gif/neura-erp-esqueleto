@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { resolveVendedorScope } from "@/lib/auth/scope-vendedor";
 import type { Venta, LineaVenta, TipoIvaVenta } from "@/lib/ventas/types";
 
 interface VentaRow {
@@ -58,14 +59,23 @@ export async function GET(request: NextRequest) {
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const empresaId = ctx.auth.empresa_id;
 
-    const ventasQ = await ctx.supabase
+    // PDF §1: si no es admin, solo ve las ventas que creó.
+    const scope = await resolveVendedorScope(request);
+
+    let ventasBuilder = ctx.supabase
       .from("ventas")
       .select(
-        "id, empresa_id, numero_control, moneda, tipo_cambio, subtotal, monto_iva, total, tipo_venta, plazo_dias, metodo_pago, fecha"
+        "id, empresa_id, numero_control, moneda, tipo_cambio, subtotal, monto_iva, total, tipo_venta, plazo_dias, metodo_pago, fecha, created_by_user_id"
       )
       .eq("empresa_id", empresaId)
       .order("fecha", { ascending: false })
       .limit(500);
+    if (!scope.esAdmin) {
+      ventasBuilder = scope.userId
+        ? ventasBuilder.eq("created_by_user_id", scope.userId)
+        : ventasBuilder.eq("created_by_user_id", "00000000-0000-0000-0000-000000000000");
+    }
+    const ventasQ = await ventasBuilder;
     if (ventasQ.error) throw new Error(ventasQ.error.message);
 
     const itemsQ = await ctx.supabase

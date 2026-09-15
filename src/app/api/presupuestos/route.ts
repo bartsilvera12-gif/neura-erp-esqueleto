@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth, getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { resolveVendedorScope } from "@/lib/auth/scope-vendedor";
 import { crearPresupuesto, type PresupuestoItemInput } from "@/lib/presupuestos/server/presupuestos-pg";
 
 const PRESU_COLS =
   "id, cliente_id, cliente_nombre, cliente_ruc, cliente_telefono, cliente_direccion, " +
   "numero_control, estado, moneda, subtotal, monto_iva, descuento_total, total, validez_dias, " +
   "fecha, fecha_vencimiento, forma_pago, plazo_entrega, observaciones, " +
-  "convertido_pedido_id, convertido_venta_id, created_at, updated_at";
+  "convertido_pedido_id, convertido_venta_id, created_by_user_id, created_at, updated_at";
 
 function asIva(v: unknown): "EXENTA" | "5%" | "10%" {
   return v === "EXENTA" || v === "5%" || v === "10%" ? v : "10%";
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
     const ctx = await getTenantSupabaseFromAuth(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const estado = new URL(request.url).searchParams.get("estado");
+    const scope = await resolveVendedorScope(request);
     let q = ctx.supabase
       .from("presupuestos")
       .select(PRESU_COLS)
@@ -51,6 +53,11 @@ export async function GET(request: NextRequest) {
       .order("fecha", { ascending: false })
       .limit(500);
     if (estado) q = q.eq("estado", estado);
+    if (!scope.esAdmin) {
+      q = scope.userId
+        ? q.eq("created_by_user_id", scope.userId)
+        : q.eq("created_by_user_id", "00000000-0000-0000-0000-000000000000");
+    }
     const { data, error } = await q;
     if (error) throw new Error(error.message);
     return NextResponse.json(successResponse({ presupuestos: data ?? [] }));
@@ -144,7 +151,7 @@ export async function POST(request: NextRequest) {
       plazo_entrega: body.plazo_entrega ? String(body.plazo_entrega) : null,
       observaciones: body.observaciones ? String(body.observaciones).slice(0, 4000) : null,
       items,
-    });
+    }, ctx.auth.usuarioCatalogId ?? null);
 
     return NextResponse.json(successResponse({ id, numero_control }));
   } catch (err) {

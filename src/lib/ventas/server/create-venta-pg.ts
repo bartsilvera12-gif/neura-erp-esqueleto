@@ -239,6 +239,7 @@ export async function createVentaTransaccionalPg(
       caja_id: cajaIdActual,
       fecha: fechaIso,
       observaciones: params.observaciones,
+      created_by_user_id: params.createdBy ?? null,
     })
     .select("id")
     .single();

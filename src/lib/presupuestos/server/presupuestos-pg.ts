@@ -79,7 +79,8 @@ export async function siguienteNumeroControl(
 export async function crearPresupuesto(
   sb: AppSupabaseClient,
   empresaId: string,
-  input: CrearPresupuestoInput
+  input: CrearPresupuestoInput,
+  createdByUserId: string | null = null,
 ): Promise<{ id: string; numero_control: string }> {
   if (!input.items || input.items.length === 0) {
     throw new Error("El presupuesto debe tener al menos un ítem.");
@@ -132,6 +133,7 @@ export async function crearPresupuesto(
       forma_pago: input.forma_pago?.trim() || null,
       plazo_entrega: input.plazo_entrega?.trim() || null,
       observaciones: input.observaciones?.trim() || null,
+      created_by_user_id: createdByUserId,
     })
     .select("id, numero_control")
     .single();
