@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Esqueleto ERP",
-  description: "Sistema de gestión empresarial Esqueleto ERP",
+  title: "Demo ERP",
+  description: "Sistema de gestión empresarial Demo ERP",
 };
 
 export default function RootLayout({
