@@ -21,6 +21,7 @@ export default function TiposCambioPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Tasa | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,19 +75,20 @@ export default function TiposCambioPage() {
               <th className="px-4 py-3">Par</th>
               <th className="px-4 py-3 text-right">Tasa</th>
               <th className="px-4 py-3">Observación</th>
+              <th className="px-4 py-3 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                   Cargando…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                   Todavía no hay tasas cargadas.
                 </td>
               </tr>
@@ -101,6 +103,30 @@ export default function TiposCambioPage() {
                   {Number(t.tasa).toLocaleString("es-PY")}
                 </td>
                 <td className="px-4 py-3 text-slate-500">{t.observacion ?? "—"}</td>
+                <td className="px-4 py-3 text-right">
+                  <div className="inline-flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(t)}
+                      className="text-xs font-medium text-sky-700 hover:underline"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm(`¿Eliminar la tasa ${t.moneda_origen} → ${t.moneda_destino} del ${t.fecha}?`)) return;
+                        const r = await fetchWithSupabaseSession(`/api/tipos-cambio/${t.id}`, { method: "DELETE" });
+                        const j = await r.json().catch(() => ({}));
+                        if (r.ok && (j as { success?: boolean })?.success !== false) load();
+                        else window.alert((j as { error?: string })?.error ?? "No se pudo eliminar.");
+                      }}
+                      className="text-xs font-medium text-rose-600 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -108,6 +134,7 @@ export default function TiposCambioPage() {
       </div>
 
       {modalOpen && <NuevaTasaModal onClose={() => setModalOpen(false)} onSaved={load} />}
+      {editing && <NuevaTasaModal initial={editing} onClose={() => setEditing(null)} onSaved={load} />}
     </div>
   );
 }
@@ -116,31 +143,43 @@ const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100";
 const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500";
 
-function NuevaTasaModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
-  const [from, setFrom] = useState("USD");
-  const [to, setTo] = useState("PYG");
-  const [tasa, setTasa] = useState("");
-  const [obs, setObs] = useState("");
+function NuevaTasaModal({
+  onClose,
+  onSaved,
+  initial,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+  initial?: Tasa;
+}) {
+  const [fecha, setFecha] = useState(initial?.fecha ?? new Date().toISOString().slice(0, 10));
+  const [from, setFrom] = useState(initial?.moneda_origen ?? "USD");
+  const [to, setTo] = useState(initial?.moneda_destino ?? "PYG");
+  const [tasa, setTasa] = useState(initial ? String(initial.tasa) : "");
+  const [obs, setObs] = useState(initial?.observacion ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEdit = !!initial;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
     try {
-      const r = await fetchWithSupabaseSession("/api/tipos-cambio", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          fecha,
-          moneda_origen: from,
-          moneda_destino: to,
-          tasa: Number(tasa),
-          observacion: obs.trim() || undefined,
-        }),
-      });
+      const r = await fetchWithSupabaseSession(
+        isEdit ? `/api/tipos-cambio/${initial.id}` : "/api/tipos-cambio",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            fecha,
+            moneda_origen: from,
+            moneda_destino: to,
+            tasa: Number(tasa),
+            observacion: obs.trim() || undefined,
+          }),
+        },
+      );
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error ?? `Error ${r.status}`);
       onSaved();
@@ -155,7 +194,7 @@ function NuevaTasaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
       <div className="w-full max-w-md rounded-xl bg-white shadow-lg">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h2 className="text-base font-semibold text-slate-900">Nueva tasa</h2>
+          <h2 className="text-base font-semibold text-slate-900">{isEdit ? "Editar tasa" : "Nueva tasa"}</h2>
           <button onClick={onClose} className="rounded p-1 hover:bg-slate-100">
             <X className="h-4 w-4 text-slate-500" />
           </button>
