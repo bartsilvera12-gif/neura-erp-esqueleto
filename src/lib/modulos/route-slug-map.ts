@@ -165,6 +165,7 @@ export function pathRequiresModuleSlug(pathname: string): string | null {
   if (p.startsWith("/sorteos")) return "sorteos";
   if (p.startsWith("/contabilidad")) return "contabilidad";
   if (p.startsWith("/rrhh")) return "rrhh";
+  if (p.startsWith("/bancos")) return "cobros"; // Movimientos bancarios bajo modulo cobros
   if (p.startsWith("/fichar")) return null; // kiosco publico con token
   return null;
 }
