@@ -28,6 +28,7 @@ import {
   Kanban,
   Settings,
   BookOpen,
+  Briefcase,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
@@ -142,6 +143,13 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Tablero", href: "/dashboard/proyectos", exactMatch: true },
     { label: "Fondos por proyecto", href: "/dashboard/proyectos/fondos" },
   ]},
+  { key: "rrhh", slug: "rrhh", label: "RRHH", href: "/rrhh/empleados", icon: Briefcase, children: [
+    { label: "Empleados", href: "/rrhh/empleados" },
+    { label: "Control horario", href: "/rrhh/control-horario" },
+    { label: "Vacaciones", href: "/rrhh/vacaciones" },
+    { label: "Feriados y ausencias", href: "/rrhh/feriados-ausencias" },
+    { label: "Nómina", href: "/rrhh/nomina" },
+  ]},
   { key: "configuracion", slug: "configuracion", label: "Configuración", href: "/configuracion", icon: Settings },
 ];
 
@@ -158,6 +166,7 @@ const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
   { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
   { id: "contabilidad", titulo: "Contabilidad", keys: ["contabilidad"] },
+  { id: "rrhh", titulo: "Recursos Humanos", keys: ["rrhh"] },
   { id: "analisis", titulo: "Análisis", keys: ["reportes"] },
   { id: "admin", titulo: "Administración", keys: ["configuracion"] },
 ];

@@ -47,6 +47,8 @@ DECLARE
     'proyectos',           -- fondos por proyecto
     -- PDF §4 contabilidad (plan de cuentas, libro diario/mayor, conciliacion)
     'contabilidad',
+    -- PDF §7 Recursos Humanos (portado desde darocha)
+    'rrhh',
     -- Config general
     'configuracion'
   ];

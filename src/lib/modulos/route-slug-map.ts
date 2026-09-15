@@ -37,6 +37,7 @@ const SIDEBAR_SLUG_HREF_ORDER: { slug: string; href: string }[] = [
   { slug: "campanas", href: "/dashboard/campanas" },
   { slug: "proyectos", href: "/dashboard/proyectos" },
   { slug: "contabilidad", href: "/contabilidad" },
+  { slug: "rrhh", href: "/rrhh/empleados" },
 ];
 
 const OMNICANAL_DASHBOARD_SLUGS = [
@@ -163,5 +164,7 @@ export function pathRequiresModuleSlug(pathname: string): string | null {
   if (p.startsWith("/marketing")) return "marketing";
   if (p.startsWith("/sorteos")) return "sorteos";
   if (p.startsWith("/contabilidad")) return "contabilidad";
+  if (p.startsWith("/rrhh")) return "rrhh";
+  if (p.startsWith("/fichar")) return null; // kiosco publico con token
   return null;
 }
