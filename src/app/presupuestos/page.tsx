@@ -2,17 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  AlertTriangle,
-  Check,
-  FileText,
-  Loader2,
-  Lock,
-  Plus,
-} from "lucide-react";
+import { FileText, Plus, Loader2, Lock, ChevronDown } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { ESTADO_LABEL, type EstadoPresupuesto } from "@/lib/presupuestos/types";
-import EstadoSelect from "@/components/presupuestos/EstadoSelect";
+
+/** Estados que el usuario puede elegir manualmente desde el listado (nunca 'convertido'). */
+const ESTADOS_EDITABLES: EstadoPresupuesto[] = ["creado", "enviado", "aprobado", "rechazado"];
 
 type PresupuestoRow = {
   id: string;
@@ -31,6 +26,14 @@ const ESTADO_BADGE: Record<EstadoPresupuesto, string> = {
   rechazado: "bg-red-100 text-red-700",
   convertido: "bg-violet-100 text-violet-700",
 };
+const ESTADO_DOT: Record<EstadoPresupuesto, string> = {
+  creado: "bg-slate-400",
+  enviado: "bg-sky-500",
+  aprobado: "bg-emerald-500",
+  rechazado: "bg-red-500",
+  convertido: "bg-violet-500",
+};
+
 function fmtGs(n: number | string, moneda: string) {
   const v = Number(n) || 0;
   return (moneda === "USD" ? "USD " : "Gs. ") + v.toLocaleString("es-PY", { maximumFractionDigits: moneda === "USD" ? 2 : 0 });
@@ -139,9 +142,7 @@ export default function PresupuestosPage() {
           }`}
           role="status"
         >
-          {toast.tipo === "ok"
-            ? <Check className="mr-1.5 inline h-4 w-4 align-[-3px]" aria-hidden />
-            : <AlertTriangle className="mr-1.5 inline h-4 w-4 align-[-3px]" aria-hidden />}
+          {toast.tipo === "ok" ? "✓ " : "⚠ "}
           {toast.msg}
         </div>
       )}
@@ -180,21 +181,19 @@ export default function PresupuestosPage() {
         <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
       )}
 
-      <div className="zx-surface overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-8 flex items-center gap-2 text-sm text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
           </div>
         ) : filtradas.length === 0 ? (
-          <div className="p-4">
-            <div className="zx-empty px-6 py-10 text-center text-sm text-slate-500">
-              No hay presupuestos {filtro !== "todos" ? `en estado "${ESTADO_LABEL[filtro as EstadoPresupuesto]}"` : "todavía"}.
-            </div>
+          <div className="p-8 text-center text-sm text-gray-500">
+            No hay presupuestos {filtro !== "todos" ? `en estado "${ESTADO_LABEL[filtro as EstadoPresupuesto]}"` : "todavía"}.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="text-xs uppercase text-slate-500">
+              <thead className="bg-slate-50 text-xs uppercase text-gray-500">
                 <tr>
                   <th className="py-3 px-4 font-medium">Número</th>
                   <th className="py-3 px-4 font-medium">Cliente</th>
@@ -206,7 +205,7 @@ export default function PresupuestosPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtradas.map((r) => (
-                  <tr key={r.id} className="zx-row">
+                  <tr key={r.id} className="hover:bg-slate-50">
                     <td className="py-3 px-4 font-mono font-medium text-gray-800">{r.numero_control}</td>
                     <td className="py-3 px-4 text-gray-700">{r.cliente_nombre}</td>
                     <td className="py-3 px-4 text-gray-600">{fmtFecha(r.fecha)}</td>
@@ -220,18 +219,36 @@ export default function PresupuestosPage() {
                           <Lock className="h-3.5 w-3.5" /> {ESTADO_LABEL.convertido}
                         </span>
                       ) : (
-                        <EstadoSelect
-                          value={r.estado}
-                          updating={actualizando.has(r.id)}
-                          onChange={(nuevo) => cambiarEstado(r.id, r.estado, nuevo)}
-                          label={`Estado de ${r.numero_control}`}
-                        />
+                        <div className="relative inline-flex h-8 w-36 items-center">
+                          <span className={`pointer-events-none absolute left-3 h-2 w-2 rounded-full ${ESTADO_DOT[r.estado]}`} aria-hidden />
+                          <select
+                            value={r.estado}
+                            disabled={actualizando.has(r.id)}
+                            onChange={(e) => cambiarEstado(r.id, r.estado, e.target.value as EstadoPresupuesto)}
+                            className={`h-8 w-36 cursor-pointer appearance-none rounded-lg pl-7 pr-7 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#4FAEB2]/40 disabled:opacity-60 ${ESTADO_BADGE[r.estado]}`}
+                            aria-label={`Estado de ${r.numero_control}`}
+                          >
+                            {ESTADOS_EDITABLES.map((s) => (
+                              <option key={s} value={s} className="bg-white text-slate-700">{ESTADO_LABEL[s]}</option>
+                            ))}
+                          </select>
+                          {actualizando.has(r.id) ? (
+                            <Loader2 className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 animate-spin text-current opacity-70" />
+                          ) : (
+                            <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 opacity-70" />
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <Link href={`/presupuestos/${r.id}`} className="text-sm font-medium text-[#4FAEB2] hover:underline">
-                        Ver
-                      </Link>
+                      <div className="inline-flex items-center gap-3">
+                        <Link href={`/presupuestos/${r.id}`} className="text-sm font-medium text-[#4FAEB2] hover:underline">
+                          Ver
+                        </Link>
+                        <Link href={`/presupuestos/${r.id}/editar`} className="text-sm font-medium text-slate-600 hover:underline">
+                          Editar
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

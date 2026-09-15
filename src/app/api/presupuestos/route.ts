@@ -7,7 +7,7 @@ import { crearPresupuesto, type PresupuestoItemInput } from "@/lib/presupuestos/
 const PRESU_COLS =
   "id, cliente_id, cliente_nombre, cliente_ruc, cliente_telefono, cliente_direccion, " +
   "numero_control, estado, moneda, subtotal, monto_iva, descuento_total, total, validez_dias, " +
-  "fecha, fecha_vencimiento, condicion, forma_pago, plazo_entrega, observaciones, " +
+  "fecha, fecha_vencimiento, forma_pago, plazo_entrega, observaciones, " +
   "convertido_pedido_id, convertido_venta_id, created_at, updated_at";
 
 function asIva(v: unknown): "EXENTA" | "5%" | "10%" {
@@ -33,11 +33,6 @@ function parseItems(raw: unknown): PresupuestoItemInput[] | null {
       precio_unitario: precio,
       iva_tipo: asIva(r.iva_tipo),
       descuento: Math.max(0, Number(r.descuento) || 0),
-      // Costo estimado (interno): solo se guarda si vino un número válido.
-      costo_unitario:
-        r.costo_unitario == null || !Number.isFinite(Number(r.costo_unitario))
-          ? null
-          : Math.max(0, Number(r.costo_unitario)),
     });
   }
   return out;
@@ -92,15 +87,59 @@ export async function POST(request: NextRequest) {
         ? null
         : Math.max(0, parseInt(String(validezRaw), 10) || 0) || null;
 
+    // Auto-alta de cliente cuando se escribe a mano (sin seleccionar del catalogo).
+    // - Si el RUC coincide con uno existente, se linkea (evita duplicados).
+    // - Si no, se crea un nuevo cliente con los datos del presupuesto.
+    let clienteId: string | null = body.cliente_id ? String(body.cliente_id) : null;
+    const rucInput = body.cliente_ruc ? String(body.cliente_ruc).trim() : "";
+    const telInput = body.cliente_telefono ? String(body.cliente_telefono).trim() : "";
+    const dirInput = body.cliente_direccion ? String(body.cliente_direccion).trim() : "";
+    if (!clienteId) {
+      if (rucInput) {
+        const { data: existente } = await ctx.supabase
+          .from("clientes")
+          .select("id")
+          .eq("empresa_id", ctx.auth.empresa_id)
+          .eq("ruc", rucInput)
+          .maybeSingle();
+        if (existente?.id) clienteId = String(existente.id);
+      }
+      if (!clienteId) {
+        const nombreCreador =
+          (typeof ctx.auth.nombre === "string" ? ctx.auth.nombre.trim() : "") ||
+          (typeof ctx.auth.user?.email === "string" ? ctx.auth.user.email.trim() : "") ||
+          null;
+        const { data: nuevo, error: eNuevo } = await ctx.supabase
+          .from("clientes")
+          .insert([{
+            empresa_id: ctx.auth.empresa_id,
+            created_by_user_id: ctx.auth.user.id,
+            created_by_nombre: nombreCreador,
+            tipo_cliente: "empresa",
+            nombre: clienteNombre,
+            nombre_contacto: clienteNombre,
+            ruc: rucInput || null,
+            telefono: telInput || null,
+            direccion: dirInput || null,
+            moneda_preferida: body.moneda === "USD" ? "USD" : "GS",
+            estado: "activo",
+            usa_nota_remision: false,
+          }])
+          .select("id")
+          .single();
+        if (eNuevo) throw new Error(`No se pudo crear el cliente: ${eNuevo.message}`);
+        clienteId = String(nuevo.id);
+      }
+    }
+
     const { id, numero_control } = await crearPresupuesto(ctx.supabase, ctx.auth.empresa_id, {
-      cliente_id: body.cliente_id ? String(body.cliente_id) : null,
+      cliente_id: clienteId,
       cliente_nombre: clienteNombre,
       cliente_ruc: body.cliente_ruc ? String(body.cliente_ruc) : null,
       cliente_telefono: body.cliente_telefono ? String(body.cliente_telefono) : null,
       cliente_direccion: body.cliente_direccion ? String(body.cliente_direccion) : null,
       moneda: body.moneda === "USD" ? "USD" : "PYG",
       validez_dias: validez,
-      condicion: body.condicion === "credito" ? "credito" : "contado",
       forma_pago: body.forma_pago ? String(body.forma_pago) : null,
       plazo_entrega: body.plazo_entrega ? String(body.plazo_entrega) : null,
       observaciones: body.observaciones ? String(body.observaciones).slice(0, 4000) : null,

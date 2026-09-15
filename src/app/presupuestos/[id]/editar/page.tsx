@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileText, ArrowLeft, Plus, Trash2, Loader2 } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
@@ -9,20 +9,8 @@ import SelectFromList from "@/components/inventario/SelectFromList";
 import ClienteBuscador, { type ClienteBuscadorItem } from "@/components/clientes/ClienteBuscador";
 import { calcMontoIvaIncluido, type IvaTipoPresupuesto } from "@/lib/presupuestos/types";
 
-type ProductoLite = {
-  id: string;
-  nombre: string;
-  sku: string;
-  precio_venta: number;
-  unidad_medida: string;
-};
-type ClienteLite = {
-  id: string;
-  nombre: string;
-  ruc: string | null;
-  telefono: string | null;
-  direccion: string | null;
-};
+type ProductoLite = { id: string; nombre: string; sku: string; precio_venta: number; unidad_medida: string; };
+type ClienteLite = { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; };
 type Item = {
   producto_id: string | null;
   producto_nombre: string;
@@ -37,9 +25,7 @@ type Item = {
 function fmtGs(n: number) {
   return "Gs. " + (Number(n) || 0).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 }
-function round2(n: number) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
+function round2(n: number) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 function itemTotals(it: Item) {
   const bruto = (Number(it.precio_unitario) || 0) * (Number(it.cantidad) || 0);
   const total = Math.max(0, bruto - (Number(it.descuento) || 0));
@@ -51,117 +37,130 @@ const IVAS: IvaTipoPresupuesto[] = ["10%", "5%", "EXENTA"];
 const labelClass = "block text-xs font-medium text-gray-600 mb-1";
 const inputClass = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm";
 
-export default function NuevoPresupuestoPage() {
+export default function EditarPresupuestoPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const presupuestoId = params?.id ?? "";
+
   const [productos, setProductos] = useState<ProductoLite[]>([]);
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
 
-  // Cliente
+  const [numeroControl, setNumeroControl] = useState("");
   const [clienteId, setClienteId] = useState("");
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteRuc, setClienteRuc] = useState("");
   const [clienteTel, setClienteTel] = useState("");
   const [clienteDir, setClienteDir] = useState("");
 
-  // Items
   const [items, setItems] = useState<Item[]>([]);
   const [selProd, setSelProd] = useState("");
 
-  // Condiciones
   const [validezDias, setValidezDias] = useState("15");
   const [formaPago, setFormaPago] = useState("");
   const [plazoEntrega, setPlazoEntrega] = useState("");
   const [observaciones, setObservaciones] = useState("");
 
+  const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bloqueado, setBloqueado] = useState<string | null>(null);
+  // El presupuesto ya se convirtio en pedido: se puede editar igual, pero el
+  // pedido generado conserva los valores con los que se creo.
+  const [yaConvertido, setYaConvertido] = useState(false);
 
+  // Cargar productos y clientes
   useEffect(() => {
     fetchWithSupabaseSession("/api/productos", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
         if (j?.success) {
           const list = (j.data?.productos ?? []) as Record<string, unknown>[];
-          setProductos(
-            list
-              .filter((p) => p.es_vendible !== false)
-              .map((p) => ({
-                id: String(p.id),
-                nombre: String(p.nombre),
-                sku: String(p.sku ?? ""),
-                precio_venta: Number(p.precio_venta) || 0,
-                unidad_medida: String(p.unidad_medida ?? "UNIDAD"),
-              }))
-          );
+          setProductos(list.filter((p) => p.es_vendible !== false).map((p) => ({
+            id: String(p.id), nombre: String(p.nombre), sku: String(p.sku ?? ""),
+            precio_venta: Number(p.precio_venta) || 0, unidad_medida: String(p.unidad_medida ?? "UNIDAD"),
+          })));
         }
-      })
-      .catch(() => {});
+      }).catch(() => {});
     fetchWithSupabaseSession("/api/clientes", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
         if (j?.success && Array.isArray(j.data)) {
           const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
-          setClientes(
-            (j.data as Record<string, unknown>[]).map((r) => ({
-              id: String(r.id),
-              nombre: s(r.empresa) || s(r.nombre_contacto) || s(r.nombre) || "Cliente",
-              ruc: s(r.ruc) || null,
-              telefono: s(r.telefono) || null,
-              direccion: s(r.direccion) || null,
-            }))
-          );
+          setClientes((j.data as Record<string, unknown>[]).map((r) => ({
+            id: String(r.id),
+            nombre: s(r.empresa) || s(r.nombre_contacto) || s(r.nombre) || "Cliente",
+            ruc: s(r.ruc) || null, telefono: s(r.telefono) || null, direccion: s(r.direccion) || null,
+          })));
         }
-      })
-      .catch(() => {});
+      }).catch(() => {});
   }, []);
+
+  // Cargar presupuesto existente
+  useEffect(() => {
+    if (!presupuestoId) return;
+    (async () => {
+      try {
+        const r = await fetchWithSupabaseSession(`/api/presupuestos/${presupuestoId}`, { cache: "no-store" });
+        const j = await r.json();
+        if (!r.ok || !j?.success) { setError(j?.error ?? "No se pudo cargar el presupuesto."); setCargando(false); return; }
+        const p = j.data.presupuesto as Record<string, unknown>;
+        const its = (j.data.items ?? []) as Record<string, unknown>[];
+        // Un presupuesto convertido se puede editar: los cambios quedan en el
+        // presupuesto y NO vuelven a convertirlo ni tocan el pedido ya generado.
+        if (p.estado === "convertido") {
+          setYaConvertido(true);
+        }
+        setNumeroControl(String(p.numero_control ?? ""));
+        setClienteId(p.cliente_id ? String(p.cliente_id) : "");
+        setClienteNombre(String(p.cliente_nombre ?? ""));
+        setClienteRuc(String(p.cliente_ruc ?? ""));
+        setClienteTel(String(p.cliente_telefono ?? ""));
+        setClienteDir(String(p.cliente_direccion ?? ""));
+        setValidezDias(p.validez_dias ? String(p.validez_dias) : "");
+        setFormaPago(String(p.forma_pago ?? ""));
+        setPlazoEntrega(String(p.plazo_entrega ?? ""));
+        setObservaciones(String(p.observaciones ?? ""));
+        setItems(its.map((it) => ({
+          producto_id: it.producto_id ? String(it.producto_id) : null,
+          producto_nombre: String(it.producto_nombre ?? ""),
+          sku: it.sku ? String(it.sku) : null,
+          cantidad: Number(it.cantidad) || 0,
+          unidad_medida: it.unidad_medida ? String(it.unidad_medida) : null,
+          precio_unitario: Number(it.precio_unitario) || 0,
+          iva_tipo: (it.iva_tipo === "5%" || it.iva_tipo === "EXENTA" ? it.iva_tipo : "10%") as IvaTipoPresupuesto,
+          descuento: Number(it.descuento) || 0,
+        })));
+        setCargando(false);
+      } catch {
+        setError("Error de red cargando el presupuesto.");
+        setCargando(false);
+      }
+    })();
+  }, [presupuestoId]);
 
   function seleccionarCliente(id: string) {
     setClienteId(id);
     const c = clientes.find((x) => x.id === id);
     if (c) {
-      setClienteNombre(c.nombre);
-      setClienteRuc(c.ruc ?? "");
-      setClienteTel(c.telefono ?? "");
-      setClienteDir(c.direccion ?? "");
+      setClienteNombre(c.nombre); setClienteRuc(c.ruc ?? ""); setClienteTel(c.telefono ?? ""); setClienteDir(c.direccion ?? "");
     }
   }
-
   function agregarProducto() {
     const p = productos.find((x) => x.id === selProd);
     if (!p) return;
     if (items.some((it) => it.producto_id === p.id)) return;
-    setItems((prev) => [
-      ...prev,
-      {
-        producto_id: p.id,
-        producto_nombre: p.nombre,
-        sku: p.sku || null,
-        cantidad: 1,
-        unidad_medida: p.unidad_medida,
-        precio_unitario: p.precio_venta,
-        iva_tipo: "10%",
-        descuento: 0,
-      },
-    ]);
+    setItems((prev) => [...prev, {
+      producto_id: p.id, producto_nombre: p.nombre, sku: p.sku || null,
+      cantidad: 1, unidad_medida: p.unidad_medida, precio_unitario: p.precio_venta, iva_tipo: "10%", descuento: 0,
+    }]);
     setSelProd("");
   }
-
   function agregarManual() {
-    setItems((prev) => [
-      ...prev,
-      {
-        producto_id: null,
-        producto_nombre: "",
-        sku: null,
-        cantidad: 1,
-        unidad_medida: null,
-        precio_unitario: 0,
-        iva_tipo: "10%",
-        descuento: 0,
-      },
-    ]);
+    setItems((prev) => [...prev, {
+      producto_id: null, producto_nombre: "", sku: null,
+      cantidad: 1, unidad_medida: null, precio_unitario: 0, iva_tipo: "10%", descuento: 0,
+    }]);
   }
-
   function updItem(i: number, patch: Partial<Item>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   }
@@ -170,16 +169,10 @@ export default function NuevoPresupuestoPage() {
   }
 
   const totales = useMemo(() => {
-    let subtotal = 0,
-      iva = 0,
-      desc = 0,
-      total = 0;
+    let subtotal = 0, iva = 0, desc = 0, total = 0;
     for (const it of items) {
       const t = itemTotals(it);
-      subtotal += t.subtotal;
-      iva += t.iva;
-      total += t.total;
-      desc += Number(it.descuento) || 0;
+      subtotal += t.subtotal; iva += t.iva; total += t.total; desc += Number(it.descuento) || 0;
     }
     return { subtotal: round2(subtotal), iva: round2(iva), desc: round2(desc), total: round2(total) };
   }, [items]);
@@ -194,8 +187,8 @@ export default function NuevoPresupuestoPage() {
     setGuardando(true);
     setError(null);
     try {
-      const res = await fetchWithSupabaseSession("/api/presupuestos", {
-        method: "POST",
+      const res = await fetchWithSupabaseSession(`/api/presupuestos/${presupuestoId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cliente_id: clienteId || null,
@@ -225,7 +218,7 @@ export default function NuevoPresupuestoPage() {
         setError(body?.error ?? "No se pudo guardar el presupuesto.");
         return;
       }
-      router.push(`/presupuestos/${body.data.id}`);
+      router.push(`/presupuestos/${presupuestoId}`);
     } catch {
       setError("Error de red al guardar el presupuesto.");
     } finally {
@@ -233,16 +226,45 @@ export default function NuevoPresupuestoPage() {
     }
   }
 
+  if (cargando) {
+    return (
+      <div className="space-y-4">
+        <Link href="/presupuestos" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+          <ArrowLeft className="h-4 w-4" /> Volver a presupuestos
+        </Link>
+        <p className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">Cargando presupuesto…</p>
+      </div>
+    );
+  }
+
+  if (bloqueado) {
+    return (
+      <div className="space-y-4">
+        <Link href={`/presupuestos/${presupuestoId}`} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+          <ArrowLeft className="h-4 w-4" /> Volver
+        </Link>
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{bloqueado}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <Link href="/presupuestos" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
-        <ArrowLeft className="h-4 w-4" /> Volver a presupuestos
+      <Link href={`/presupuestos/${presupuestoId}`} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+        <ArrowLeft className="h-4 w-4" /> Volver a {numeroControl || "presupuesto"}
       </Link>
 
       <div className="flex items-center gap-3">
         <FileText className="h-7 w-7 text-[#4FAEB2]" />
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Nuevo presupuesto</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Editar {numeroControl}</h1>
       </div>
+
+      {yaConvertido && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Este presupuesto ya fue convertido en pedido. Podés corregirlo y guardarlo: los cambios quedan
+          en el presupuesto y <strong>no</strong> generan otro pedido ni modifican el que ya se creó.
+        </div>
+      )}
 
       {error && <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
 
@@ -261,9 +283,7 @@ export default function NuevoPresupuestoPage() {
                 setClienteTel(c.telefono ?? "");
                 setClienteDir(c.direccion ?? "");
               }}
-              onClear={() => {
-                setClienteId("");
-              }}
+              onClear={() => setClienteId("")}
               label="Cliente existente (opcional)"
             />
             <p className="mt-1 text-[11px] text-gray-400">O completá los campos de abajo manualmente si es un cliente nuevo.</p>
@@ -297,8 +317,7 @@ export default function NuevoPresupuestoPage() {
               value={selProd || null}
               onChange={(v) => setSelProd(v ?? "")}
               placeholder="— Buscá un producto por nombre o SKU —"
-              options={productos
-                .filter((p) => !items.some((it) => it.producto_id === p.id))
+              options={productos.filter((p) => !items.some((it) => it.producto_id === p.id))
                 .map((p) => ({ id: p.id, label: p.nombre, sublabel: p.sku || undefined }))}
             />
           </div>
@@ -380,11 +399,11 @@ export default function NuevoPresupuestoPage() {
           </div>
           <div>
             <label className={labelClass}>Forma de pago</label>
-            <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} className={inputClass} placeholder="Ej: 50% anticipo, saldo contra entrega" />
+            <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Plazo de entrega</label>
-            <input value={plazoEntrega} onChange={(e) => setPlazoEntrega(e.target.value)} className={inputClass} placeholder="Ej: 5 días hábiles" />
+            <input value={plazoEntrega} onChange={(e) => setPlazoEntrega(e.target.value)} className={inputClass} />
           </div>
           <div className="sm:col-span-3">
             <label className={labelClass}>Observaciones</label>
@@ -394,11 +413,11 @@ export default function NuevoPresupuestoPage() {
       </div>
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-        <Link href="/presupuestos" className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+        <Link href={`/presupuestos/${presupuestoId}`} className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
           Cancelar
         </Link>
         <button onClick={guardar} disabled={!valido || guardando} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#4FAEB2] px-5 py-2 text-sm font-medium text-white hover:bg-[#3F8E91] disabled:opacity-50">
-          {guardando ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando…</> : "Guardar presupuesto"}
+          {guardando ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando…</> : "Guardar cambios"}
         </button>
       </div>
     </div>

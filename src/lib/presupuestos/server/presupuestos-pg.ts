@@ -1,5 +1,5 @@
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
-import { calcMontoIvaIncluido, type IvaTipoPresupuesto, type CondicionPresupuesto } from "@/lib/presupuestos/types";
+import { calcMontoIvaIncluido, type IvaTipoPresupuesto } from "@/lib/presupuestos/types";
 
 /** Item crudo que llega del cliente; los totales se recalculan en el server. */
 export interface PresupuestoItemInput {
@@ -11,11 +11,6 @@ export interface PresupuestoItemInput {
   precio_unitario: number;
   iva_tipo: IvaTipoPresupuesto;
   descuento: number;
-  /**
-   * Costo estimado por unidad (repuestos + mano de obra), para ver el margen del
-   * trabajo antes de cerrarlo. Es interno: no se muestra en el PDF del cliente.
-   */
-  costo_unitario?: number | null;
 }
 
 export interface CrearPresupuestoInput {
@@ -26,7 +21,6 @@ export interface CrearPresupuestoInput {
   cliente_direccion: string | null;
   moneda: string;
   validez_dias: number | null;
-  condicion: CondicionPresupuesto;
   forma_pago: string | null;
   plazo_entrega: string | null;
   observaciones: string | null;
@@ -135,7 +129,6 @@ export async function crearPresupuesto(
       validez_dias: input.validez_dias ?? null,
       fecha: fechaIso,
       fecha_vencimiento: vencimiento,
-      condicion: input.condicion === "credito" ? "credito" : "contado",
       forma_pago: input.forma_pago?.trim() || null,
       plazo_entrega: input.plazo_entrega?.trim() || null,
       observaciones: input.observaciones?.trim() || null,
@@ -159,10 +152,6 @@ export async function crearPresupuesto(
     monto_iva: calc.monto_iva,
     descuento: calc.descuento,
     total: calc.total,
-    costo_unitario:
-      raw.costo_unitario == null || !Number.isFinite(Number(raw.costo_unitario))
-        ? null
-        : Math.max(0, Number(raw.costo_unitario)),
   }));
   const insItems = await sb.from("presupuesto_items").insert(itemsRows);
   if (insItems.error) {
@@ -238,14 +227,30 @@ export async function convertirEnPedido(
   const estadoId = (estadoQ.data as { id: string }).id;
 
   const fechaIso = new Date().toISOString();
-  const itemsSnapshot = items.map((it) => ({
-    producto_id: it.producto_id,
-    producto_nombre: it.producto_nombre,
-    sku: it.sku,
-    cantidad: Number(it.cantidad),
-    precio_venta: Number(it.precio_unitario),
-    total_linea: Number(it.total),
-  }));
+  // Snapshot de items para el pedido. `precio_venta` va NETO de descuento (precio
+  // unitario efectivo) porque caja recalcula el total como cantidad x precio_venta:
+  // si guardabamos el precio de lista, el descuento del presupuesto se perdia al
+  // pasar el pedido a caja. Se conservan `precio_lista`, `descuento` e `iva_tipo`
+  // para poder mostrar el descuento y respetar el IVA original.
+  const itemsSnapshot = items.map((it) => {
+    const cantidad = Number(it.cantidad) || 0;
+    const precioLista = Number(it.precio_unitario) || 0;
+    const descuento = Math.max(0, Number(it.descuento) || 0);
+    const precioNeto = cantidad > 0 && descuento > 0
+      ? Math.max(0, (cantidad * precioLista - descuento) / cantidad)
+      : precioLista;
+    return {
+      producto_id: it.producto_id,
+      producto_nombre: it.producto_nombre,
+      sku: it.sku,
+      cantidad,
+      precio_venta: precioNeto,
+      precio_lista: precioLista,
+      descuento,
+      iva_tipo: it.iva_tipo ?? "10%",
+      total_linea: Number(it.total),
+    };
+  });
 
   const titulo = `Pedido desde ${String(p.numero_control)} · ${String(p.cliente_nombre)}`.slice(0, 200);
 
