@@ -255,3 +255,25 @@ export async function editarCompra(
     return { ok: false, error: e instanceof Error ? e.message : "Error de conexión." };
   }
 }
+
+export interface CuentaContableOpcion {
+  id: string;
+  cuenta: string;
+  denominacion: string;
+}
+
+/** Cuentas activas + asentables para el selector contable (plan-cuentas/opciones). */
+export async function getCuentasContablesOpciones(): Promise<CuentaContableOpcion[]> {
+  try {
+    const r = await fetch("/api/plan-cuentas/opciones", { credentials: "include", cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.success) {
+      console.error("[compras] getCuentasContablesOpciones:", (j as { error?: string })?.error ?? r.status);
+      return [];
+    }
+    return ((j.data as { cuentas?: CuentaContableOpcion[] }).cuentas ?? []) as CuentaContableOpcion[];
+  } catch (e) {
+    console.error("[compras] getCuentasContablesOpciones:", e);
+    return [];
+  }
+}
