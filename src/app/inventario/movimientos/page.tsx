@@ -18,6 +18,7 @@ const origenLabel: Record<OrigenMovimiento, string> = {
   venta: "Venta",
   ajuste_manual: "Ajuste manual",
   inventario_inicial: "Inventario inicial",
+  transferencia: "Transferencia",
 };
 
 const origenBadge: Record<OrigenMovimiento, string> = {
@@ -25,6 +26,7 @@ const origenBadge: Record<OrigenMovimiento, string> = {
   venta: "bg-white text-slate-600 ring-1 ring-slate-200",
   ajuste_manual: "bg-white text-slate-500 ring-1 ring-slate-200",
   inventario_inicial: "bg-white text-slate-500 ring-1 ring-slate-200",
+  transferencia: "bg-white text-[#3F8E91] ring-1 ring-[#4FAEB2]/35",
 };
 
 function formatGs(valor: number) {
