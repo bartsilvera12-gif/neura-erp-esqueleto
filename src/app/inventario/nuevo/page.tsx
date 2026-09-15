@@ -723,10 +723,9 @@ export default function NuevoProductoPage() {
                 </div>
               </div>
 
-              {/* Ubicación principal — oculta en instancia Esqueleto ERP (no aplica para gastronomía).
-                  Lógica/state preservados; submit envía ubicacionId que queda en null por defecto. */}
-              <div className="hidden md:col-span-4 min-w-0">
-                <label className={labelClass}>Ubicación principal</label>
+              {/* Depósito / Ubicación principal — visible; el submit envía ubicacionId. */}
+              <div className="md:col-span-4 min-w-0">
+                <label className={labelClass}>Depósito / Ubicación</label>
                 <SelectFromList
                   value={ubicacionId}
                   onChange={setUbicacionId}
