@@ -135,7 +135,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Plan de cuentas", href: "/contabilidad/plan-de-cuentas" },
     { label: "Libro diario", href: "/contabilidad/libro-diario" },
     { label: "Libro mayor", href: "/contabilidad/libro-mayor" },
-    { label: "Conciliación bancaria", href: "/contabilidad/conciliacion" },
+    { label: "Configuración contable", href: "/contabilidad/configuracion" },
   ]},
   { key: "crm", slug: "crm", label: "CRM", href: "/crm", icon: Handshake },
   { key: "gestion-clientes", slug: "gestion-clientes", label: "Gestión de clientes", href: "/gestion-clientes", icon: UserCog },
