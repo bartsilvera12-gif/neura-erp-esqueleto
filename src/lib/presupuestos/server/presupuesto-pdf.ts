@@ -102,6 +102,7 @@ function wrap(t: string, f: PDFFont, size: number, max: number): string[] {
 /** Logo de la instancia. Devuelve los bytes y el formato para embeberlo. */
 function logoBytes(): { bytes: Uint8Array; tipo: "png" | "jpg" } | null {
   const candidatos: { archivo: string; tipo: "png" | "jpg" }[] = [
+    { archivo: "zentra-logo-official.png", tipo: "png" },
     { archivo: "esqueleto-logo.png", tipo: "png" },
     { archivo: "esqueleto-logo.jpeg", tipo: "jpg" },
   ];

@@ -23,7 +23,15 @@ export async function GET(request: NextRequest) {
       origen: origen === "manual" || origen === "suscripcion" ? origen : undefined,
       tipo: tipo === "factura" || tipo === "nota_credito" ? tipo : undefined,
     };
-    const rows = await listLibroVentas(schema, auth.empresaId, filters);
+    // Si la query falla porque el schema no tiene facturas o SIFEN configurado,
+    // devolvemos igual un Excel vacio con los headers, en vez de 500.
+    let rows: LibroVentaRow[] = [];
+    try {
+      rows = await listLibroVentas(schema, auth.empresaId, filters);
+    } catch (e) {
+      console.warn("[libro-ventas export] listLibroVentas fallo, devolviendo vacio:", e instanceof Error ? e.message : e);
+      rows = [];
+    }
     const totals = computeTotals(rows);
 
     const totalsRow: LibroVentaRow = {
