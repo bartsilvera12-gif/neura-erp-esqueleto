@@ -229,11 +229,12 @@ export async function GET(request: NextRequest) {
     };
     const buildVentasQ = () => {
       const base = supabase.from("ventas").select("*").eq("empresa_id", empresaId);
-      return range ? base.gte("fecha", range.desde).lte("fecha", range.hasta) : base;
+      // hasta incluye todo el dia (fecha en 'ventas' es timestamptz con hora)
+      return range ? base.gte("fecha", range.desde).lte("fecha", `${range.hasta}T23:59:59.999Z`) : base;
     };
     const buildComprasQ = () => {
       const base = supabase.from("compras").select("*").eq("empresa_id", empresaId);
-      return range ? base.gte("fecha", range.desde).lte("fecha", range.hasta) : base;
+      return range ? base.gte("fecha", range.desde).lte("fecha", `${range.hasta}T23:59:59.999Z`) : base;
     };
     const buildGastosQ = () => {
       const base = supabase.from("gastos").select("id, monto, fecha").eq("empresa_id", empresaId);

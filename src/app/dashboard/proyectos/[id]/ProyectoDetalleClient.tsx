@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import ProyectoDetalleInner from "../components/ProyectoDetalleInner";
 
-export default function ProyectoDetalleClient({ params }: { params: Promise<{ id: string }> }) {
+export default function ProyectoDetalleClient({
+  params,
+  dataSchema,
+}: {
+  params: Promise<{ id: string }>;
+  dataSchema: string;
+}) {
   const [id, setId] = useState<string>("");
 
   useEffect(() => {
@@ -12,5 +18,5 @@ export default function ProyectoDetalleClient({ params }: { params: Promise<{ id
 
   if (!id) return null;
 
-  return <ProyectoDetalleInner projectId={id} variant="page" />;
+  return <ProyectoDetalleInner projectId={id} variant="page" dataSchema={dataSchema} />;
 }
