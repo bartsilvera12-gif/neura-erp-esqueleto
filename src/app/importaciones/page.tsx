@@ -85,19 +85,20 @@ export default function ImportacionesPage() {
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3 text-right">Monto</th>
               <th className="px-4 py-3">Fechas</th>
+              <th className="px-4 py-3 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   Cargando…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   No hay importaciones. Creá una para arrancar.
                 </td>
               </tr>
@@ -122,6 +123,34 @@ export default function ImportacionesPage() {
                 <td className="px-4 py-3 text-xs text-slate-500">
                   <div>Pedido: {imp.fecha_pedido ?? "—"}</div>
                   <div>Arribo: {imp.fecha_arribo ?? "—"}</div>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="inline-flex items-center gap-3">
+                    <Link
+                      href={`/importaciones/${imp.id}`}
+                      className="text-xs font-medium text-sky-700 hover:underline"
+                    >
+                      Editar
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm(`¿Eliminar la importación ${imp.numero}? Se borran también sus ítems y movimientos de caja.`)) return;
+                        const r = await fetchWithSupabaseSession(`/api/importaciones/${imp.id}`, {
+                          method: "DELETE",
+                        });
+                        const j = await r.json().catch(() => ({}));
+                        if (r.ok && (j as { success?: boolean })?.success !== false) {
+                          load();
+                        } else {
+                          window.alert((j as { error?: string })?.error ?? "No se pudo eliminar.");
+                        }
+                      }}
+                      className="text-xs font-medium text-rose-600 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

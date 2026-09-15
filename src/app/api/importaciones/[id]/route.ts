@@ -83,3 +83,25 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
     );
   }
 }
+
+export async function DELETE(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await ctxParams.params;
+    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    // Los items y caja tienen ON DELETE CASCADE — se borran solos con la importacion.
+    const { error } = await ctx.supabase
+      .from("importaciones")
+      .delete()
+      .eq("empresa_id", ctx.auth.empresa_id)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return NextResponse.json(successResponse({ id }));
+  } catch (err) {
+    console.error("[/api/importaciones/:id DELETE]", err);
+    return NextResponse.json(
+      errorResponse(err instanceof Error ? err.message : "No se pudo eliminar la importación."),
+      { status: 500 },
+    );
+  }
+}
