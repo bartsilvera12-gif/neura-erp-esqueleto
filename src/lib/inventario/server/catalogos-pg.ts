@@ -130,6 +130,7 @@ export interface UbicacionRow {
   parent_id: string | null;
   descripcion: string | null;
   activo: boolean;
+  pais: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -144,7 +145,7 @@ export async function listUbicaciones(
   const where = ["empresa_id = $1::uuid"];
   if (opts.soloActivas !== false) where.push("activo = true");
   const { rows } = await pool().query<UbicacionRow>(
-    `SELECT id, empresa_id, nombre, codigo, tipo, parent_id, descripcion, activo, created_at, updated_at
+    `SELECT id, empresa_id, nombre, codigo, tipo, parent_id, descripcion, activo, pais, created_at, updated_at
        FROM ${t} WHERE ${where.join(" AND ")} ORDER BY nombre`,
     [empresaId]
   );
