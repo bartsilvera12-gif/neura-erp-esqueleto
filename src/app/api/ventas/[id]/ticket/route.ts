@@ -18,7 +18,7 @@ import { membreteTicket } from "@/lib/documentos/membrete";
  * No toca SIFEN, no genera XML, no usa timbrado.
  */
 
-const NEGOCIO = "ESQUELETO ERP";
+const NEGOCIO = "DEMO ERP";
 
 // ── Clasificación PIZZERÍA / PLANCHA ───────────────────────────────────────
 // Primary: categoría hija del producto. Fallback: prefijo de SKU.

@@ -6,13 +6,13 @@
  */
 
 export const EMPRESA_DOC = {
-  nombre: "ESQUELETO ERP",
+  nombre: "DEMO ERP",
   actividad: [] as string[],
   telefono: "",
   email: "",
   direccion: [] as string[],
   /** Logo del cliente. Servido desde /public. */
-  logoUrl: "/brand/esqueleto-logo.png",
+  logoUrl: "/brand/zentra-logo-official.png",
 };
 
 function esc(v: unknown): string {

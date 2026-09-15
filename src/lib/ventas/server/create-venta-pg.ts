@@ -165,7 +165,7 @@ export async function createVentaTransaccionalPg(
     const p = stockMap.get(pid)!;
     if (!p.controlaStock) continue;
     if (p.stock < need) {
-      throw new Error(`Stock insuficiente para "${p.nombre}". Disponible: ${p.stock} u.; requerido: ${need}.`);
+      throw new Error(`Stock insuficiente de "${p.nombre}". Disponible: ${p.stock}. Ingresá un valor menor o igual.`);
     }
   }
 

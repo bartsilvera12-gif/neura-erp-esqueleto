@@ -147,3 +147,30 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     return NextResponse.json(errorResponse("No se pudo actualizar el proveedor."), { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest, ctxP: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await ctxP.params;
+    const ctx = await getTenantSupabaseFromAuth(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    const { error } = await ctx.supabase
+      .from("proveedores")
+      .delete()
+      .eq("empresa_id", ctx.auth.empresa_id)
+      .eq("id", id);
+    if (error) {
+      const msg = String(error.message ?? "");
+      if (msg.includes("foreign key") || msg.includes("violates")) {
+        return NextResponse.json(
+          errorResponse("El proveedor tiene compras u órdenes asociadas. Marcalo como inactivo en vez de eliminarlo."),
+          { status: 400 },
+        );
+      }
+      throw new Error(msg);
+    }
+    return NextResponse.json(successResponse({ id }));
+  } catch (err) {
+    console.error("[/api/proveedores/[id] DELETE]", err instanceof Error ? err.message : err);
+    return NextResponse.json(errorResponse("No se pudo eliminar el proveedor."), { status: 500 });
+  }
+}

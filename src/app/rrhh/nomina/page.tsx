@@ -71,7 +71,7 @@ export default function NominaPage() {
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
             <Link href="/rrhh/nomina/recibos"
               className="rounded-lg bg-[#4FAEB2] px-3 py-2 text-sm font-semibold text-white hover:bg-[#3F9EA2]">
-              Recibos PDF
+              + Nuevo recibo
             </Link>
           </div>
         }

@@ -1440,8 +1440,9 @@ export default function NuevaVentaPage() {
                           {/* Precio unitario editable */}
                           <td className="px-3 py-2.5 text-right">
                             <input
-                              type="number" min={0} value={item.precio_venta}
+                              type="number" min={0} step={1} value={item.precio_venta || ""}
                               onChange={(e) => updateItemCampo(idx, { precio_venta: Math.max(0, Number(e.target.value) || 0), precio_venta_original: Math.max(0, Number(e.target.value) || 0), precio_manual: true })}
+                              onFocus={(e) => e.target.select()}
                               className="zx-surface h-8 w-28 rounded-md px-2 text-right text-sm tabular-nums"
                             />
                           </td>

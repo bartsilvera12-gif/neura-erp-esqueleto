@@ -52,7 +52,10 @@ export async function GET(request: NextRequest) {
         .eq("estado", "aprobada"),
     ]);
     if (empQ.error) return NextResponse.json(errorResponse(empQ.error.message), { status: 400 });
-    if (asigQ.error) return NextResponse.json(errorResponse(asigQ.error.message), { status: 400 });
+    // Tolerar la ausencia de empleado_asignaciones (tabla propia de instancias
+    // con módulo Proyectos+Obras completo). En esqueleto no existe.
+    const asigMissing = !!asigQ.error && /schema cache|does not exist|no such table/i.test(String(asigQ.error.message ?? ""));
+    if (asigQ.error && !asigMissing) return NextResponse.json(errorResponse(asigQ.error.message), { status: 400 });
     if (fichQ.error) return NextResponse.json(errorResponse(fichQ.error.message), { status: 400 });
     if (vacQ.error) return NextResponse.json(errorResponse(vacQ.error.message), { status: 400 });
 

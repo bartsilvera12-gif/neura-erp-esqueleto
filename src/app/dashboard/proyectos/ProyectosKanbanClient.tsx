@@ -480,7 +480,7 @@ export default function ProyectosKanbanClient() {
           <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Pedidos</h1>
           <p className="mt-0.5 text-xs text-slate-500">Tablero de cocina — pedidos por modalidad y estado.</p>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           <input
             className="w-72 rounded-md border border-slate-200 px-3 py-1.5 text-sm"
             placeholder="Buscar título o cliente…"
@@ -488,6 +488,12 @@ export default function ProyectosKanbanClient() {
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void load()}
           />
+          <a
+            href="/dashboard/proyectos/nuevo"
+            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
+          >
+            + Nuevo proyecto
+          </a>
         </div>
       </div>
 

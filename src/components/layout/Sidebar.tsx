@@ -136,6 +136,7 @@ const MENU_STRUCTURE: MenuItem[] = [
   { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },
   { key: "reportes", slug: "reportes", label: "Reportes", href: "/reportes", icon: BarChart3, children: [
     { label: "Estado de cuenta", href: "/reportes/estado-cuenta" },
+    { label: "Cuentas por cobrar", href: "/reportes/cuentas-por-cobrar" },
     { label: "Cuentas por pagar", href: "/reportes/cuentas-por-pagar" },
     { label: "Libro de compras", href: "/reportes/libro-compras" },
     { label: "Libro de ventas", href: "/reportes/libro-ventas" },

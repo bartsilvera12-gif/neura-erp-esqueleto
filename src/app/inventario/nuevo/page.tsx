@@ -245,7 +245,14 @@ export default function NuevoProductoPage() {
       // Validaciones básicas en JS (HTML5 desactivado con noValidate).
       const nombreT = form.nombre.trim();
       if (!nombreT) { showErr("El nombre es obligatorio."); return; }
-      if (!form.sku.trim()) { showErr("El SKU es obligatorio."); return; }
+      // SKU: si el usuario lo dejó vacío, generamos uno automático (SKU-<epoch base36 último 4><rand 3>).
+      if (!form.sku.trim()) {
+        const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
+        const ts = Date.now().toString(36).slice(-4).toUpperCase();
+        const autoSku = `SKU-${ts}${rand}`;
+        setForm((prev) => ({ ...prev, sku: autoSku }));
+        form.sku = autoSku;
+      }
 
       const codigoEnInput = form.codigo_barras.trim();
       const esIntManual = !!codigoEnInput && /^INT-/i.test(codigoEnInput) && !codigoGeneradoInterno;
@@ -441,15 +448,25 @@ export default function NuevoProductoPage() {
             <div>
               <label className={labelClass}>
                 SKU
+                <button
+                  type="button"
+                  onClick={() => {
+                    const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
+                    const ts = Date.now().toString(36).slice(-4).toUpperCase();
+                    setForm((prev) => ({ ...prev, sku: `SKU-${ts}${rand}` }));
+                  }}
+                  className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 hover:bg-emerald-100"
+                >
+                  Generar
+                </button>
               </label>
               <input
                 type="text"
                 name="sku"
                 value={form.sku}
                 onChange={handleChange}
-                placeholder="Ej: OOTD-001"
+                placeholder="Ej: OOTD-001 — o dejá vacío para autogenerar"
                 className={`${inputClass} uppercase`}
-                required
               />
             </div>
 

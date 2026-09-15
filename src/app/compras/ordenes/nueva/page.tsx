@@ -8,6 +8,7 @@ import ProveedorPicker from "@/components/proveedores/ProveedorPicker";
 import { saveOrdenCompra, type OrdenItemPayload } from "@/lib/ordenes-compra/storage";
 import { uploadComprobante } from "@/lib/compras/storage";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
+import { formatComprobante } from "@/lib/text/format-comprobante";
 import type { TipoIva, TipoPago, Moneda } from "@/lib/compras/types";
 import { parseCantidad, pasoCantidad, minimoCantidad, clampCantidad, permiteDecimales } from "@/lib/productos/unidades";
 import { FancySelect } from "@/components/ui/FancySelect";
@@ -276,11 +277,11 @@ export default function NuevaOrdenCompraPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600">N° de timbrado <span className="font-normal text-slate-400">(opcional)</span></label>
-              <input value={cab.nro_timbrado} onChange={(e) => setCab((p) => ({ ...p, nro_timbrado: e.target.value }))} placeholder="Ej: 001-001-0000001" className={inputClass} />
+              <input value={cab.nro_timbrado} onChange={(e) => setCab((p) => ({ ...p, nro_timbrado: formatComprobante(e.target.value) }))} placeholder="Ej: 001-001-0000001" className={inputClass} maxLength={15} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600">N° de factura <span className="font-normal text-slate-400">(opcional)</span></label>
-              <input value={cab.numero_factura} onChange={(e) => setCab((p) => ({ ...p, numero_factura: e.target.value }))} placeholder="Ej: 001-001-0000123" className={inputClass} />
+              <input value={cab.numero_factura} onChange={(e) => setCab((p) => ({ ...p, numero_factura: formatComprobante(e.target.value) }))} placeholder="Ej: 001-001-0000123" className={inputClass} maxLength={15} />
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-semibold text-slate-600">Comprobante / presupuesto <span className="font-normal text-slate-400">(opcional)</span></label>
@@ -448,8 +449,9 @@ export default function NuevaOrdenCompraPage() {
                         </div>
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <input type="number" min={0} value={l.costo_input}
+                        <input type="number" min={0} step={1} value={l.costo_input || ""}
                           onChange={(e) => updateLinea(l.producto_id, { costo_input: Math.max(0, Number(e.target.value) || 0) })}
+                          onFocus={(e) => e.target.select()}
                           className="h-8 w-28 rounded-md border border-slate-200 px-2 text-right text-sm tabular-nums" />
                       </td>
                       <td className="px-3 py-3">

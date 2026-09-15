@@ -134,12 +134,30 @@ export default function ProveedoresPage() {
                       </span>
                     </td>
                     <td className="py-3">
-                      <Link
-                        href={`/proveedores/${p.id}/editar`}
-                        className="text-sm font-medium text-sky-600 hover:underline"
-                      >
-                        Editar
-                      </Link>
+                      <div className="inline-flex items-center gap-3">
+                        <Link
+                          href={`/proveedores/${p.id}/editar`}
+                          className="text-sm font-medium text-sky-600 hover:underline"
+                        >
+                          Editar
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!window.confirm(`¿Eliminar "${p.nombre}"? Esta acción no se puede deshacer.`)) return;
+                            const r = await fetch(`/api/proveedores/${p.id}`, { method: "DELETE", credentials: "include" });
+                            const j = await r.json().catch(() => ({}));
+                            if (r.ok && (j as { success?: boolean })?.success !== false) {
+                              setRefreshKey((k) => k + 1);
+                            } else {
+                              window.alert((j as { error?: string })?.error ?? "No se pudo eliminar.");
+                            }
+                          }}
+                          className="text-sm font-medium text-rose-600 hover:underline"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

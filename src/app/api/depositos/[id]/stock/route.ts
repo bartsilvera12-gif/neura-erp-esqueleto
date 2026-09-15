@@ -39,15 +39,29 @@ export async function GET(
     if (prodQ.error) throw new Error(prodQ.error.message);
     const productos = (prodQ.data ?? []) as Array<{ id: string; nombre: string; sku: string | null; unidad_medida: string | null; controla_stock: boolean | null }>;
 
+    // La tabla correcta en esqueleto es `inventario_stock_ubicacion` y la columna `stock_actual`.
+    // Fallback: si el schema no tiene stock por ubicación, usar stock_actual del producto.
+    let stockMap = new Map<string, number>();
     const stockQ = await supabase
-      .from("productos_stock_ubicacion")
-      .select("producto_id, stock")
+      .from("inventario_stock_ubicacion")
+      .select("producto_id, stock_actual")
       .eq("empresa_id", auth.empresa_id)
       .eq("ubicacion_id", ubicacionId);
-    if (stockQ.error) throw new Error(stockQ.error.message);
-    const stockMap = new Map<string, number>();
-    for (const r of (stockQ.data ?? []) as Array<{ producto_id: string; stock: number }>) {
-      stockMap.set(r.producto_id, Number(r.stock) || 0);
+    if (!stockQ.error) {
+      for (const r of (stockQ.data ?? []) as Array<{ producto_id: string; stock_actual: number }>) {
+        stockMap.set(r.producto_id, Number(r.stock_actual) || 0);
+      }
+    } else {
+      // Fallback al stock global del producto.
+      const stockAll = await supabase
+        .from("productos")
+        .select("id, stock_actual")
+        .eq("empresa_id", auth.empresa_id);
+      if (!stockAll.error) {
+        stockMap = new Map(
+          ((stockAll.data ?? []) as Array<{ id: string; stock_actual: number }>).map((r) => [r.id, Number(r.stock_actual) || 0]),
+        );
+      }
     }
 
     let items = productos.map((p) => ({

@@ -91,6 +91,34 @@ export default function UbicacionesPage() {
     else setError(j?.error ?? "No se pudo actualizar.");
   }
 
+  async function editar(u: Ubicacion) {
+    const nombre = window.prompt("Nuevo nombre", u.nombre);
+    if (nombre === null) return;
+    const codigo = window.prompt("Código (opcional)", u.codigo ?? "");
+    const patch: Record<string, unknown> = { nombre: nombre.trim() };
+    if (codigo !== null) patch.codigo = codigo.trim() || null;
+    const r = await fetch(`/api/inventario/ubicaciones/${u.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(patch),
+    });
+    const j = await r.json();
+    if (r.ok && j?.success) load();
+    else setError(j?.error ?? "No se pudo actualizar.");
+  }
+
+  async function eliminar(u: Ubicacion) {
+    if (!window.confirm(`¿Eliminar "${u.nombre}"? Esta acción no se puede deshacer.`)) return;
+    const r = await fetch(`/api/inventario/ubicaciones/${u.id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && (j as { success?: boolean })?.success !== false) load();
+    else setError((j as { error?: string })?.error ?? "No se pudo eliminar.");
+  }
+
   return (
     <div className="space-y-8">
       <div className="space-y-4">
@@ -215,12 +243,26 @@ export default function UbicacionesPage() {
                       )}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <button
-                        onClick={() => toggleActivo(u)}
-                        className="text-xs text-sky-700 hover:text-sky-900 underline"
-                      >
-                        {u.activo ? "Desactivar" : "Activar"}
-                      </button>
+                      <div className="inline-flex items-center gap-3">
+                        <button
+                          onClick={() => editar(u)}
+                          className="text-xs text-sky-700 hover:text-sky-900 underline"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => toggleActivo(u)}
+                          className="text-xs text-slate-600 hover:text-slate-900 underline"
+                        >
+                          {u.activo ? "Desactivar" : "Activar"}
+                        </button>
+                        <button
+                          onClick={() => eliminar(u)}
+                          className="text-xs text-rose-600 hover:text-rose-800 underline"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

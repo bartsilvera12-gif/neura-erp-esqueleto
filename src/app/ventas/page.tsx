@@ -381,15 +381,34 @@ export default function VentasPage() {
                         {formatFecha(v.fecha)}
                       </td>
                       <td className="py-4 text-center align-middle">
-                        <a
-                          href={`/api/ventas/${v.id}/ticket`}
-                          target="_blank"
-                          rel="noopener"
-                          className="zx-surface zx-surface-interactive inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                          title="Abrir comandas + ticket cliente"
-                        >
-                          Imprimir
-                        </a>
+                        <div className="inline-flex items-center gap-1.5">
+                          <a
+                            href={`/api/ventas/${v.id}/ticket`}
+                            target="_blank"
+                            rel="noopener"
+                            className="zx-surface zx-surface-interactive inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                            title="Abrir comandas + ticket cliente"
+                          >
+                            Imprimir
+                          </a>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm(`¿Eliminar la venta ${v.numero_control}? Se anulará y se repondrá el stock.`)) return;
+                              const r = await fetch(`/api/ventas/${v.id}`, { method: "DELETE", credentials: "include" });
+                              const j = await r.json().catch(() => ({}));
+                              if (r.ok && (j as { success?: boolean })?.success !== false) {
+                                window.location.reload();
+                              } else {
+                                window.alert((j as { error?: string })?.error ?? "No se pudo eliminar.");
+                              }
+                            }}
+                            className="inline-flex items-center justify-center rounded-md px-2 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                            title="Eliminar venta (repone stock)"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

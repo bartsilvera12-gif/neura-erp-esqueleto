@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { normalizeUpperText, normalizeUpperCodigoBarras } from "@/lib/text/normalize";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
+import { signProductoImagen } from "@/lib/inventario/imagen-storage";
 
 /**
  * GET/POST de productos via PostgREST (sin pool PG directo) — compatible Hostinger.
@@ -59,7 +60,19 @@ export async function GET(request: NextRequest) {
       .order("nombre");
     if (error) throw new Error(error.message);
     const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map(rowToApi);
-    return NextResponse.json(successResponse({ productos: rows }));
+    // Firma URLs de imagen para el listado (mismo patrón que /search).
+    const withImgs = await Promise.all(
+      rows.map(async (r) => {
+        if (!r.imagen_path) return r;
+        try {
+          const url = await signProductoImagen(ctx.supabase, r.imagen_path as string, 3600);
+          return { ...r, imagen_url: url ?? r.imagen_url ?? null };
+        } catch {
+          return r;
+        }
+      }),
+    );
+    return NextResponse.json(successResponse({ productos: withImgs }));
   } catch (err) {
     console.error("[/api/productos GET]", err instanceof Error ? err.message : err);
     return NextResponse.json(errorResponse("No se pudieron cargar los productos."), { status: 500 });

@@ -31,3 +31,34 @@ export async function PATCH(
     return NextResponse.json(errorResponse("No se pudo actualizar la ubicación."), { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  ctxParams: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await ctxParams.params;
+    const ctx = await getTenantSupabaseFromAuth(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    const { error } = await ctx.supabase
+      .from("inventario_ubicaciones")
+      .delete()
+      .eq("empresa_id", ctx.auth.empresa_id)
+      .eq("id", id);
+    if (error) {
+      // FK violation → devolver mensaje amigable
+      const msg = String(error.message ?? "");
+      if (msg.includes("foreign key") || msg.includes("violates")) {
+        return NextResponse.json(
+          errorResponse("La ubicación tiene productos o stock asociado. Desactivala en vez de eliminarla."),
+          { status: 400 },
+        );
+      }
+      throw new Error(msg);
+    }
+    return NextResponse.json(successResponse({ id }));
+  } catch (err) {
+    console.error("[/api/inventario/ubicaciones/[id] DELETE]", err);
+    return NextResponse.json(errorResponse("No se pudo eliminar la ubicación."), { status: 500 });
+  }
+}
