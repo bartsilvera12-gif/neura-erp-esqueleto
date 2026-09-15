@@ -18,6 +18,25 @@ import {
   Search,
   BarChart3,
   Wallet,
+  Users,
+  Truck,
+  PackageOpen,
+  Receipt,
+  TrendingDown,
+  CreditCard,
+  Percent,
+  RotateCcw,
+  MessageSquare,
+  UserCog,
+  Handshake,
+  Megaphone,
+  Rocket,
+  Send,
+  Ticket,
+  Kanban,
+  Settings,
+  Layers,
+  ChefHat,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
@@ -72,20 +91,23 @@ function adminEmpresasMatchesQuery(queryRaw: string): boolean {
 /**
  * Menú de la instancia Esqueleto ERP.
  *
- * Alcance acotado a los módulos habilitados para este ERP:
- *   Dashboard · Caja · Inventario · Compras · Presupuestos · Reportes
+ * Alcance ampliado: además de los 6 módulos base (Dashboard · Caja · Inventario ·
+ * Compras · Presupuestos · Reportes) se reactivaron los módulos ya construidos
+ * en el repo (clientes, remisiones, recepción, recibos, gastos, cobros/pagos,
+ * comisiones, notas de crédito, omnicanal, CRM, marketing, sorteos, proyectos,
+ * usuarios, configuración, planes).
  *
- * El código del resto de los módulos (ventas, clientes, gastos, recibos, notas de
- * crédito, omnicanal, usuarios, configuración…) sigue en el repo pero NO se lista
- * acá y `empresa_modulos` tampoco los habilita, por lo que sus rutas quedan
- * bloqueadas por AuthGuard (`strictAllowlist` con NEURA_INSTANCE_MODE=single_client).
- * Para reactivar uno: agregar su entrada acá + su slug en `empresa_modulos`.
+ * El acceso real depende de `empresa_modulos` — cada slug listado acá debe estar
+ * activo en la tabla para que un usuario no-super-admin lo vea (allowlist estricta
+ * cuando NEURA_INSTANCE_MODE=single_client). Ver:
+ *   supabase/esqueletoerp/provision/0004_empresa_modulos_seleccion.sql
  */
 const MENU_STRUCTURE: MenuItem[] = [
   { key: "dashboard", slug: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
   // Caja = el modulo Ventas del ERP (punto de venta / caja registradora). Se reusa
   // la vista /ventas tal cual viene de Instemaq; solo cambia la etiqueta del menu.
   { key: "ventas", slug: "ventas", label: "Caja", href: "/ventas", icon: Wallet },
+  { key: "clientes", slug: "clientes", label: "Clientes", href: "/clientes", icon: Users },
   { key: "inventario", slug: "inventario", label: "Inventario", href: "/inventario", icon: Package, children: [
     { label: "Productos", href: "/inventario" },
     { label: "Movimientos", href: "/inventario/movimientos" },
@@ -104,6 +126,13 @@ const MENU_STRUCTURE: MenuItem[] = [
       { label: "Proveedores", href: "/proveedores" },
     ],
   },
+  { key: "remision", slug: "remision", label: "Remisiones", href: "/notas-remision", icon: Truck },
+  { key: "recepcion", slug: "recepcion", label: "Recepción", href: "/recepcion", icon: PackageOpen },
+  { key: "recibos", slug: "recibos", label: "Recibos", href: "/recibos", icon: Receipt },
+  { key: "notas_credito", slug: "notas_credito", label: "Notas de crédito", href: "/notas-credito", icon: RotateCcw },
+  { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown },
+  { key: "cobros", slug: "cobros", label: "Cobros / Pagos", href: "/pagos", icon: CreditCard },
+  { key: "comisiones", slug: "comisiones", label: "Comisiones", href: "/comisiones", icon: Percent },
   { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },
   { key: "reportes", slug: "reportes", label: "Reportes", href: "/reportes", icon: BarChart3, children: [
     { label: "Estado de cuenta", href: "/reportes/estado-cuenta" },
@@ -112,6 +141,23 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Libro de ventas", href: "/reportes/libro-ventas" },
     { label: "Suscripciones", href: "/reportes/suscripciones" },
   ]},
+  { key: "conversaciones", slug: "conversaciones", label: "Omnicanal", href: "/dashboard/conversaciones", icon: MessageSquare, children: [
+    { label: "Conversaciones", href: "/dashboard/conversaciones", exactMatch: true },
+    { label: "Historial", href: "/dashboard/historial-omnicanal" },
+    { label: "Finalizadas", href: "/dashboard/conversaciones-finalizadas" },
+    { label: "Monitoreo", href: "/dashboard/monitoreo" },
+  ]},
+  { key: "recetas", slug: "recetas", label: "Recetas", href: "/dashboard/recetas", icon: ChefHat },
+  { key: "crm", slug: "crm", label: "CRM", href: "/crm", icon: Handshake },
+  { key: "gestion-clientes", slug: "gestion-clientes", label: "Gestión de clientes", href: "/gestion-clientes", icon: UserCog },
+  { key: "marketing", slug: "marketing", label: "Marketing", href: "/marketing", icon: Megaphone },
+  { key: "marketing_ops", slug: "marketing_ops", label: "Marketing Ops", href: "/dashboard/marketing-ops", icon: Rocket },
+  { key: "campanas", slug: "campanas", label: "Campañas WhatsApp", href: "/dashboard/campanas", icon: Send },
+  { key: "sorteos", slug: "sorteos", label: "Sorteos", href: "/sorteos", icon: Ticket },
+  { key: "proyectos", slug: "proyectos", label: "Proyectos", href: "/dashboard/proyectos", icon: Kanban },
+  { key: "usuarios", slug: "usuarios", label: "Usuarios", href: "/usuarios", icon: Users },
+  { key: "configuracion", slug: "configuracion", label: "Configuración", href: "/configuracion", icon: Settings },
+  { key: "planes", slug: "planes", label: "Planes", href: "/planes", icon: Layers },
 ];
 
 /**
@@ -121,10 +167,14 @@ const MENU_STRUCTURE: MenuItem[] = [
  */
 const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "inicio", titulo: "Inicio", keys: ["dashboard"] },
-  { id: "finanzas", titulo: "Finanzas", keys: ["ventas"] },
-  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras"] },
-  { id: "comercial", titulo: "Comercial", keys: ["presupuestos"] },
+  { id: "finanzas", titulo: "Finanzas", keys: ["ventas", "recibos", "cobros", "gastos", "comisiones"] },
+  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision", "recepcion"] },
+  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "notas_credito"] },
+  { id: "omnicanal", titulo: "Omnicanal", keys: ["conversaciones", "recetas"] },
+  { id: "crm-marketing", titulo: "CRM y Marketing", keys: ["crm", "gestion-clientes", "marketing", "marketing_ops", "campanas", "sorteos"] },
+  { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
   { id: "analisis", titulo: "Análisis", keys: ["reportes"] },
+  { id: "admin", titulo: "Administración", keys: ["usuarios", "configuracion", "planes"] },
 ];
 
 function modulosSyntheticFromMenu(): ModuloEmpresa[] {
