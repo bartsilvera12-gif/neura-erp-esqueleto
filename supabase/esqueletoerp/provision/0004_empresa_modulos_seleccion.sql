@@ -33,6 +33,7 @@ DECLARE
     'inventario',
     'compras',
     'presupuestos',
+    'facturas_exportacion',  -- Living Room: Autoimpresor timbrado 19025402
     'reportes',
     -- PDF §1 documentos comerciales
     'remision',            -- Notas de remision

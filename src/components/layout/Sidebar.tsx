@@ -134,6 +134,11 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Tipos de cambio", href: "/tipos-cambio" },
   ]},
   { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },
+  { key: "facturas_exportacion", slug: "facturas_exportacion", label: "Facturas de Exportación", href: "/facturas-exportacion", icon: FileText, children: [
+    { label: "Emitidas", href: "/facturas-exportacion", exactMatch: true },
+    { label: "Nueva factura", href: "/facturas-exportacion/nueva" },
+    { label: "Regularización", href: "/facturas-exportacion/regularizacion" },
+  ]},
   { key: "reportes", slug: "reportes", label: "Reportes", href: "/reportes", icon: BarChart3, children: [
     { label: "Estado de cuenta", href: "/reportes/estado-cuenta" },
     { label: "Cuentas por cobrar", href: "/reportes/cuentas-por-cobrar" },
@@ -173,7 +178,7 @@ const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "inicio", titulo: "Inicio", keys: ["dashboard"] },
   { id: "finanzas", titulo: "Finanzas", keys: ["ventas", "recibos", "cobros", "gastos"] },
   { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision", "importaciones"] },
-  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos"] },
+  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "facturas_exportacion"] },
   { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
   { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
   { id: "contabilidad", titulo: "Contabilidad", keys: ["contabilidad"] },

@@ -11,6 +11,7 @@ const SIDEBAR_SLUG_HREF_ORDER: { slug: string; href: string }[] = [
   { slug: "inventario", href: "/inventario" },
   { slug: "compras", href: "/compras" },
   { slug: "presupuestos", href: "/presupuestos" },
+  { slug: "facturas_exportacion", href: "/facturas-exportacion" },
   { slug: "reportes", href: "/reportes" },
   // Resto del catálogo (no habilitado en esta instancia; se conserva por compatibilidad).
   { slug: "conversaciones", href: "/dashboard/conversaciones" },
