@@ -134,8 +134,8 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Tipos de cambio", href: "/tipos-cambio" },
   ]},
   { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },
-  { key: "facturas_exportacion", slug: "facturas_exportacion", label: "Facturas de Exportación", href: "/facturas-exportacion", icon: FileText, children: [
-    { label: "Emitidas", href: "/facturas-exportacion", exactMatch: true },
+  { key: "facturas_exportacion", slug: "facturas_exportacion", label: "Facturación", href: "/facturas-exportacion", icon: FileText, children: [
+    { label: "Facturas", href: "/facturas-exportacion", exactMatch: true },
     { label: "Nueva factura", href: "/facturas-exportacion/nueva" },
     { label: "Regularización", href: "/facturas-exportacion/regularizacion" },
   ]},

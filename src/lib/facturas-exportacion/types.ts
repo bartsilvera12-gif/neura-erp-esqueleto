@@ -1,4 +1,7 @@
+import type { TipoFactura } from "./config";
+
 export type FacturaExportacionEstado = "EMITIDA" | "ANULADA";
+export type IvaTipo = "EXENTA" | "5" | "10";
 
 export interface FacturaExportacionItem {
   id?: string;
@@ -8,12 +11,14 @@ export interface FacturaExportacionItem {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
+  iva_tipo?: IvaTipo;
   orden?: number;
 }
 
 export interface FacturaExportacion {
   id: string;
   empresa_id: string;
+  tipo: TipoFactura;
   establecimiento: string;
   punto_expedicion: string;
   timbrado: string;
@@ -25,9 +30,24 @@ export interface FacturaExportacion {
   cliente_nombre: string;
   cliente_documento?: string | null;
   cliente_direccion?: string | null;
+  cliente_ciudad?: string | null;
+  cliente_telefono?: string | null;
   cliente_pais: string;
+  condicion_venta: "CONTADO" | "CREDITO";
+  nota_remision?: string | null;
+  tipo_operacion?: string | null;
+  condicion_negociacion?: string | null;
+  agente_transporte?: string | null;
+  barcaza?: string | null;
+  empresa_fletera?: string | null;
+  conocimiento?: string | null;
   subtotal: number;
   total: number;
+  total_exentas: number;
+  total_gravado5: number;
+  total_gravado10: number;
+  iva5: number;
+  iva10: number;
   observaciones?: string | null;
   estado: FacturaExportacionEstado;
   motivo_anulacion?: string | null;
@@ -39,39 +59,10 @@ export interface FacturaExportacion {
   items?: FacturaExportacionItem[];
 }
 
-export interface FacturaExportacionConfig {
-  id: string;
-  empresa_id: string;
-  establecimiento: string;
-  punto_expedicion: string;
+export interface FacturaConfigFiscal {
   timbrado: string;
   vigencia_desde: string;
   vigencia_hasta: string;
-  rango_desde: number;
-  rango_hasta: number;
-  proximo_numero: number;
-  activo: boolean;
-}
-
-export interface EmitirFacturaExportacionInput {
-  establecimiento: string;
-  punto_expedicion: string;
-  fecha?: string;
-  moneda: string;
-  tipo_cambio: number;
-  cliente_nombre: string;
-  cliente_documento?: string | null;
-  cliente_direccion?: string | null;
-  cliente_pais: string;
-  observaciones?: string | null;
-  items: Array<{
-    producto_id?: string | null;
-    descripcion: string;
-    cantidad: number;
-    precio_unitario: number;
-  }>;
-}
-
-export interface RegularizarFacturaExportacionInput extends EmitirFacturaExportacionInput {
-  numero: number;
+  ruc: string | null;
+  autoimpresor_nro: string | null;
 }

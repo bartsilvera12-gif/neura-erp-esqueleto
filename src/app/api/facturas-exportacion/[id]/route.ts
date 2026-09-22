@@ -5,12 +5,6 @@ import { API_ERRORS } from "@/lib/api/errors";
 
 export const dynamic = "force-dynamic";
 
-const COLS =
-  "id, empresa_id, establecimiento, punto_expedicion, timbrado, numero, numero_formateado, " +
-  "fecha, moneda, tipo_cambio, cliente_nombre, cliente_documento, cliente_direccion, cliente_pais, " +
-  "subtotal, total, observaciones, estado, motivo_anulacion, anulada_at, anulada_por_nombre, " +
-  "regularizacion, created_at, created_by_nombre";
-
 export async function GET(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
@@ -19,7 +13,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 
     const cab = await ctx.supabase
       .from("facturas_exportacion")
-      .select(COLS)
+      .select("*")
       .eq("empresa_id", ctx.auth.empresa_id)
       .eq("id", id)
       .maybeSingle();
@@ -28,7 +22,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 
     const items = await ctx.supabase
       .from("facturas_exportacion_items")
-      .select("id, producto_id, descripcion, cantidad, precio_unitario, subtotal, orden")
+      .select("id, producto_id, descripcion, cantidad, precio_unitario, subtotal, iva_tipo, orden")
       .eq("empresa_id", ctx.auth.empresa_id)
       .eq("factura_id", id)
       .order("orden", { ascending: true });

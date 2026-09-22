@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AUTOIMPRESOR_DEFAULT } from "@/lib/facturas-exportacion/config";
+import type { TipoFactura } from "@/lib/facturas-exportacion/config";
+import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import type { FacturaExportacion, FacturaExportacionEstado } from "@/lib/facturas-exportacion/types";
 
 export const dynamic = "force-dynamic";
 
-function fmt(n: number, m: string) {
-  const s = Number(n || 0).toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${m} ${s}`;
+function fmt(n: number, moneda: string) {
+  const dec = moneda === "PYG" ? 0 : 2;
+  const s = Number(n || 0).toLocaleString("es-PY", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  return `${moneda === "PYG" ? "Gs." : moneda} ${s}`;
 }
 function fechaES(iso: string) {
   const [y, mo, d] = iso.slice(0, 10).split("-");
@@ -17,6 +19,7 @@ function fechaES(iso: string) {
 }
 
 export default function FacturasExportacionPage() {
+  const { isAdmin } = useIsAdmin();
   const [filas, setFilas] = useState<FacturaExportacion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +27,7 @@ export default function FacturasExportacionPage() {
   const [hasta, setHasta] = useState("");
   const [estado, setEstado] = useState<"" | FacturaExportacionEstado>("");
   const [punto, setPunto] = useState<"" | string>("");
+  const [tipo, setTipo] = useState<"" | TipoFactura>("");
   const [q, setQ] = useState("");
 
   async function cargar() {
@@ -35,6 +39,7 @@ export default function FacturasExportacionPage() {
       if (hasta) params.set("hasta", hasta);
       if (estado) params.set("estado", estado);
       if (punto) params.set("punto", punto);
+      if (tipo) params.set("tipo", tipo);
       if (q) params.set("q", q);
       const res = await fetch(`/api/facturas-exportacion?${params}`, { credentials: "include", cache: "no-store" });
       const j = await res.json();
@@ -72,19 +77,20 @@ export default function FacturasExportacionPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4FAEB2]">
             Zentra · Autoimpresor
           </p>
-          <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Facturas de Exportación</h1>
+          <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Facturación</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Timbrado {AUTOIMPRESOR_DEFAULT.timbrado} · vigencia 03/08/2026 al 31/08/2027 · puntos{" "}
-            {AUTOIMPRESOR_DEFAULT.puntos.join(" / ")}
+            Facturas de exportación (timbrado 19025402) y facturas locales (timbrado 17943433)
           </p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/facturas-exportacion/regularizacion"
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-          >
-            Regularización
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/facturas-exportacion/regularizacion"
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Regularización
+            </Link>
+          )}
           <Link
             href="/facturas-exportacion/nueva"
             className="rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3F8E91]"
@@ -95,7 +101,15 @@ export default function FacturasExportacionPage() {
       </div>
 
       <div className="zx-surface zx-surface-accent p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-6">
+          <div>
+            <label className="mb-1 block text-xs text-slate-500">Tipo</label>
+            <select value={tipo} onChange={(e) => setTipo(e.target.value as "" | TipoFactura)} className="zx-surface w-full px-3 py-2 text-sm">
+              <option value="">Todas</option>
+              <option value="EXPORTACION">Exportación</option>
+              <option value="LOCAL">Local</option>
+            </select>
+          </div>
           <div>
             <label className="mb-1 block text-xs text-slate-500">Desde</label>
             <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="zx-surface w-full px-3 py-2 text-sm" />
@@ -116,7 +130,7 @@ export default function FacturasExportacionPage() {
             <label className="mb-1 block text-xs text-slate-500">Punto</label>
             <select value={punto} onChange={(e) => setPunto(e.target.value)} className="zx-surface w-full px-3 py-2 text-sm">
               <option value="">Todos</option>
-              {AUTOIMPRESOR_DEFAULT.puntos.map((p) => (
+              {["001", "004", "005"].map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
@@ -131,7 +145,7 @@ export default function FacturasExportacionPage() {
             Aplicar filtros
           </button>
           <button
-            onClick={() => { setDesde(""); setHasta(""); setEstado(""); setPunto(""); setQ(""); setTimeout(cargar, 0); }}
+            onClick={() => { setDesde(""); setHasta(""); setEstado(""); setPunto(""); setTipo(""); setQ(""); setTimeout(cargar, 0); }}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
           >
             Limpiar
@@ -144,6 +158,7 @@ export default function FacturasExportacionPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-3">Tipo</th>
                 <th className="py-2 pr-3">Número</th>
                 <th className="py-2 pr-3">Fecha</th>
                 <th className="py-2 pr-3">Cliente</th>
@@ -156,13 +171,18 @@ export default function FacturasExportacionPage() {
             </thead>
             <tbody>
               {cargando && (
-                <tr><td colSpan={8} className="py-8 text-center text-slate-400">Cargando…</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-slate-400">Cargando…</td></tr>
               )}
               {!cargando && filas.length === 0 && (
-                <tr><td colSpan={8} className="py-8 text-center text-slate-400">No hay facturas con esos filtros.</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-slate-400">No hay facturas con esos filtros.</td></tr>
               )}
               {filas.map((f) => (
                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50/70">
+                  <td className="py-2 pr-3 text-xs">
+                    <span className={`rounded-full px-2 py-0.5 font-semibold ${f.tipo === "LOCAL" ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}>
+                      {f.tipo === "LOCAL" ? "Local" : "Exportación"}
+                    </span>
+                  </td>
                   <td className="py-2 pr-3 font-mono text-slate-800">
                     {f.numero_formateado}
                     {f.regularizacion && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Reg.</span>}
@@ -189,7 +209,7 @@ export default function FacturasExportacionPage() {
                       >
                         PDF
                       </a>
-                      {f.estado === "EMITIDA" && (
+                      {isAdmin && f.estado === "EMITIDA" && (
                         <button
                           onClick={() => anular(f)}
                           className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"

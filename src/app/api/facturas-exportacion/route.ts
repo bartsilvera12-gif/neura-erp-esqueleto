@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import type { EmitirFacturaExportacionInput } from "@/lib/facturas-exportacion/types";
+import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
+import type { TipoFactura } from "@/lib/facturas-exportacion/config";
+import type { IvaTipo } from "@/lib/facturas-exportacion/types";
 
 export const dynamic = "force-dynamic";
 
 const COLS =
-  "id, empresa_id, establecimiento, punto_expedicion, timbrado, numero, numero_formateado, " +
+  "id, empresa_id, tipo, establecimiento, punto_expedicion, timbrado, numero, numero_formateado, " +
   "fecha, moneda, tipo_cambio, cliente_nombre, cliente_documento, cliente_direccion, cliente_pais, " +
+  "cliente_ciudad, cliente_telefono, condicion_venta, nota_remision, " +
   "subtotal, total, observaciones, estado, motivo_anulacion, anulada_at, anulada_por_nombre, " +
   "regularizacion, created_at, created_by_nombre";
 
@@ -17,47 +20,9 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function normalizeInputBase(body: Record<string, unknown>) {
-  const punto = String(body.punto_expedicion ?? "").trim();
-  const est = String(body.establecimiento ?? "").trim();
-  const cliente = String(body.cliente_nombre ?? "").trim();
-  const moneda = String(body.moneda ?? "USD").trim().toUpperCase() || "USD";
-  const tipoCambio = toNum(body.tipo_cambio) || 1;
-  const pais = String(body.cliente_pais ?? "BOLIVIA").trim().toUpperCase();
-  const itemsRaw = Array.isArray(body.items) ? body.items : [];
-  const items = itemsRaw
-    .map((it, idx) => {
-      const r = it as Record<string, unknown>;
-      const cantidad = toNum(r.cantidad);
-      const pu = toNum(r.precio_unitario);
-      return {
-        producto_id: r.producto_id ? String(r.producto_id) : null,
-        descripcion: String(r.descripcion ?? "").trim(),
-        cantidad,
-        precio_unitario: pu,
-        subtotal: cantidad * pu,
-        orden: idx,
-      };
-    })
-    .filter((it) => it.descripcion && it.cantidad > 0);
-
-  const subtotal = items.reduce((acc, it) => acc + it.subtotal, 0);
-
-  return {
-    est,
-    punto,
-    cliente,
-    moneda,
-    tipoCambio,
-    pais,
-    items,
-    subtotal,
-    total: subtotal,
-    fecha: typeof body.fecha === "string" && body.fecha ? body.fecha : null,
-    cliente_documento: body.cliente_documento ? String(body.cliente_documento).trim() : null,
-    cliente_direccion: body.cliente_direccion ? String(body.cliente_direccion).trim() : null,
-    observaciones: body.observaciones ? String(body.observaciones).trim() : null,
-  };
+function txt(v: unknown): string | null {
+  const s = v == null ? "" : String(v).trim();
+  return s || null;
 }
 
 export async function GET(request: NextRequest) {
@@ -70,6 +35,7 @@ export async function GET(request: NextRequest) {
     const hasta = searchParams.get("hasta");
     const estado = searchParams.get("estado");
     const punto = searchParams.get("punto");
+    const tipo = searchParams.get("tipo");
     const q = searchParams.get("q");
 
     let query = ctx.supabase
@@ -82,6 +48,7 @@ export async function GET(request: NextRequest) {
     if (desde) query = query.gte("fecha", desde);
     if (hasta) query = query.lte("fecha", hasta);
     if (estado === "EMITIDA" || estado === "ANULADA") query = query.eq("estado", estado);
+    if (tipo === "EXPORTACION" || tipo === "LOCAL") query = query.eq("tipo", tipo);
     if (punto) query = query.eq("punto_expedicion", punto);
     if (q) query = query.ilike("cliente_nombre", `%${q}%`);
 
@@ -107,50 +74,92 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse("JSON inválido."), { status: 400 });
     }
 
-    const esRegularizacion = body.regularizacion === true || body.numero != null;
-    const parsed = normalizeInputBase(body);
+    const tipo: TipoFactura = body.tipo === "LOCAL" ? "LOCAL" : "EXPORTACION";
+    const esRegularizacion = body.regularizacion === true;
+    if (esRegularizacion && !esRolAdminEmpresaOGlobal(auth.rol))
+      return NextResponse.json(errorResponse("Solo un administrador puede regularizar facturas."), { status: 403 });
 
-    if (!parsed.est || !parsed.punto)
+    const est = String(body.establecimiento ?? "").trim();
+    const punto = String(body.punto_expedicion ?? "").trim();
+    const cliente = String(body.cliente_nombre ?? "").trim();
+    const fecha = typeof body.fecha === "string" && body.fecha ? body.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const moneda = (String(body.moneda ?? (tipo === "LOCAL" ? "PYG" : "USD")).trim().toUpperCase()) || "USD";
+
+    if (!est || !punto)
       return NextResponse.json(errorResponse("Falta establecimiento o punto de expedición."), { status: 400 });
-    if (!parsed.cliente)
-      return NextResponse.json(errorResponse("Falta el nombre del cliente."), { status: 400 });
-    if (parsed.items.length === 0)
-      return NextResponse.json(errorResponse("Agregá al menos un item con cantidad > 0."), { status: 400 });
+    if (!cliente) return NextResponse.json(errorResponse("Falta el nombre del cliente."), { status: 400 });
 
-    // Buscar config activa para el punto (para timbrado).
+    // Exportación: todo exento. Local: IVA por ítem (default 10%).
+    const items = (Array.isArray(body.items) ? body.items : [])
+      .map((it, idx) => {
+        const r = it as Record<string, unknown>;
+        const cantidad = toNum(r.cantidad);
+        const precio = toNum(r.precio_unitario);
+        const iva: IvaTipo = tipo === "EXPORTACION" ? "EXENTA" : r.iva_tipo === "5" || r.iva_tipo === "EXENTA" ? r.iva_tipo : "10";
+        return {
+          producto_id: r.producto_id ? String(r.producto_id) : null,
+          descripcion: String(r.descripcion ?? "").trim(),
+          cantidad,
+          precio_unitario: precio,
+          subtotal: cantidad * precio,
+          iva_tipo: iva,
+          orden: idx,
+        };
+      })
+      .filter((it) => it.descripcion && it.cantidad > 0 && it.precio_unitario >= 0);
+    if (items.length === 0)
+      return NextResponse.json(errorResponse("Agregá al menos un ítem con cantidad mayor a 0."), { status: 400 });
+
+    const sum = (t: IvaTipo) => items.filter((i) => i.iva_tipo === t).reduce((a, i) => a + i.subtotal, 0);
+    const exentas = sum("EXENTA");
+    const grav5 = sum("5");
+    const grav10 = sum("10");
+    const total = exentas + grav5 + grav10;
+    const dec = moneda === "PYG" ? 0 : 2;
+    const round = (n: number) => Math.round(n * 10 ** dec) / 10 ** dec;
+    const iva5 = round(grav5 / 21);
+    const iva10 = round(grav10 / 11);
+
     const cfgRes = await supabase
       .from("facturas_exportacion_config")
-      .select("id, timbrado, activo")
+      .select("timbrado, vigencia_desde, vigencia_hasta, rango_desde, rango_hasta, tipo")
       .eq("empresa_id", auth.empresa_id)
-      .eq("establecimiento", parsed.est)
-      .eq("punto_expedicion", parsed.punto)
+      .eq("establecimiento", est)
+      .eq("punto_expedicion", punto)
+      .eq("tipo", tipo)
       .eq("activo", true)
       .maybeSingle();
     if (cfgRes.error) throw new Error(cfgRes.error.message);
-    if (!cfgRes.data)
+    const cfg = cfgRes.data as unknown as {
+      timbrado: string; vigencia_desde: string; vigencia_hasta: string; rango_desde: number; rango_hasta: number;
+    } | null;
+    if (!cfg)
+      return NextResponse.json(errorResponse(`No hay timbrado activo para ${est}-${punto} (${tipo}).`), { status: 400 });
+
+    if (fecha < cfg.vigencia_desde || fecha > cfg.vigencia_hasta)
       return NextResponse.json(
-        errorResponse(`No hay configuración Autoimpresor activa para el punto ${parsed.punto}.`),
+        errorResponse(`La fecha ${fecha} está fuera de la vigencia del timbrado ${cfg.timbrado} (${cfg.vigencia_desde} a ${cfg.vigencia_hasta}).`),
         { status: 400 }
       );
-    const timbrado = String((cfgRes.data as { timbrado: string }).timbrado);
 
     let numero: number;
     if (esRegularizacion) {
-      const n = Number(body.numero);
-      if (!Number.isFinite(n) || n <= 0)
-        return NextResponse.json(errorResponse("Número inválido para regularización."), { status: 400 });
-      numero = Math.floor(n);
+      const n = Math.floor(toNum(body.numero));
+      if (n < cfg.rango_desde || n > cfg.rango_hasta)
+        return NextResponse.json(errorResponse(`El número debe estar entre ${cfg.rango_desde} y ${cfg.rango_hasta}.`), { status: 400 });
+      numero = n;
     } else {
-      // Reservar correlativo atómico.
+      // La RPC valida el rango y revierte el incremento si se excede.
       const rpc = await supabase.rpc("reservar_correlativo_factura_exportacion", {
         p_empresa_id: auth.empresa_id,
-        p_establecimiento: parsed.est,
-        p_punto_expedicion: parsed.punto,
-        p_timbrado: timbrado,
+        p_establecimiento: est,
+        p_punto_expedicion: punto,
+        p_timbrado: cfg.timbrado,
       });
       if (rpc.error) {
         console.error("[facturas-exportacion RPC]", rpc.error.message);
-        return NextResponse.json(errorResponse("No se pudo reservar el número."), { status: 500 });
+        const msg = /rango/i.test(rpc.error.message) ? "Se agotó el rango autorizado del timbrado." : "No se pudo reservar el número.";
+        return NextResponse.json(errorResponse(msg), { status: 400 });
       }
       numero = Number(rpc.data);
     }
@@ -160,20 +169,36 @@ export async function POST(request: NextRequest) {
       .from("facturas_exportacion")
       .insert({
         empresa_id: auth.empresa_id,
-        establecimiento: parsed.est,
-        punto_expedicion: parsed.punto,
-        timbrado,
+        tipo,
+        establecimiento: est,
+        punto_expedicion: punto,
+        timbrado: cfg.timbrado,
         numero,
-        fecha: parsed.fecha ?? new Date().toISOString().slice(0, 10),
-        moneda: parsed.moneda,
-        tipo_cambio: parsed.tipoCambio,
-        cliente_nombre: parsed.cliente,
-        cliente_documento: parsed.cliente_documento,
-        cliente_direccion: parsed.cliente_direccion,
-        cliente_pais: parsed.pais,
-        subtotal: parsed.subtotal,
-        total: parsed.total,
-        observaciones: parsed.observaciones,
+        fecha,
+        moneda,
+        tipo_cambio: toNum(body.tipo_cambio) || 1,
+        cliente_nombre: cliente,
+        cliente_documento: txt(body.cliente_documento),
+        cliente_direccion: txt(body.cliente_direccion),
+        cliente_ciudad: txt(body.cliente_ciudad),
+        cliente_telefono: txt(body.cliente_telefono),
+        cliente_pais: (txt(body.cliente_pais) ?? (tipo === "LOCAL" ? "PARAGUAY" : "BOLIVIA")).toUpperCase(),
+        condicion_venta: body.condicion_venta === "CREDITO" ? "CREDITO" : "CONTADO",
+        nota_remision: tipo === "LOCAL" ? txt(body.nota_remision) : null,
+        tipo_operacion: tipo === "EXPORTACION" ? txt(body.tipo_operacion) ?? "EXPORTACIÓN" : null,
+        condicion_negociacion: tipo === "EXPORTACION" ? txt(body.condicion_negociacion) : null,
+        agente_transporte: tipo === "EXPORTACION" ? txt(body.agente_transporte) : null,
+        barcaza: tipo === "EXPORTACION" ? txt(body.barcaza) : null,
+        empresa_fletera: tipo === "EXPORTACION" ? txt(body.empresa_fletera) : null,
+        conocimiento: tipo === "EXPORTACION" ? txt(body.conocimiento) : null,
+        subtotal: total,
+        total,
+        total_exentas: exentas,
+        total_gravado5: grav5,
+        total_gravado10: grav10,
+        iva5,
+        iva10,
+        observaciones: txt(body.observaciones),
         regularizacion: esRegularizacion,
         created_by: auth.user.id,
         created_by_nombre: usuarioNombre,
@@ -183,35 +208,30 @@ export async function POST(request: NextRequest) {
     if (ins.error) {
       const msg = ins.error.message ?? "";
       if (/duplicate|unique|23505/i.test(msg))
-        return NextResponse.json(errorResponse("Ese número ya está usado en ese punto/timbrado."), { status: 409 });
+        return NextResponse.json(errorResponse("Ese número ya está usado en ese punto y timbrado."), { status: 409 });
       console.error("[facturas-exportacion insert]", msg);
       return NextResponse.json(errorResponse("No se pudo emitir la factura."), { status: 500 });
     }
     const factura = ins.data as unknown as Record<string, unknown>;
 
-    // Insertar items.
-    const itemsIns = await supabase
-      .from("facturas_exportacion_items")
-      .insert(
-        parsed.items.map((it) => ({
-          empresa_id: auth.empresa_id,
-          factura_id: factura.id,
-          producto_id: it.producto_id,
-          descripcion: it.descripcion,
-          cantidad: it.cantidad,
-          precio_unitario: it.precio_unitario,
-          subtotal: it.subtotal,
-          orden: it.orden,
-        }))
-      );
-    if (itemsIns.error) console.error("[facturas-exportacion items]", itemsIns.error.message);
+    const itemsIns = await supabase.from("facturas_exportacion_items").insert(
+      items.map((it) => ({ ...it, empresa_id: auth.empresa_id, factura_id: factura.id }))
+    );
+    if (itemsIns.error) {
+      // Sin ítems la factura no sirve: se anula para no dejar un número fiscal a medias.
+      console.error("[facturas-exportacion items]", itemsIns.error.message);
+      await supabase
+        .from("facturas_exportacion")
+        .update({ estado: "ANULADA", motivo_anulacion: "Error al guardar ítems", anulada_at: new Date().toISOString() })
+        .eq("id", factura.id as string);
+      return NextResponse.json(errorResponse("No se pudieron guardar los ítems; la factura quedó anulada."), { status: 500 });
+    }
 
-    // Auditoría.
     await supabase.from("facturas_exportacion_auditoria").insert({
       empresa_id: auth.empresa_id,
       factura_id: factura.id,
       accion: esRegularizacion ? "REGULARIZACION" : "EMITIR",
-      detalle: { numero, punto: parsed.punto, total: parsed.total, moneda: parsed.moneda },
+      detalle: { tipo, numero, punto, total, moneda },
       usuario_id: auth.user.id,
       usuario_nombre: usuarioNombre,
     });
@@ -222,5 +242,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorResponse("No se pudo emitir la factura."), { status: 500 });
   }
 }
-
-export type { EmitirFacturaExportacionInput };

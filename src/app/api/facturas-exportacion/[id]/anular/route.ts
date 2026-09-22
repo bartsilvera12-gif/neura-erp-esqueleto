@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     const ctx = await getTenantSupabaseFromAuthWithRol(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { auth, supabase } = ctx;
+    if (!esRolAdminEmpresaOGlobal(auth.rol))
+      return NextResponse.json(errorResponse("Solo un administrador puede anular facturas."), { status: 403 });
 
     let body: Record<string, unknown> = {};
     try { body = (await request.json()) as Record<string, unknown>; } catch {}

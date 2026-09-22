@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 const COLS =
   "id, establecimiento, punto_expedicion, timbrado, vigencia_desde, vigencia_hasta, " +
-  "rango_desde, rango_hasta, proximo_numero, activo";
+  "rango_desde, rango_hasta, proximo_numero, activo, tipo, ruc, autoimpresor_nro";
 
 export async function GET(request: NextRequest) {
   try {
