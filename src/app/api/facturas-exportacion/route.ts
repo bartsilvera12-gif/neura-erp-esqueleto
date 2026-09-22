@@ -126,7 +126,6 @@ export async function POST(request: NextRequest) {
       .eq("empresa_id", auth.empresa_id)
       .eq("establecimiento", est)
       .eq("punto_expedicion", punto)
-      .eq("tipo", tipo)
       .eq("activo", true)
       .maybeSingle();
     if (cfgRes.error) throw new Error(cfgRes.error.message);
@@ -134,7 +133,7 @@ export async function POST(request: NextRequest) {
       timbrado: string; vigencia_desde: string; vigencia_hasta: string; rango_desde: number; rango_hasta: number;
     } | null;
     if (!cfg)
-      return NextResponse.json(errorResponse(`No hay timbrado activo para ${est}-${punto} (${tipo}).`), { status: 400 });
+      return NextResponse.json(errorResponse(`No hay timbrado activo para ${est}-${punto}.`), { status: 400 });
 
     if (fecha < cfg.vigencia_desde || fecha > cfg.vigencia_hasta)
       return NextResponse.json(

@@ -79,7 +79,7 @@ export default function FacturasExportacionPage() {
           </p>
           <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Facturación</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Facturas de exportación (timbrado 19025402) y facturas locales (timbrado 17943433)
+            Timbrado 19025402 · vigencia 03/08/2026 al 31/08/2027 · puntos 001-004 y 001-005
           </p>
         </div>
         <div className="flex gap-2">
@@ -130,7 +130,7 @@ export default function FacturasExportacionPage() {
             <label className="mb-1 block text-xs text-slate-500">Punto</label>
             <select value={punto} onChange={(e) => setPunto(e.target.value)} className="zx-surface w-full px-3 py-2 text-sm">
               <option value="">Todos</option>
-              {["001", "004", "005"].map((p) => (
+              {["004", "005"].map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>

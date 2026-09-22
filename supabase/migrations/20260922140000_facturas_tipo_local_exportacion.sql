@@ -1,7 +1,8 @@
 -- =============================================================================
 -- Facturas: dos tipos (EXPORTACION / LOCAL) sobre el mismo módulo.
 -- EXPORTACION: USD, exentas, datos de operación/logística/banco. Timbrado 19025402.
--- LOCAL: Gs., IVA 5/10, contado/crédito, nota de remisión. Timbrado 17943433.
+-- LOCAL: Gs., IVA 5/10, contado/crédito, nota de remisión.
+-- Ambos con timbrado 19025402 en 001-004 / 001-005 (Form. 350-1 Nº 350010037600).
 -- Idempotente + aditivo. Solo esqueletoerp.
 -- =============================================================================
 
@@ -34,18 +35,16 @@ ALTER TABLE esqueletoerp.facturas_exportacion_items
 -- Datos fiscales de la autorización en los puntos de exportación.
 -- Rango autorizado FACTURA 001-004 y 001-005: 1 a 5000 (Form. 350-1 DNIT).
 UPDATE esqueletoerp.facturas_exportacion_config
-   SET tipo = 'EXPORTACION', ruc = '80150840-1', autoimpresor_nro = '350010028049',
+   SET tipo = 'EXPORTACION', ruc = '80150840-1', autoimpresor_nro = '350010037600',
        rango_desde = 1, rango_hasta = 5000
  WHERE timbrado = '19025402';
 
--- Punto local 001-001, timbrado 17943433.
-INSERT INTO esqueletoerp.facturas_exportacion_config
-  (empresa_id, establecimiento, punto_expedicion, timbrado, vigencia_desde, vigencia_hasta,
-   rango_desde, rango_hasta, proximo_numero, activo, tipo, ruc, autoimpresor_nro)
-VALUES
-  ('3c14fe00-d466-4f24-a010-1bbd7e37ccd6', '001', '001', '17943433', DATE '2025-04-02', DATE '2026-04-30',
-   1, 9999999, 1, true, 'LOCAL', '80150840-1', '350010028049')
-ON CONFLICT (empresa_id, establecimiento, punto_expedicion, timbrado) DO NOTHING;
+-- El Form. 350-1 Nº 350010037600 autoriza FACTURA en 004/005 con el timbrado 19025402,
+-- sin distinguir exportación de local: ambos tipos comparten punto y correlativo.
+-- El timbrado 17943433 es el anterior (vencido) y queda inactivo si se había cargado.
+UPDATE esqueletoerp.facturas_exportacion_config
+   SET activo = false
+ WHERE timbrado = '17943433';
 
 -- Correlativo atómico con control de rango: si se excede, el RAISE revierte el incremento.
 CREATE OR REPLACE FUNCTION esqueletoerp.reservar_correlativo_factura_exportacion(

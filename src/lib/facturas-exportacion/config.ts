@@ -8,7 +8,7 @@ export const EMPRESA_FACTURA = {
     "Venta de muebles importados · Diseño especializado · Decoración de interiores",
   ],
   direccion: "Avda. Santa Teresa No. 2709 c/ Denis Roa · Asunción, Paraguay · Cel. (0971) 880-905",
-  autoimpresorNro: "350010028049",
+  autoimpresorNro: "350010037600",
   /** PNG opcional en /public. Si no existe, el PDF dibuja el logo en texto. */
   logoPath: "brand/livingroom-logo.png",
 };
@@ -25,7 +25,7 @@ export const BANCO_EXPORTACION = {
 
 export const TIPOS_FACTURA: Record<TipoFactura, { label: string; titulo: string; monedaDefault: string; puntos: string[] }> = {
   EXPORTACION: { label: "Factura de exportación", titulo: "FACTURA DE EXPORTACIÓN", monedaDefault: "USD", puntos: ["004", "005"] },
-  LOCAL: { label: "Factura local", titulo: "FACTURA", monedaDefault: "PYG", puntos: ["001"] },
+  LOCAL: { label: "Factura local", titulo: "FACTURA", monedaDefault: "PYG", puntos: ["004", "005"] },
 };
 
 export const AUTOIMPRESOR_DEFAULT = {

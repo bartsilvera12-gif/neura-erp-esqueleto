@@ -208,7 +208,7 @@ export async function buildFacturaExportacionPdf(
   }
 
   // ── Tabla de ítems ──────────────────────────────────────────────────────
-  const colW = [40, 0, 62, 62, 42, 50];
+  const colW = [40, 0, 64, 64, 50, 64];
   colW[1] = CW - colW.reduce((a, b) => a + b, 0);
   const colX: number[] = [];
   colW.reduce((x, w, i) => ((colX[i] = x), x + w), MX);

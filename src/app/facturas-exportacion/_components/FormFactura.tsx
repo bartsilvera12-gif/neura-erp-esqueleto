@@ -63,8 +63,8 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
   }, []);
 
   const puntosTipo = useMemo(
-    () => config.filter((c) => c.activo && (c.tipo ?? "EXPORTACION") === tipo),
-    [config, tipo]
+    () => config.filter((c) => c.activo),
+    [config]
   );
 
   function elegirTipo(t: TipoFactura) {
