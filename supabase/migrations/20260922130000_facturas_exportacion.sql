@@ -157,18 +157,33 @@ $mig$;
 
 -- Alta del módulo en el catálogo (solo si la tabla existe en el schema esqueletoerp).
 DO $cat$
+DECLARE
+  v_mod_id uuid;
+  v_empresa uuid := '3c14fe00-d466-4f24-a010-1bbd7e37ccd6';
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='esqueletoerp' AND c.relname='modulos') THEN
-    INSERT INTO esqueletoerp.modulos (slug, nombre, descripcion)
-    VALUES ('facturas_exportacion', 'Facturas de Exportación', 'Emisión de facturas de exportación con Autoimpresor timbrado y correlativo atómico.')
-    ON CONFLICT (slug) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion;
+    -- Upsert manual (la tabla puede no tener UNIQUE en slug).
+    SELECT id INTO v_mod_id FROM esqueletoerp.modulos WHERE slug = 'facturas_exportacion' LIMIT 1;
+    IF v_mod_id IS NULL THEN
+      INSERT INTO esqueletoerp.modulos (slug, nombre, descripcion)
+      VALUES ('facturas_exportacion', 'Facturas de Exportación', 'Emisión de facturas de exportación con Autoimpresor timbrado y correlativo atómico.')
+      RETURNING id INTO v_mod_id;
+    ELSE
+      UPDATE esqueletoerp.modulos
+        SET nombre = 'Facturas de Exportación',
+            descripcion = 'Emisión de facturas de exportación con Autoimpresor timbrado y correlativo atómico.'
+        WHERE id = v_mod_id;
+    END IF;
 
-    -- Activar para la empresa de Living Room.
-    INSERT INTO esqueletoerp.empresa_modulos (empresa_id, modulo_id, activo)
-    SELECT '3c14fe00-d466-4f24-a010-1bbd7e37ccd6', m.id, true
-    FROM esqueletoerp.modulos m
-    WHERE m.slug = 'facturas_exportacion'
-    ON CONFLICT (empresa_id, modulo_id) DO UPDATE SET activo = true;
+    -- Activar para la empresa de Living Room (upsert manual también).
+    IF EXISTS (SELECT 1 FROM esqueletoerp.empresa_modulos WHERE empresa_id = v_empresa AND modulo_id = v_mod_id) THEN
+      UPDATE esqueletoerp.empresa_modulos
+        SET activo = true
+        WHERE empresa_id = v_empresa AND modulo_id = v_mod_id;
+    ELSE
+      INSERT INTO esqueletoerp.empresa_modulos (empresa_id, modulo_id, activo)
+      VALUES (v_empresa, v_mod_id, true);
+    END IF;
   END IF;
 END
 $cat$;
