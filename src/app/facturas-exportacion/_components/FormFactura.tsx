@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MONEDAS_EXPORTACION, TIPOS_FACTURA, type TipoFactura } from "@/lib/facturas-exportacion/config";
 import type { IvaTipo } from "@/lib/facturas-exportacion/types";
-import { useIsAdmin } from "@/lib/auth/use-is-admin";
 
 interface Item { descripcion: string; cantidad: string; precio_unitario: string; iva_tipo: IvaTipo }
 interface PuntoConfig {
@@ -14,6 +13,8 @@ interface PuntoConfig {
   vigencia_desde: string;
   vigencia_hasta: string;
   proximo_numero: number;
+  proximo_numero_prueba: number;
+  modo_prueba: boolean;
   activo: boolean;
   tipo: TipoFactura;
 }
@@ -23,11 +24,14 @@ const fechaES = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/")
 const input = "zx-surface w-full px-3 py-2 text-sm";
 const lbl = "mb-1 block text-xs font-medium text-slate-500";
 
-export default function FormFactura({ regularizacion = false }: { regularizacion?: boolean }) {
+interface Reemision { id: string; numero_original: string; timbrado_original: string; cliente_nombre: string; cliente_pais: string | null; moneda: string }
+
+export default function FormFactura() {
   const router = useRouter();
   const params = useSearchParams();
-  const { isAdmin, loaded: rolCargado } = useIsAdmin();
   const tipoParam = params.get("tipo");
+  const reemiteId = params.get("reemite");
+  const [reemision, setReemision] = useState<Reemision | null>(null);
   const [tipo, setTipo] = useState<TipoFactura | null>(
     tipoParam === "LOCAL" || tipoParam === "EXPORTACION" ? tipoParam : null
   );
@@ -36,7 +40,6 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
   const [config, setConfig] = useState<PuntoConfig[]>([]);
   const [punto, setPunto] = useState("");
   const [fecha, setFecha] = useState(hoy());
-  const [numeroReg, setNumeroReg] = useState("");
   const [moneda, setMoneda] = useState("USD");
   const [tipoCambio, setTipoCambio] = useState("1");
   const [condicion, setCondicion] = useState<"CONTADO" | "CREDITO">("CONTADO");
@@ -56,6 +59,20 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!reemiteId) return;
+    fetch("/api/facturas-regularizacion", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        const r = ((j?.data?.regularizaciones ?? []) as Reemision[]).find((x) => x.id === reemiteId);
+        if (!r) return;
+        setReemision(r);
+        setCliente((c) => ({ ...c, nombre: r.cliente_nombre, pais: r.cliente_pais ?? c.pais }));
+        setMoneda(r.moneda);
+      })
+      .catch(() => undefined);
+  }, [reemiteId]);
+
+  useEffect(() => {
     fetch("/api/facturas-exportacion/config", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((j) => { if (j?.success) setConfig(j.data?.config ?? []); })
@@ -69,9 +86,9 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
 
   function elegirTipo(t: TipoFactura) {
     setTipo(t);
-    setMoneda(TIPOS_FACTURA[t].monedaDefault);
+    setMoneda(reemision?.moneda ?? TIPOS_FACTURA[t].monedaDefault);
     setTipoCambio("1");
-    setCliente((c) => ({ ...c, pais: t === "LOCAL" ? "PARAGUAY" : "BOLIVIA" }));
+    setCliente((c) => ({ ...c, pais: reemision?.cliente_pais ?? (t === "LOCAL" ? "PARAGUAY" : "BOLIVIA") }));
     setItems([{ descripcion: "", cantidad: "1", precio_unitario: "", iva_tipo: t === "LOCAL" ? "10" : "EXENTA" }]);
     setPunto("");
     setError(null);
@@ -88,6 +105,7 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
 
   const cfg = puntosTipo.find((c) => c.punto_expedicion === punto);
   const fueraVigencia = cfg ? fecha < cfg.vigencia_desde || fecha > cfg.vigencia_hasta : false;
+  const esPrueba = cfg ? cfg.modo_prueba !== false : true;
 
   const sub = (it: Item) => (Number(it.cantidad) || 0) * (Number(it.precio_unitario) || 0);
   const totalPor = (t: IvaTipo) => items.filter((i) => i.iva_tipo === t).reduce((a, i) => a + sub(i), 0);
@@ -114,7 +132,6 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
       .filter((it) => it.descripcion && it.cantidad > 0);
     if (!itemsPayload.length) return setError("Agregá al menos un ítem con descripción y cantidad.");
     if (fueraVigencia) return setError("La fecha está fuera de la vigencia del timbrado.");
-    if (regularizacion && !(Number(numeroReg) > 0)) return setError("Ingresá el número de la factura a regularizar.");
 
     setEnviando(true);
     try {
@@ -140,34 +157,28 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
           ...(esExpo ? op : {}),
           observaciones,
           items: itemsPayload,
-          ...(regularizacion ? { regularizacion: true, numero: Number(numeroReg) } : {}),
+          ...(reemiteId ? { regularizacion_id: reemiteId } : {}),
         }),
       });
       const j = await res.json();
       if (!res.ok || !j?.success) return setError(j?.error ?? "No se pudo emitir la factura.");
       const id = j.data?.factura?.id;
       if (id) window.open(`/api/facturas-exportacion/${id}/pdf`, "_blank");
-      router.push("/facturas-exportacion");
+      router.push(reemiteId ? "/facturas-exportacion/regularizacion" : "/facturas-exportacion");
     } finally {
       setEnviando(false);
     }
-  }
-
-  if (regularizacion && rolCargado && !isAdmin) {
-    return <div className="zx-surface p-6 text-sm text-slate-600">Solo un administrador puede regularizar facturas.</div>;
   }
 
   const encabezado = (
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4FAEB2]">Zentra · Autoimpresor</p>
       <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">
-        {regularizacion ? "Regularización de factura" : "Nueva factura"}
+        {reemiteId ? "Reemitir factura de agosto" : "Nueva factura"}
         {tipo && <span className="text-slate-400"> · {TIPOS_FACTURA[tipo].label}</span>}
       </h1>
       <p className="mt-0.5 text-xs text-slate-500">
-        {regularizacion
-          ? "Carga de facturas ya emitidas (agosto) con su número original. No consume correlativo."
-          : "El número se reserva automáticamente al emitir: sin huecos ni duplicados."}
+        El número se pone solo al emitir: sin huecos ni duplicados.
       </p>
     </div>
   );
@@ -206,6 +217,19 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
         </button>
       </div>
 
+      {esPrueba && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>Modo prueba.</strong> Esta factura sale marcada como PRUEBA, sin valor fiscal, y no usa los números
+          reales del timbrado.
+        </div>
+      )}
+      {reemision && (
+        <div className="rounded-lg border border-sky-300 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          Reemplaza la factura de agosto <strong>{reemision.numero_original}</strong> (timbrado {reemision.timbrado_original}).
+          {esPrueba ? " En modo prueba no se vincula: la de agosto sigue pendiente." : " Al emitir quedan vinculadas."}
+        </div>
+      )}
+
       {/* Timbrado */}
       <div className="zx-surface p-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -224,19 +248,14 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
             <label className={lbl}>Fecha de emisión</label>
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={input} />
           </div>
-          {regularizacion ? (
-            <div>
-              <label className={lbl}>Número de factura</label>
-              <input type="number" min={1} value={numeroReg} onChange={(e) => setNumeroReg(e.target.value)} className={input} placeholder="Ej: 12" />
-            </div>
-          ) : (
-            <div>
-              <label className={lbl}>Próximo número</label>
-              <p className="py-2 font-mono text-sm text-slate-800">
-                {cfg ? `${cfg.establecimiento}-${cfg.punto_expedicion}-${String(cfg.proximo_numero).padStart(7, "0")}` : "—"}
-              </p>
-            </div>
-          )}
+          <div>
+            <label className={lbl}>Próximo número{esPrueba ? " (prueba)" : ""}</label>
+            <p className="py-2 font-mono text-sm text-slate-800">
+              {cfg
+                ? `${cfg.establecimiento}-${cfg.punto_expedicion}-${String(esPrueba ? cfg.proximo_numero_prueba : cfg.proximo_numero).padStart(7, "0")}`
+                : "—"}
+            </p>
+          </div>
           <div>
             <label className={lbl}>Timbrado</label>
             <p className="py-2 text-sm text-slate-800">
@@ -434,7 +453,7 @@ export default function FormFactura({ regularizacion = false }: { regularizacion
           disabled={enviando || !cfg || fueraVigencia}
           className="rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:opacity-50"
         >
-          {enviando ? "Emitiendo…" : regularizacion ? "Registrar factura" : "Emitir factura"}
+          {enviando ? "Emitiendo…" : esPrueba ? "Emitir factura de prueba" : "Emitir factura"}
         </button>
         <button type="button" onClick={() => router.push("/facturas-exportacion")} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
           Cancelar

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
+import { getTenantSupabaseFromAuth, getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
 
 export const dynamic = "force-dynamic";
 
 const COLS =
   "id, establecimiento, punto_expedicion, timbrado, vigencia_desde, vigencia_hasta, " +
-  "rango_desde, rango_hasta, proximo_numero, activo, tipo, ruc, autoimpresor_nro";
+  "rango_desde, rango_hasta, proximo_numero, proximo_numero_prueba, modo_prueba, activo, tipo, ruc, autoimpresor_nro";
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,5 +24,38 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error("[/api/facturas-exportacion/config GET]", err instanceof Error ? err.message : err);
     return NextResponse.json(errorResponse("No se pudo cargar la configuración."), { status: 500 });
+  }
+}
+
+/** PATCH { modo_prueba: boolean } — activa o desactiva el modo prueba en todos los puntos. Solo admin. */
+export async function PATCH(request: NextRequest) {
+  try {
+    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    const { auth, supabase } = ctx;
+    if (!esRolAdminEmpresaOGlobal(auth.rol))
+      return NextResponse.json(errorResponse("Solo un administrador puede cambiar el modo de facturación."), { status: 403 });
+
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    if (typeof body.modo_prueba !== "boolean")
+      return NextResponse.json(errorResponse("Falta modo_prueba."), { status: 400 });
+
+    const { error } = await supabase
+      .from("facturas_exportacion_config")
+      .update({ modo_prueba: body.modo_prueba, updated_at: new Date().toISOString() })
+      .eq("empresa_id", auth.empresa_id);
+    if (error) throw new Error(error.message);
+
+    await supabase.from("facturas_exportacion_auditoria").insert({
+      empresa_id: auth.empresa_id,
+      accion: body.modo_prueba ? "ACTIVAR_MODO_PRUEBA" : "PASAR_A_PRODUCCION",
+      detalle: { modo_prueba: body.modo_prueba },
+      usuario_id: auth.user.id,
+      usuario_nombre: auth.nombre ?? auth.user.email ?? null,
+    });
+    return NextResponse.json(successResponse({ modo_prueba: body.modo_prueba }));
+  } catch (err) {
+    console.error("[/api/facturas-exportacion/config PATCH]", err instanceof Error ? err.message : err);
+    return NextResponse.json(errorResponse("No se pudo cambiar el modo."), { status: 500 });
   }
 }

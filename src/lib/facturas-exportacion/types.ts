@@ -53,7 +53,9 @@ export interface FacturaExportacion {
   motivo_anulacion?: string | null;
   anulada_at?: string | null;
   anulada_por_nombre?: string | null;
-  regularizacion: boolean;
+  regularizacion?: boolean;
+  prueba?: boolean;
+  regularizacion_id?: string | null;
   created_at: string;
   created_by_nombre?: string | null;
   items?: FacturaExportacionItem[];
@@ -65,4 +67,26 @@ export interface FacturaConfigFiscal {
   vigencia_hasta: string;
   ruc: string | null;
   autoimpresor_nro: string | null;
+}
+
+export type RegularizacionEstado = "PENDIENTE" | "CORRECTA" | "ANULADA" | "PENDIENTE_REEMISION" | "REEMITIDA";
+
+export interface FacturaRegularizacion {
+  id: string;
+  numero_original: string;
+  fecha_original: string;
+  timbrado_original: string;
+  punto_original: string | null;
+  cliente_nombre: string;
+  cliente_pais: string | null;
+  moneda: string;
+  total: number;
+  pdf_path: string | null;
+  motivo: string;
+  estado: RegularizacionEstado;
+  factura_vinculada_id: string | null;
+  factura_vinculada_numero?: string | null;
+  observaciones: string | null;
+  created_by_nombre: string | null;
+  created_at: string;
 }

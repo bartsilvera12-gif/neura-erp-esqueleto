@@ -13,7 +13,7 @@ const COLS =
   "fecha, moneda, tipo_cambio, cliente_nombre, cliente_documento, cliente_direccion, cliente_pais, " +
   "cliente_ciudad, cliente_telefono, condicion_venta, nota_remision, " +
   "subtotal, total, observaciones, estado, motivo_anulacion, anulada_at, anulada_por_nombre, " +
-  "regularizacion, created_at, created_by_nombre";
+  "prueba, regularizacion_id, created_at, created_by_nombre";
 
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     const punto = searchParams.get("punto");
     const tipo = searchParams.get("tipo");
     const q = searchParams.get("q");
+    const modo = searchParams.get("modo");
 
     let query = ctx.supabase
       .from("facturas_exportacion")
@@ -51,6 +52,8 @@ export async function GET(request: NextRequest) {
     if (tipo === "EXPORTACION" || tipo === "LOCAL") query = query.eq("tipo", tipo);
     if (punto) query = query.eq("punto_expedicion", punto);
     if (q) query = query.ilike("cliente_nombre", `%${q}%`);
+    if (modo === "prueba") query = query.eq("prueba", true);
+    if (modo === "real") query = query.eq("prueba", false);
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
@@ -75,9 +78,10 @@ export async function POST(request: NextRequest) {
     }
 
     const tipo: TipoFactura = body.tipo === "LOCAL" ? "LOCAL" : "EXPORTACION";
-    const esRegularizacion = body.regularizacion === true;
-    if (esRegularizacion && !esRolAdminEmpresaOGlobal(auth.rol))
-      return NextResponse.json(errorResponse("Solo un administrador puede regularizar facturas."), { status: 403 });
+    // Reemisión de una factura de agosto: acción explícita, solo admin.
+    const regularizacionId = txt(body.regularizacion_id);
+    if (regularizacionId && !esRolAdminEmpresaOGlobal(auth.rol))
+      return NextResponse.json(errorResponse("Solo un administrador puede reemitir facturas regularizadas."), { status: 403 });
 
     const est = String(body.establecimiento ?? "").trim();
     const punto = String(body.punto_expedicion ?? "").trim();
@@ -122,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     const cfgRes = await supabase
       .from("facturas_exportacion_config")
-      .select("timbrado, vigencia_desde, vigencia_hasta, rango_desde, rango_hasta, tipo")
+      .select("timbrado, vigencia_desde, vigencia_hasta, rango_desde, rango_hasta, modo_prueba")
       .eq("empresa_id", auth.empresa_id)
       .eq("establecimiento", est)
       .eq("punto_expedicion", punto)
@@ -130,7 +134,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     if (cfgRes.error) throw new Error(cfgRes.error.message);
     const cfg = cfgRes.data as unknown as {
-      timbrado: string; vigencia_desde: string; vigencia_hasta: string; rango_desde: number; rango_hasta: number;
+      timbrado: string; vigencia_desde: string; vigencia_hasta: string; rango_desde: number; rango_hasta: number; modo_prueba: boolean;
     } | null;
     if (!cfg)
       return NextResponse.json(errorResponse(`No hay timbrado activo para ${est}-${punto}.`), { status: 400 });
@@ -141,27 +145,36 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
 
-    let numero: number;
-    if (esRegularizacion) {
-      const n = Math.floor(toNum(body.numero));
-      if (n < cfg.rango_desde || n > cfg.rango_hasta)
-        return NextResponse.json(errorResponse(`El número debe estar entre ${cfg.rango_desde} y ${cfg.rango_hasta}.`), { status: 400 });
-      numero = n;
-    } else {
-      // La RPC valida el rango y revierte el incremento si se excede.
-      const rpc = await supabase.rpc("reservar_correlativo_factura_exportacion", {
-        p_empresa_id: auth.empresa_id,
-        p_establecimiento: est,
-        p_punto_expedicion: punto,
-        p_timbrado: cfg.timbrado,
-      });
-      if (rpc.error) {
-        console.error("[facturas-exportacion RPC]", rpc.error.message);
-        const msg = /rango/i.test(rpc.error.message) ? "Se agotó el rango autorizado del timbrado." : "No se pudo reservar el número.";
-        return NextResponse.json(errorResponse(msg), { status: 400 });
-      }
-      numero = Number(rpc.data);
+    const prueba = cfg.modo_prueba !== false;
+
+    if (regularizacionId) {
+      const reg = await supabase
+        .from("facturas_regularizacion")
+        .select("id, estado")
+        .eq("empresa_id", auth.empresa_id)
+        .eq("id", regularizacionId)
+        .maybeSingle();
+      if (reg.error) throw new Error(reg.error.message);
+      const estadoReg = (reg.data as { estado?: string } | null)?.estado;
+      if (!estadoReg) return NextResponse.json(errorResponse("La factura a regularizar no existe."), { status: 404 });
+      if (estadoReg === "REEMITIDA")
+        return NextResponse.json(errorResponse("Esa factura de agosto ya fue reemitida."), { status: 400 });
     }
+
+    // La RPC valida el rango y revierte el incremento si se excede. En prueba usa otro contador.
+    const rpc = await supabase.rpc("reservar_correlativo_factura_exportacion", {
+      p_empresa_id: auth.empresa_id,
+      p_establecimiento: est,
+      p_punto_expedicion: punto,
+      p_timbrado: cfg.timbrado,
+      p_prueba: prueba,
+    });
+    if (rpc.error) {
+      console.error("[facturas-exportacion RPC]", rpc.error.message);
+      const msg = /rango/i.test(rpc.error.message) ? "Se agotó el rango autorizado del timbrado." : "No se pudo reservar el número.";
+      return NextResponse.json(errorResponse(msg), { status: 400 });
+    }
+    const numero = Number(rpc.data);
 
     const usuarioNombre = auth.nombre ?? auth.user.email ?? null;
     const ins = await supabase
@@ -198,7 +211,8 @@ export async function POST(request: NextRequest) {
         iva5,
         iva10,
         observaciones: txt(body.observaciones),
-        regularizacion: esRegularizacion,
+        prueba,
+        regularizacion_id: regularizacionId,
         created_by: auth.user.id,
         created_by_nombre: usuarioNombre,
       })
@@ -229,11 +243,20 @@ export async function POST(request: NextRequest) {
     await supabase.from("facturas_exportacion_auditoria").insert({
       empresa_id: auth.empresa_id,
       factura_id: factura.id,
-      accion: esRegularizacion ? "REGULARIZACION" : "EMITIR",
-      detalle: { tipo, numero, punto, total, moneda },
+      accion: regularizacionId ? "REEMITIR" : "EMITIR",
+      detalle: { tipo, numero, punto, total, moneda, prueba, regularizacion_id: regularizacionId },
       usuario_id: auth.user.id,
       usuario_nombre: usuarioNombre,
     });
+
+    // Una reemisión de prueba no cierra la factura de agosto: solo la real la marca REEMITIDA.
+    if (regularizacionId && !prueba) {
+      await supabase
+        .from("facturas_regularizacion")
+        .update({ estado: "REEMITIDA", factura_vinculada_id: factura.id, updated_at: new Date().toISOString() })
+        .eq("empresa_id", auth.empresa_id)
+        .eq("id", regularizacionId);
+    }
 
     return NextResponse.json(successResponse({ factura }));
   } catch (err) {

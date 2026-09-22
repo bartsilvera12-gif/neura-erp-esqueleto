@@ -302,6 +302,12 @@ export async function buildFacturaExportacionPdf(
   for (const p of doc.getPages()) {
     p.drawLine({ start: { x: MX, y: 42 }, end: { x: W - MX, y: 42 }, thickness: 0.5, color: BORDE });
     p.drawText(pie, { x: (W - reg.widthOfTextAtSize(pie, 7)) / 2, y: 30, size: 7, font: reg, color: GRIS });
+    if (f.prueba) {
+      p.drawRectangle({ x: 0, y: H - 16, width: W, height: 16, color: rgb(0.85, 0.15, 0.15) });
+      const aviso = "FACTURA DE PRUEBA · SIN VALOR FISCAL";
+      p.drawText(aviso, { x: (W - bold.widthOfTextAtSize(aviso, 8)) / 2, y: H - 11.5, size: 8, font: bold, color: rgb(1, 1, 1) });
+      p.drawText("PRUEBA", { x: 170, y: 300, size: 100, font: bold, color: rgb(0.85, 0.15, 0.15), opacity: 0.12, rotate: degrees(35) });
+    }
     if (f.estado === "ANULADA") {
       p.drawText("ANULADA", { x: 150, y: 330, size: 90, font: bold, color: rgb(0.85, 0.15, 0.15), opacity: 0.2, rotate: degrees(35) });
     }

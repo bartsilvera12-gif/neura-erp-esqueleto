@@ -29,6 +29,40 @@ export default function FacturasExportacionPage() {
   const [punto, setPunto] = useState<"" | string>("");
   const [tipo, setTipo] = useState<"" | TipoFactura>("");
   const [q, setQ] = useState("");
+  const [modo, setModo] = useState<"" | "prueba" | "real">("");
+  const [modoPrueba, setModoPrueba] = useState<boolean | null>(null);
+
+  async function cargarModo() {
+    const j = await fetch("/api/facturas-exportacion/config", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .catch(() => null);
+    const cfg = (j?.data?.config ?? []) as Array<{ modo_prueba: boolean; activo: boolean }>;
+    const activos = cfg.filter((c) => c.activo);
+    if (activos.length) setModoPrueba(activos.some((c) => c.modo_prueba !== false));
+  }
+
+  async function cambiarModo(prueba: boolean) {
+    const msg = prueba
+      ? "¿Volver a modo prueba? Las próximas facturas saldrán como PRUEBA, sin valor fiscal."
+      : "¿Pasar a producción? Desde ahora cada factura usa un número REAL del timbrado 19025402.\n\nHacelo solo cuando el contador haya confirmado el uso de Zentra.";
+    if (!window.confirm(msg)) return;
+    const j = await fetch("/api/facturas-exportacion/config", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ modo_prueba: prueba }),
+    }).then((r) => r.json());
+    if (!j?.success) return alert(j?.error ?? "No se pudo cambiar el modo.");
+    void cargarModo();
+  }
+
+  async function borrarPruebas() {
+    if (!window.confirm("¿Borrar todas las facturas de PRUEBA? Las facturas reales no se tocan.")) return;
+    const j = await fetch("/api/facturas-exportacion/pruebas", { method: "DELETE", credentials: "include" }).then((r) => r.json());
+    if (!j?.success) return alert(j?.error ?? "No se pudieron borrar.");
+    alert(`Se borraron ${j.data?.borradas ?? 0} facturas de prueba.`);
+    void cargar();
+  }
 
   async function cargar() {
     setCargando(true);
@@ -41,6 +75,7 @@ export default function FacturasExportacionPage() {
       if (punto) params.set("punto", punto);
       if (tipo) params.set("tipo", tipo);
       if (q) params.set("q", q);
+      if (modo) params.set("modo", modo);
       const res = await fetch(`/api/facturas-exportacion?${params}`, { credentials: "include", cache: "no-store" });
       const j = await res.json();
       if (!j?.success) throw new Error(j?.error ?? "Error");
@@ -51,7 +86,7 @@ export default function FacturasExportacionPage() {
       setCargando(false);
     }
   }
-  useEffect(() => { void cargar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void cargar(); void cargarModo(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   async function anular(f: FacturaExportacion) {
     const motivo = window.prompt(`Anular ${f.numero_formateado}. Motivo:`);
@@ -100,14 +135,58 @@ export default function FacturasExportacionPage() {
         </div>
       </div>
 
+      {modoPrueba !== null && (
+        <div
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
+            modoPrueba ? "border-amber-300 bg-amber-50 text-amber-900" : "border-emerald-300 bg-emerald-50 text-emerald-900"
+          }`}
+        >
+          <p>
+            {modoPrueba ? (
+              <>
+                <strong>Modo prueba activado.</strong> Las facturas salen marcadas como PRUEBA, sin valor fiscal, y no usan
+                los números reales del timbrado.
+              </>
+            ) : (
+              <>
+                <strong>En producción.</strong> Cada factura usa un número real del timbrado 19025402.
+              </>
+            )}
+          </p>
+          {isAdmin && (
+            <div className="flex gap-2">
+              {modoPrueba && (
+                <button onClick={borrarPruebas} className="rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-xs font-medium hover:bg-amber-100">
+                  Borrar facturas de prueba
+                </button>
+              )}
+              <button
+                onClick={() => cambiarModo(!modoPrueba)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${modoPrueba ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-600 hover:bg-amber-700"}`}
+              >
+                {modoPrueba ? "Pasar a producción" : "Volver a modo prueba"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="zx-surface zx-surface-accent p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-6">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-7">
           <div>
             <label className="mb-1 block text-xs text-slate-500">Tipo</label>
             <select value={tipo} onChange={(e) => setTipo(e.target.value as "" | TipoFactura)} className="zx-surface w-full px-3 py-2 text-sm">
               <option value="">Todas</option>
               <option value="EXPORTACION">Exportación</option>
               <option value="LOCAL">Local</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-slate-500">Prueba / real</label>
+            <select value={modo} onChange={(e) => setModo(e.target.value as "" | "prueba" | "real")} className="zx-surface w-full px-3 py-2 text-sm">
+              <option value="">Todas</option>
+              <option value="real">Reales</option>
+              <option value="prueba">De prueba</option>
             </select>
           </div>
           <div>
@@ -145,7 +224,7 @@ export default function FacturasExportacionPage() {
             Aplicar filtros
           </button>
           <button
-            onClick={() => { setDesde(""); setHasta(""); setEstado(""); setPunto(""); setTipo(""); setQ(""); setTimeout(cargar, 0); }}
+            onClick={() => { setDesde(""); setHasta(""); setEstado(""); setPunto(""); setTipo(""); setModo(""); setQ(""); setTimeout(cargar, 0); }}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
           >
             Limpiar
@@ -185,7 +264,8 @@ export default function FacturasExportacionPage() {
                   </td>
                   <td className="py-2 pr-3 font-mono text-slate-800">
                     {f.numero_formateado}
-                    {f.regularizacion && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Reg.</span>}
+                    {f.prueba && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Prueba</span>}
+                    {f.regularizacion_id && <span className="ml-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">Reemisión</span>}
                   </td>
                   <td className="py-2 pr-3">{fechaES(f.fecha)}</td>
                   <td className="py-2 pr-3">{f.cliente_nombre}</td>
