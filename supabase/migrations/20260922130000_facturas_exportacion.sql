@@ -142,7 +142,7 @@ BEGIN
           RETURNING proximo_numero - 1 INTO v_numero;
 
         IF v_numero IS NULL THEN
-          RAISE EXCEPTION 'No hay configuración Autoimpresor activa para % / % / %',
+          RAISE EXCEPTION 'No hay configuración Autoimpresor activa para %% / %% / %%',
             p_establecimiento, p_punto_expedicion, p_timbrado
             USING ERRCODE = 'P0002';
         END IF;
