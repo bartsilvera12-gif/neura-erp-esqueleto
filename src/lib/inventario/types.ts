@@ -67,6 +67,16 @@ export interface Producto {
   descripcion?: string | null;
   /** Modo de receta (productos de Menú): 'preparado_al_vender' | 'produccion_previa'. */
   modo_receta?: string;
+  /** Cantidad de la importación original (dato histórico). Living Room / muebles. */
+  cantidad_importacion?: number;
+  /** Cantidad de unidades en exhibición en show room. */
+  show_room?: number;
+  /** Cantidad acumulada re-exportada a Bolivia. */
+  exportacion_bolivia?: number;
+  /** Observaciones del inventario (texto libre). */
+  observaciones?: string | null;
+  /** Posible solución para el ítem (texto libre). */
+  posible_solucion?: string | null;
 }
 
 export interface MovimientoInventario {

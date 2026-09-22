@@ -16,7 +16,8 @@ const PRODUCTO_COLS =
   "codigo_barras, codigo_barras_interno, imagen_path, imagen_url, " +
   "categoria_principal_id, ubicacion_principal_id, proveedor_principal_id, " +
   "es_vendible, es_insumo, controla_stock, valorizado, unidad_compra, unidad_receta, " +
-  "factor_compra_receta, tiempo_prep_minutos, descripcion";
+  "factor_compra_receta, tiempo_prep_minutos, descripcion, " +
+  "cantidad_importacion, show_room, exportacion_bolivia, observaciones, posible_solucion";
 
 function toNumber(v: unknown): unknown {
   return typeof v === "string" ? Number(v) : v;
@@ -29,6 +30,9 @@ function rowToApi(r: Record<string, unknown>): Record<string, unknown> {
     stock_actual: toNumber(r.stock_actual),
     stock_minimo: toNumber(r.stock_minimo),
     factor_compra_receta: toNumber(r.factor_compra_receta),
+    cantidad_importacion: toNumber(r.cantidad_importacion),
+    show_room: toNumber(r.show_room),
+    exportacion_bolivia: toNumber(r.exportacion_bolivia),
   };
 }
 
@@ -177,6 +181,18 @@ export async function POST(request: NextRequest) {
     if (tiempoPrepMinutos !== undefined) insertPayload.tiempo_prep_minutos = tiempoPrepMinutos;
     const descripcion = typeof body.descripcion === "string" ? body.descripcion.trim() || null : (body.descripcion === null ? null : undefined);
     if (descripcion !== undefined) insertPayload.descripcion = descripcion;
+
+    // Living Room / muebles: campos de inventario extendido.
+    const cantImp = Number(body.cantidad_importacion);
+    if (Number.isFinite(cantImp) && cantImp >= 0) insertPayload.cantidad_importacion = cantImp;
+    const showRoom = Number(body.show_room);
+    if (Number.isFinite(showRoom) && showRoom >= 0) insertPayload.show_room = showRoom;
+    const expBol = Number(body.exportacion_bolivia);
+    if (Number.isFinite(expBol) && expBol >= 0) insertPayload.exportacion_bolivia = expBol;
+    const obs = typeof body.observaciones === "string" ? body.observaciones.trim() || null : (body.observaciones === null ? null : undefined);
+    if (obs !== undefined) insertPayload.observaciones = obs;
+    const posSol = typeof body.posible_solucion === "string" ? body.posible_solucion.trim() || null : (body.posible_solucion === null ? null : undefined);
+    if (posSol !== undefined) insertPayload.posible_solucion = posSol;
 
     const ins = await sb.from("productos").insert(insertPayload).select(PRODUCTO_COLS).single();
     if (ins.error) {

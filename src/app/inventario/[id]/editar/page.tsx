@@ -37,6 +37,12 @@ export default function EditarProductoPage() {
 
   // descripcion live separately because form se inicializa al cargar
   const [descripcion, setDescripcion] = useState("");
+  // Inventario extendido (Living Room / muebles).
+  const [cantidadImportacion, setCantidadImportacion] = useState("");
+  const [showRoom, setShowRoom] = useState("");
+  const [exportacionBolivia, setExportacionBolivia] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [posibleSolucion, setPosibleSolucion] = useState("");
   const [form, setForm] = useState({
     nombre: "",
     sku: "",
@@ -166,6 +172,11 @@ export default function EditarProductoPage() {
       setEsInsumo(esIns);
       setControlaStock(ctrlStock);
       setDescripcion(p.descripcion ?? "");
+      setCantidadImportacion(p.cantidad_importacion != null ? String(p.cantidad_importacion) : "");
+      setShowRoom(p.show_room != null ? String(p.show_room) : "");
+      setExportacionBolivia(p.exportacion_bolivia != null ? String(p.exportacion_bolivia) : "");
+      setObservaciones(p.observaciones ?? "");
+      setPosibleSolucion(p.posible_solucion ?? "");
       setValorizado(p.valorizado ?? true);
       setUnidadCompra(p.unidad_compra ?? "");
       setUnidadReceta(p.unidad_receta ?? "");
@@ -302,6 +313,11 @@ export default function EditarProductoPage() {
         factor_compra_receta: Math.max(parseFloat(factorCompraReceta) || 1, 0.0001),
         tiempo_prep_minutos: Math.max(parseInt(tiempoPrepMinutos) || 0, 0),
         descripcion: descripcion.trim() || null,
+        cantidad_importacion: Math.max(parseFloat(cantidadImportacion) || 0, 0),
+        show_room: Math.max(parseFloat(showRoom) || 0, 0),
+        exportacion_bolivia: Math.max(parseFloat(exportacionBolivia) || 0, 0),
+        observaciones: observaciones.trim() || null,
+        posible_solucion: posibleSolucion.trim() || null,
       };
       if (cambioCodigo) {
         updatePayload.codigo_barras = codigoIngresado || null;
@@ -411,6 +427,73 @@ export default function EditarProductoPage() {
               rows={tipoGastro === "menu" ? 3 : 2}
               className={inputClass}
             />
+          </div>
+
+          {/* Inventario extendido (Living Room / muebles) */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Inventario extendido
+            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <label className={labelClass}>Cantidad importación</label>
+                <input
+                  type="number"
+                  value={cantidadImportacion}
+                  onChange={(e) => setCantidadImportacion(e.target.value)}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Show room</label>
+                <input
+                  type="number"
+                  value={showRoom}
+                  onChange={(e) => setShowRoom(e.target.value)}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Exportación Bolivia</label>
+                <input
+                  type="number"
+                  value={exportacionBolivia}
+                  onChange={(e) => setExportacionBolivia(e.target.value)}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className={labelClass}>Observaciones</label>
+                <textarea
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  rows={2}
+                  placeholder="Notas del inventario"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Posible solución</label>
+                <textarea
+                  value={posibleSolucion}
+                  onChange={(e) => setPosibleSolucion(e.target.value)}
+                  rows={2}
+                  placeholder="Acción sugerida"
+                  className={inputClass}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-6">

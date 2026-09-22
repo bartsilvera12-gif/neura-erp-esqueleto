@@ -40,6 +40,12 @@ export default function NuevoProductoPage() {
     metodo_valuacion: "CPP" as MetodoValuacion,
     // Fijo: esta pantalla solo da de alta productos de reventa.
     tipo_producto: "reventa" as const,
+    // Living Room / muebles (inventario histórico + observaciones).
+    cantidad_importacion: "",
+    show_room: "",
+    exportacion_bolivia: "",
+    observaciones: "",
+    posible_solucion: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [generandoCodigo, setGenerandoCodigo] = useState(false);
@@ -319,6 +325,11 @@ export default function NuevoProductoPage() {
           unidad_receta: unidadReceta.trim() || null,
           factor_compra_receta: Math.max(parseFloat(factorCompraReceta) || 1, 0.0001),
           tiempo_prep_minutos: Math.max(parseInt(tiempoPrepMinutos) || 0, 0),
+          cantidad_importacion: Math.max(parseFloat(form.cantidad_importacion) || 0, 0),
+          show_room: Math.max(parseFloat(form.show_room) || 0, 0),
+          exportacion_bolivia: Math.max(parseFloat(form.exportacion_bolivia) || 0, 0),
+          observaciones: form.observaciones.trim() || null,
+          posible_solucion: form.posible_solucion.trim() || null,
         });
       } catch (err) {
         console.error("[inventario/nuevo] saveProducto error:", err);
@@ -441,6 +452,78 @@ export default function NuevoProductoPage() {
               rows={2}
               className={inputClass}
             />
+          </div>
+
+          {/* Inventario extendido (Living Room / muebles) */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Inventario extendido
+            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <label className={labelClass}>Cantidad importación</label>
+                <input
+                  type="number"
+                  name="cantidad_importacion"
+                  value={form.cantidad_importacion}
+                  onChange={handleChange}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Show room</label>
+                <input
+                  type="number"
+                  name="show_room"
+                  value={form.show_room}
+                  onChange={handleChange}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Exportación Bolivia</label>
+                <input
+                  type="number"
+                  name="exportacion_bolivia"
+                  value={form.exportacion_bolivia}
+                  onChange={handleChange}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className={labelClass}>Observaciones</label>
+                <textarea
+                  name="observaciones"
+                  value={form.observaciones}
+                  onChange={handleChange}
+                  rows={2}
+                  placeholder="Notas del inventario"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Posible solución</label>
+                <textarea
+                  name="posible_solucion"
+                  value={form.posible_solucion}
+                  onChange={handleChange}
+                  rows={2}
+                  placeholder="Acción sugerida"
+                  className={inputClass}
+                />
+              </div>
+            </div>
           </div>
 
           {/* SKU + Unidad de medida */}

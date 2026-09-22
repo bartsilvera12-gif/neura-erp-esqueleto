@@ -219,6 +219,18 @@ export async function saveProducto(
         : 0,
     descripcion: datos.descripcion ?? null,
     tipo_producto: datos.tipo_producto ?? "reventa",
+    cantidad_importacion:
+      typeof datos.cantidad_importacion === "number" && datos.cantidad_importacion >= 0
+        ? datos.cantidad_importacion
+        : 0,
+    show_room:
+      typeof datos.show_room === "number" && datos.show_room >= 0 ? datos.show_room : 0,
+    exportacion_bolivia:
+      typeof datos.exportacion_bolivia === "number" && datos.exportacion_bolivia >= 0
+        ? datos.exportacion_bolivia
+        : 0,
+    observaciones: datos.observaciones ?? null,
+    posible_solucion: datos.posible_solucion ?? null,
   };
 
   const res = await fetch("/api/productos", {
@@ -282,6 +294,14 @@ export async function updateProducto(
     body.tiempo_prep_minutos = datos.tiempo_prep_minutos;
   if (datos.descripcion !== undefined) body.descripcion = datos.descripcion;
   if (datos.tipo_producto !== undefined) body.tipo_producto = datos.tipo_producto;
+  if (typeof datos.cantidad_importacion === "number" && datos.cantidad_importacion >= 0)
+    body.cantidad_importacion = datos.cantidad_importacion;
+  if (typeof datos.show_room === "number" && datos.show_room >= 0)
+    body.show_room = datos.show_room;
+  if (typeof datos.exportacion_bolivia === "number" && datos.exportacion_bolivia >= 0)
+    body.exportacion_bolivia = datos.exportacion_bolivia;
+  if (datos.observaciones !== undefined) body.observaciones = datos.observaciones;
+  if (datos.posible_solucion !== undefined) body.posible_solucion = datos.posible_solucion;
 
   const res = await fetch(`/api/productos/${encodeURIComponent(id)}`, {
     method: "PATCH",
