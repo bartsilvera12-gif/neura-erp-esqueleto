@@ -12,7 +12,7 @@ import * as XLSX from "xlsx";
 export interface ExportColumn<T> {
   header: string;
   /** Funcion para extraer el valor de la fila (string | number | null | undefined | boolean | Date). */
-  value: (row: T) => string | number | boolean | null | undefined | Date;
+  value: (row: T, index: number) => string | number | boolean | null | undefined | Date;
   /** Ancho aproximado en caracteres (opcional). */
   width?: number;
 }
@@ -33,9 +33,9 @@ export function buildXlsxBuffer<T>(
   // Header row
   const headerRow = columns.map((c) => c.header);
   // Data rows
-  const dataRows = rows.map((row) =>
+  const dataRows = rows.map((row, i) =>
     columns.map((c) => {
-      const v = c.value(row);
+      const v = c.value(row, i);
       if (v == null) return "";
       if (v instanceof Date) return v;
       return v;

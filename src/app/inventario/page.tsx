@@ -91,6 +91,8 @@ export default function InventarioPage() {
   const [filtroCategoria,  setFiltroCategoria]  = useState("");
   const [filtroStock,      setFiltroStock]      = useState<"todos" | "bajo" | "sin" | "con">("todos");
   const [filtroTipoProd,   setFiltroTipoProd]   = useState<"" | "reventa" | "repuesto" | "servicio">("");
+  const [filtroAlmacen,    setFiltroAlmacen]    = useState<"" | "PY" | "BOL">("");
+  const [ubicPaisById,     setUbicPaisById]     = useState<Record<string, string | null>>({});
   const [categorias,       setCategorias]       = useState<{ id: string; nombre: string }[]>([]);
   const [porPagina,        setPorPagina]        = useState(25);
   const [pagina,           setPagina]           = useState(1);
@@ -113,6 +115,18 @@ export default function InventarioPage() {
       .then((j) => {
         if (cancelled || !j?.success) return;
         setCategorias((j.data?.categorias ?? []) as { id: string; nombre: string }[]);
+      })
+      .catch(() => undefined);
+    // Ubicaciones: solo para mapear id → pais (filtro Almacén PY/BOL).
+    fetch("/api/inventario/ubicaciones", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled || !j?.success) return;
+        const map: Record<string, string | null> = {};
+        for (const u of (j.data?.ubicaciones ?? []) as Array<{ id: string; pais: string | null }>) {
+          map[u.id] = u.pais;
+        }
+        setUbicPaisById(map);
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
@@ -190,6 +204,12 @@ export default function InventarioPage() {
       if (p.ubicacion_principal_id !== filtroUbicacion) return false;
     }
 
+    // Almacén (país de la ubicación): PY / BOL. Los sin ubicación quedan fuera.
+    if (filtroAlmacen) {
+      const pais = p.ubicacion_principal_id ? (ubicPaisById[p.ubicacion_principal_id] ?? "") : "";
+      if ((pais ?? "").toUpperCase() !== filtroAlmacen) return false;
+    }
+
     // Solo stock bajo
     if (soloStockBajo && p.stock_actual > p.stock_minimo) return false;
 
@@ -220,7 +240,7 @@ export default function InventarioPage() {
     busqueda || filtroCategoria || filtroStock !== "todos" || filtroTipoProd ||
     filtroPorNombre || filtroPorSku || filtroPorCosto ||
     filtroPorPrecio || filtroValuacion || filtroUbicacion || soloStockBajo ||
-    filtroTipo !== "todos";
+    filtroTipo !== "todos" || filtroAlmacen;
 
   function limpiarFiltros() {
     setPagina(1);
@@ -236,6 +256,7 @@ export default function InventarioPage() {
     setFiltroUbicacion("");
     setSoloStockBajo(false);
     setFiltroTipo("todos");
+    setFiltroAlmacen("");
   }
 
   return (
@@ -346,6 +367,30 @@ export default function InventarioPage() {
               <option value="repuesto">Repuesto</option>
               <option value="servicio">Servicio</option>
             </Select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Almacén</label>
+            <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+              {([
+                { id: "", label: "Todos" },
+                { id: "PY", label: "PY" },
+                { id: "BOL", label: "BOL" },
+              ] as const).map((o) => (
+                <button
+                  key={o.id || "todos"}
+                  type="button"
+                  onClick={() => { setFiltroAlmacen(o.id as "" | "PY" | "BOL"); setPagina(1); }}
+                  className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
+                    filtroAlmacen === o.id
+                      ? "bg-white text-[#3F8E91] shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -510,6 +555,10 @@ export default function InventarioPage() {
                   </span>
                 </th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Stock</th>
+                <th className="py-2.5 pr-4 text-right font-semibold" title="Cantidad de la importación original.">Import.</th>
+                <th className="py-2.5 pr-4 text-right font-semibold" title="Unidades en exhibición.">Show room</th>
+                <th className="py-2.5 pr-4 text-right font-semibold" title="Cantidad acumulada re-exportada a Bolivia.">Exp. BOL</th>
+                <th className="py-2.5 pr-4 text-right font-semibold" title="Stock actual − show room − exp. Bolivia.">Saldo</th>
                 <th className="w-32 py-2.5 pl-4 pr-4 text-right font-semibold">Acción</th>
               </tr>
             </thead>
@@ -575,6 +624,20 @@ export default function InventarioPage() {
                       <span className="ml-1 text-[11px] uppercase text-slate-400">{p.unidad_medida}</span>
                       <p className="text-[11px] text-slate-400">mín. {p.stock_minimo}</p>
                     </td>
+                    {(() => {
+                      const imp = Number(p.cantidad_importacion ?? 0);
+                      const sr = Number(p.show_room ?? 0);
+                      const eb = Number(p.exportacion_bolivia ?? 0);
+                      const saldo = Number(p.stock_actual ?? 0) - sr - eb;
+                      return (
+                        <>
+                          <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{imp || <span className="text-slate-300">—</span>}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{sr || <span className="text-slate-300">—</span>}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{eb || <span className="text-slate-300">—</span>}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums font-semibold text-slate-800">{saldo}</td>
+                        </>
+                      );
+                    })()}
                     <td className="py-3 pl-4 pr-4 text-right">
                       <div className="inline-flex items-center gap-2">
                         <Link
@@ -599,7 +662,7 @@ export default function InventarioPage() {
               {/* Sin resultados: antes la tabla quedaba en blanco, sin explicación. */}
               {!cargandoLista && productosPagina.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-4">
+                  <td colSpan={11} className="p-4">
                     <div className="zx-empty px-6 py-10 text-center">
                       <p className="text-sm text-slate-500">
                         {todos.length === 0
