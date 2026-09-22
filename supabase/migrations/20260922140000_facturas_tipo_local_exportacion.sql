@@ -32,8 +32,10 @@ ALTER TABLE esqueletoerp.facturas_exportacion_items
   ADD COLUMN IF NOT EXISTS iva_tipo text NOT NULL DEFAULT 'EXENTA';
 
 -- Datos fiscales de la autorización en los puntos de exportación.
+-- Rango autorizado FACTURA 001-004 y 001-005: 1 a 5000 (Form. 350-1 DNIT).
 UPDATE esqueletoerp.facturas_exportacion_config
-   SET tipo = 'EXPORTACION', ruc = '80150840-1', autoimpresor_nro = '350010028049'
+   SET tipo = 'EXPORTACION', ruc = '80150840-1', autoimpresor_nro = '350010028049',
+       rango_desde = 1, rango_hasta = 5000
  WHERE timbrado = '19025402';
 
 -- Punto local 001-001, timbrado 17943433.

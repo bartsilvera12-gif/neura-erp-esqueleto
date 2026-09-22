@@ -197,8 +197,8 @@ BEGIN
     INSERT INTO esqueletoerp.facturas_exportacion_config
       (empresa_id, establecimiento, punto_expedicion, timbrado, vigencia_desde, vigencia_hasta, rango_desde, rango_hasta, proximo_numero, activo)
     VALUES
-      (v_empresa, '001', '004', '19025402', DATE '2026-08-03', DATE '2027-08-31', 1, 9999999, 1, true),
-      (v_empresa, '001', '005', '19025402', DATE '2026-08-03', DATE '2027-08-31', 1, 9999999, 1, true)
+      (v_empresa, '001', '004', '19025402', DATE '2026-08-03', DATE '2027-08-31', 1, 5000, 1, true),
+      (v_empresa, '001', '005', '19025402', DATE '2026-08-03', DATE '2027-08-31', 1, 5000, 1, true)
     ON CONFLICT (empresa_id, establecimiento, punto_expedicion, timbrado) DO NOTHING;
   END IF;
 END
