@@ -161,7 +161,7 @@ DECLARE
   v_mod_id uuid;
   v_empresa uuid := '3c14fe00-d466-4f24-a010-1bbd7e37ccd6';
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='esqueletoerp' AND c.relname='modulos') THEN
+  IF to_regclass('esqueletoerp.modulos') IS NOT NULL THEN
     -- Upsert manual (la tabla puede no tener UNIQUE en slug).
     SELECT id INTO v_mod_id FROM esqueletoerp.modulos WHERE slug = 'facturas_exportacion' LIMIT 1;
     IF v_mod_id IS NULL THEN
