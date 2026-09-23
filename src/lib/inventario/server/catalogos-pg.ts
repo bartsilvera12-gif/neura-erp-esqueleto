@@ -155,14 +155,14 @@ export async function listUbicaciones(
 export async function insertUbicacion(
   schemaRaw: string,
   empresaId: string,
-  d: { nombre: string; codigo?: string | null; tipo?: string; parent_id?: string | null; descripcion?: string | null; activo?: boolean }
+  d: { nombre: string; codigo?: string | null; tipo?: string; parent_id?: string | null; descripcion?: string | null; activo?: boolean; pais?: string | null }
 ): Promise<UbicacionRow> {
   const schema = assertAllowedChatDataSchema(schemaRaw);
   const t = quoteSchemaTable(schema, "inventario_ubicaciones");
   const { rows } = await pool().query<UbicacionRow>(
-    `INSERT INTO ${t} (empresa_id, nombre, codigo, tipo, parent_id, descripcion, activo)
-     VALUES ($1::uuid, $2, $3, $4, $5, $6, COALESCE($7::boolean, true))
-     RETURNING id, empresa_id, nombre, codigo, tipo, parent_id, descripcion, activo, created_at, updated_at`,
+    `INSERT INTO ${t} (empresa_id, nombre, codigo, tipo, parent_id, descripcion, activo, pais)
+     VALUES ($1::uuid, $2, $3, $4, $5, $6, COALESCE($7::boolean, true), $8)
+     RETURNING id, empresa_id, nombre, codigo, tipo, parent_id, descripcion, activo, pais, created_at, updated_at`,
     [
       empresaId,
       d.nombre.trim(),
@@ -171,6 +171,7 @@ export async function insertUbicacion(
       d.parent_id || null,
       d.descripcion?.trim() || null,
       d.activo ?? true,
+      d.pais ?? null,
     ]
   );
   return rows[0];
@@ -180,7 +181,7 @@ export async function updateUbicacion(
   schemaRaw: string,
   empresaId: string,
   id: string,
-  d: Partial<{ nombre: string; codigo: string | null; tipo: string; parent_id: string | null; descripcion: string | null; activo: boolean }>
+  d: Partial<{ nombre: string; codigo: string | null; tipo: string; parent_id: string | null; descripcion: string | null; activo: boolean; pais: string | null }>
 ): Promise<UbicacionRow | null> {
   const schema = assertAllowedChatDataSchema(schemaRaw);
   const t = quoteSchemaTable(schema, "inventario_ubicaciones");
@@ -193,13 +194,14 @@ export async function updateUbicacion(
   if (d.parent_id !== undefined) { sets.push(`parent_id = $${i++}`); params.push(d.parent_id || null); }
   if (d.descripcion !== undefined) { sets.push(`descripcion = $${i++}`); params.push(d.descripcion?.trim() || null); }
   if (d.activo !== undefined) { sets.push(`activo = $${i++}::boolean`); params.push(d.activo); }
+  if (d.pais !== undefined) { sets.push(`pais = $${i++}`); params.push(d.pais); }
   if (sets.length === 0) return null;
   sets.push("updated_at = now()");
   params.push(id, empresaId);
   const { rows } = await pool().query<UbicacionRow>(
     `UPDATE ${t} SET ${sets.join(", ")}
       WHERE id = $${i++}::uuid AND empresa_id = $${i}::uuid
-      RETURNING id, empresa_id, nombre, codigo, tipo, parent_id, descripcion, activo, created_at, updated_at`,
+      RETURNING id, empresa_id, nombre, codigo, tipo, parent_id, descripcion, activo, pais, created_at, updated_at`,
     params
   );
   return rows[0] ?? null;

@@ -204,10 +204,10 @@ export default function InventarioPage() {
       if (p.ubicacion_principal_id !== filtroUbicacion) return false;
     }
 
-    // Almacén (país de la ubicación): PY / BOL. Los sin ubicación quedan fuera.
+    // Almacén (país del depósito): sin depósito o depósito sin país cuenta como PY (mismo criterio que Importaciones).
     if (filtroAlmacen) {
-      const pais = p.ubicacion_principal_id ? (ubicPaisById[p.ubicacion_principal_id] ?? "") : "";
-      if ((pais ?? "").toUpperCase() !== filtroAlmacen) return false;
+      const pais = (p.ubicacion_principal_id ? ubicPaisById[p.ubicacion_principal_id] : null) || "PY";
+      if (pais.toUpperCase() !== filtroAlmacen) return false;
     }
 
     // Solo stock bajo

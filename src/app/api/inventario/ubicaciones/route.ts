@@ -5,6 +5,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { listUbicaciones, insertUbicacion } from "@/lib/inventario/server/catalogos-pg";
 import { normalizeUpperText, normalizeUpperNullable } from "@/lib/text/normalize";
+import { normalizarPaisDeposito } from "@/lib/inventario/pais-deposito";
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
         parent_id: body.parent_id == null ? null : String(body.parent_id),
         descripcion: normalizeUpperNullable(body.descripcion),
         activo: body.activo === false ? false : true,
+        pais: normalizarPaisDeposito(body.pais),
       });
       return NextResponse.json(successResponse({ ubicacion: row }));
     } catch (e) {

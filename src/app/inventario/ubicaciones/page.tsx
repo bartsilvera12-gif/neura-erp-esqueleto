@@ -6,6 +6,7 @@ import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import { FancySelect } from "@/components/ui/FancySelect";
 import ImportExcelButton from "@/components/ui/ImportExcelButton";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
+import { PAISES_DEPOSITO } from "@/lib/inventario/pais-deposito";
 
 interface Ubicacion {
   id: string;
@@ -14,6 +15,7 @@ interface Ubicacion {
   tipo: string;
   parent_id: string | null;
   activo: boolean;
+  pais: string | null;
 }
 
 const TIPOS = ["deposito","salon","pasillo","gondola","estante","zona","otro"] as const;
@@ -30,6 +32,7 @@ export default function UbicacionesPage() {
   const [codigo, setCodigo] = useState("");
   const [tipo, setTipo] = useState<string>("deposito");
   const [parentId, setParentId] = useState("");
+  const [pais, setPais] = useState("PY");
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -63,13 +66,14 @@ export default function UbicacionesPage() {
           codigo: codigo.trim() || null,
           tipo,
           parent_id: parentId || null,
+          pais,
         }),
       });
       const j = await r.json();
       if (!r.ok || !j?.success) {
         setError(j?.error ?? "No se pudo crear.");
       } else {
-        setNombre(""); setCodigo(""); setTipo("deposito"); setParentId("");
+        setNombre(""); setCodigo(""); setTipo("deposito"); setParentId(""); setPais("PY");
         await load();
       }
     } catch (e) {
@@ -106,6 +110,18 @@ export default function UbicacionesPage() {
     const j = await r.json();
     if (r.ok && j?.success) load();
     else setError(j?.error ?? "No se pudo actualizar.");
+  }
+
+  async function cambiarPais(u: Ubicacion, nuevo: string) {
+    const r = await fetch(`/api/inventario/ubicaciones/${u.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ pais: nuevo || null }),
+    });
+    const j = await r.json();
+    if (r.ok && j?.success) load();
+    else setError(j?.error ?? "No se pudo actualizar el país.");
   }
 
   async function eliminar(u: Ubicacion) {
@@ -181,6 +197,18 @@ export default function UbicacionesPage() {
               }))}
             />
           </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">País (almacén)</label>
+            <select
+              value={pais}
+              onChange={(e) => setPais(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+            >
+              {PAISES_DEPOSITO.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
           <div className="md:col-span-3">
             <label className="block text-xs text-gray-600 mb-1">Ubicación padre (opcional)</label>
             <FancySelect
@@ -220,6 +248,7 @@ export default function UbicacionesPage() {
               <tr>
                 <th className="text-left px-4 py-2">Nombre</th>
                 <th className="text-left px-4 py-2">Tipo</th>
+                <th className="text-left px-4 py-2">País</th>
                 <th className="text-left px-4 py-2">Código</th>
                 <th className="text-left px-4 py-2">Padre</th>
                 <th className="text-left px-4 py-2">Estado</th>
@@ -233,6 +262,19 @@ export default function UbicacionesPage() {
                   <tr key={u.id} className="border-t border-slate-100">
                     <td className="px-4 py-2 font-medium">{u.nombre}</td>
                     <td className="px-4 py-2 text-gray-500">{u.tipo}</td>
+                    <td className="px-4 py-2">
+                      <select
+                        value={u.pais ?? ""}
+                        onChange={(e) => cambiarPais(u, e.target.value)}
+                        className="border border-slate-200 rounded px-2 py-1 text-xs"
+                        aria-label={`País de ${u.nombre}`}
+                      >
+                        <option value="">Sin marcar (PY)</option>
+                        {PAISES_DEPOSITO.map((p) => (
+                          <option key={p.value} value={p.value}>{p.value}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="px-4 py-2 text-gray-500">{u.codigo ?? "—"}</td>
                     <td className="px-4 py-2 text-gray-500">{parent?.nombre ?? "—"}</td>
                     <td className="px-4 py-2">

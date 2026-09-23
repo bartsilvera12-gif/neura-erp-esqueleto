@@ -4,6 +4,7 @@ import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema"
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { updateUbicacion } from "@/lib/inventario/server/catalogos-pg";
+import { normalizarPaisDeposito } from "@/lib/inventario/pais-deposito";
 import { normalizeUpperText, normalizeUpperNullable } from "@/lib/text/normalize";
 
 export async function PATCH(
@@ -22,6 +23,7 @@ export async function PATCH(
     if (body.tipo !== undefined) patch.tipo = String(body.tipo);
     if (body.parent_id !== undefined) patch.parent_id = body.parent_id == null ? null : String(body.parent_id);
     if (body.descripcion !== undefined) patch.descripcion = normalizeUpperNullable(body.descripcion);
+    if (body.pais !== undefined) patch.pais = normalizarPaisDeposito(body.pais);
     if (body.activo !== undefined) patch.activo = body.activo === true;
     const row = await updateUbicacion(schema, ctx.auth.empresa_id, id, patch);
     if (!row) return NextResponse.json(errorResponse(API_ERRORS.NOT_FOUND), { status: 404 });
