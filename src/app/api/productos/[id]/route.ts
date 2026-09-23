@@ -80,10 +80,23 @@ export async function DELETE(
     const ctx = await getTenantSupabaseFromAuth(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     // Borrado lógico: preserva historial (movimientos, compras) y no rompe FKs.
-    // El listado filtra por activo = true, así que el producto deja de aparecer.
+    // SKU y código de barras son únicos: se renombran para liberarlos y poder
+    // reutilizarlos en un producto nuevo; el historial conserva el valor original.
+    const actual = await ctx.supabase
+      .from("productos")
+      .select("id, sku, codigo_barras")
+      .eq("empresa_id", ctx.auth.empresa_id)
+      .eq("id", id)
+      .maybeSingle();
+    if (actual.error) throw new Error(actual.error.message);
+    if (!actual.data) return NextResponse.json(errorResponse(API_ERRORS.NOT_FOUND), { status: 404 });
+    const prod = actual.data as unknown as { sku: string | null; codigo_barras: string | null };
+    const marca = `-ELIM-${id.slice(0, 8)}`;
+    const libera = (v: string | null) => (v && !v.includes("-ELIM-") ? `${v}${marca}` : v);
+
     const upd = await ctx.supabase
       .from("productos")
-      .update({ activo: false })
+      .update({ activo: false, sku: libera(prod.sku), codigo_barras: libera(prod.codigo_barras) })
       .eq("empresa_id", ctx.auth.empresa_id)
       .eq("id", id)
       .select("id")
