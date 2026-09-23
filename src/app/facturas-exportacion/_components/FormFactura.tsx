@@ -54,6 +54,10 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 const fechaES = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
 const input = "zx-surface w-full px-3 py-2 text-sm";
 const lbl = "mb-1 block text-xs font-medium text-slate-500";
+/** Números sin flechitas y sin cambio por rueda del mouse: se escriben a mano. */
+const sinFlechas =
+  "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+const noRueda = (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur();
 interface ProductoLista {
   id: string;
   nombre: string;
@@ -661,11 +665,12 @@ export default function FormFactura() {
                 <label className={lbl}>Tipo de cambio a Gs. *</label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="any"
                   min="0"
+                  onWheel={noRueda}
                   value={tipoCambio}
                   onChange={(e) => setTipoCambio(e.target.value)}
-                  className={input}
+                  className={`${input} ${sinFlechas}`}
                   placeholder={moneda === "USD" ? "Ej: 7850" : "Cotización del día"}
                 />
               </div>
@@ -763,15 +768,15 @@ export default function FormFactura() {
                 </div>
                 <div className="lg:col-span-1">
                   <label className={lbl}>Cantidad</label>
-                  <input type="number" min="0" step="0.01" value={it.cantidad} onChange={(e) => updateItem(i, "cantidad", e.target.value)} className="zx-surface w-full px-2 py-1.5 text-right text-sm" />
+                  <input type="number" min="0" step="any" onWheel={noRueda} value={it.cantidad} onChange={(e) => updateItem(i, "cantidad", e.target.value)} className={`zx-surface w-full px-2 py-1.5 text-right text-sm ${sinFlechas}`} />
                 </div>
                 <div className="sm:col-span-2 lg:col-span-2">
                   <label className={lbl}>Precio unitario</label>
-                  <input type="number" min="0" step={dec ? "0.01" : "1"} value={it.precio_unitario} onChange={(e) => updateItem(i, "precio_unitario", e.target.value)} className="zx-surface w-full px-2 py-1.5 text-right text-sm" />
+                  <input type="number" min="0" step="any" onWheel={noRueda} value={it.precio_unitario} onChange={(e) => updateItem(i, "precio_unitario", e.target.value)} className={`zx-surface w-full px-2 py-1.5 text-right text-sm ${sinFlechas}`} />
                 </div>
                 <div className="sm:col-span-2 lg:col-span-2">
                   <label className={lbl}>Descuento</label>
-                  <input type="number" min="0" step={dec ? "0.01" : "1"} value={it.descuento} onChange={(e) => updateItem(i, "descuento", e.target.value)} className="zx-surface w-full px-2 py-1.5 text-right text-sm" placeholder="0" />
+                  <input type="number" min="0" step="any" onWheel={noRueda} value={it.descuento} onChange={(e) => updateItem(i, "descuento", e.target.value)} className={`zx-surface w-full px-2 py-1.5 text-right text-sm ${sinFlechas}`} placeholder="0" />
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
