@@ -31,6 +31,9 @@ const vacio = {
 };
 
 const fechaES = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
+/** Tipo de la factura nueva: en guaraníes y en Paraguay es local; el resto, exportación. */
+const tipoReemision = (r: FacturaRegularizacion) =>
+  r.moneda === "PYG" && (r.cliente_pais ?? "PARAGUAY").trim().toUpperCase() === "PARAGUAY" ? "LOCAL" : "EXPORTACION";
 const fmt = (n: number, m: string) =>
   `${m === "PYG" ? "Gs." : m} ${Number(n || 0).toLocaleString("es-PY", {
     minimumFractionDigits: m === "PYG" ? 0 : 2,
@@ -301,7 +304,7 @@ export default function RegularizacionPage() {
                       )}
                       {r.estado !== "REEMITIDA" && r.estado !== "CORRECTA" && r.estado !== "ANULADA" && (
                         <Link
-                          href={`/facturas-exportacion/nueva?reemite=${r.id}`}
+                          href={`/facturas-exportacion/nueva?reemite=${r.id}&tipo=${tipoReemision(r)}`}
                           className="rounded border border-[#4FAEB2] px-2 py-1 text-xs font-medium text-[#3F8E91] hover:bg-[#4FAEB2]/10"
                         >
                           Reemitir
