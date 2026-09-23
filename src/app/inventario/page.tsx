@@ -556,9 +556,10 @@ export default function InventarioPage() {
                 </th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Stock</th>
                 <th className="py-2.5 pr-4 text-right font-semibold" title="Cantidad de la importación original.">Import.</th>
+                <th className="py-2.5 pr-4 text-right font-semibold" title="Unidades vendidas (se carga a mano).">Vendido</th>
                 <th className="py-2.5 pr-4 text-right font-semibold" title="Unidades en exhibición.">Show room</th>
                 <th className="py-2.5 pr-4 text-right font-semibold" title="Cantidad acumulada re-exportada a Bolivia.">Exp. BOL</th>
-                <th className="py-2.5 pr-4 text-right font-semibold" title="Stock actual − show room − exp. Bolivia.">Saldo</th>
+                <th className="py-2.5 pr-4 text-right font-semibold" title="Importación − vendido − exportación Bolivia (igual que el Excel).">Saldo</th>
                 <th className="w-32 py-2.5 pl-4 pr-4 text-right font-semibold">Acción</th>
               </tr>
             </thead>
@@ -626,12 +627,14 @@ export default function InventarioPage() {
                     </td>
                     {(() => {
                       const imp = Number(p.cantidad_importacion ?? 0);
+                      const vend = Number(p.vendido ?? 0);
                       const sr = Number(p.show_room ?? 0);
                       const eb = Number(p.exportacion_bolivia ?? 0);
-                      const saldo = Number(p.stock_actual ?? 0) - sr - eb;
+                      const saldo = imp - vend - eb;
                       return (
                         <>
                           <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{imp || <span className="text-slate-300">—</span>}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{vend || <span className="text-slate-300">—</span>}</td>
                           <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{sr || <span className="text-slate-300">—</span>}</td>
                           <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{eb || <span className="text-slate-300">—</span>}</td>
                           <td className="py-3 pr-4 text-right tabular-nums font-semibold text-slate-800">{saldo}</td>
@@ -662,7 +665,7 @@ export default function InventarioPage() {
               {/* Sin resultados: antes la tabla quedaba en blanco, sin explicación. */}
               {!cargandoLista && productosPagina.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="p-4">
+                  <td colSpan={12} className="p-4">
                     <div className="zx-empty px-6 py-10 text-center">
                       <p className="text-sm text-slate-500">
                         {todos.length === 0

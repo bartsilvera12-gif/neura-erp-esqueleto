@@ -71,6 +71,8 @@ export interface Producto {
   cantidad_importacion?: number;
   /** Cantidad de unidades en exhibición en show room. */
   show_room?: number;
+  /** Unidades vendidas (se carga a mano, como en el Excel de inventario). */
+  vendido?: number;
   /** Cantidad acumulada re-exportada a Bolivia. */
   exportacion_bolivia?: number;
   /** Observaciones del inventario (texto libre). */

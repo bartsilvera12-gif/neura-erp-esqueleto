@@ -40,6 +40,12 @@ interface ProductoRow {
   tiempo_prep_minutos?: number | null;
   descripcion?: string | null;
   tipo_producto?: string | null;
+  cantidad_importacion?: string | number | null;
+  vendido?: string | number | null;
+  show_room?: string | number | null;
+  exportacion_bolivia?: string | number | null;
+  observaciones?: string | null;
+  posible_solucion?: string | null;
 }
 
 interface MovimientoRow {
@@ -93,6 +99,12 @@ function rowToProducto(row: ProductoRow): Producto {
       row.tipo_producto === "repuesto" || row.tipo_producto === "servicio"
         ? row.tipo_producto
         : "reventa",
+    cantidad_importacion: Number(row.cantidad_importacion ?? 0),
+    vendido: Number(row.vendido ?? 0),
+    show_room: Number(row.show_room ?? 0),
+    exportacion_bolivia: Number(row.exportacion_bolivia ?? 0),
+    observaciones: row.observaciones ?? null,
+    posible_solucion: row.posible_solucion ?? null,
   };
 }
 
@@ -223,6 +235,7 @@ export async function saveProducto(
       typeof datos.cantidad_importacion === "number" && datos.cantidad_importacion >= 0
         ? datos.cantidad_importacion
         : 0,
+    vendido: typeof datos.vendido === "number" && datos.vendido >= 0 ? datos.vendido : 0,
     show_room:
       typeof datos.show_room === "number" && datos.show_room >= 0 ? datos.show_room : 0,
     exportacion_bolivia:
@@ -296,6 +309,7 @@ export async function updateProducto(
   if (datos.tipo_producto !== undefined) body.tipo_producto = datos.tipo_producto;
   if (typeof datos.cantidad_importacion === "number" && datos.cantidad_importacion >= 0)
     body.cantidad_importacion = datos.cantidad_importacion;
+  if (typeof datos.vendido === "number" && datos.vendido >= 0) body.vendido = datos.vendido;
   if (typeof datos.show_room === "number" && datos.show_room >= 0)
     body.show_room = datos.show_room;
   if (typeof datos.exportacion_bolivia === "number" && datos.exportacion_bolivia >= 0)

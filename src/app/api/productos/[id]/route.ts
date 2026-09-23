@@ -12,7 +12,7 @@ const PRODUCTO_COLS =
   "categoria_principal_id, ubicacion_principal_id, proveedor_principal_id, " +
   "es_vendible, es_insumo, controla_stock, valorizado, unidad_compra, unidad_receta, " +
   "factor_compra_receta, tiempo_prep_minutos, descripcion, " +
-  "cantidad_importacion, show_room, exportacion_bolivia, observaciones, posible_solucion";
+  "cantidad_importacion, vendido, show_room, exportacion_bolivia, observaciones, posible_solucion";
 
 function toNumber(v: unknown): unknown {
   return typeof v === "string" ? Number(v) : v;
@@ -26,6 +26,7 @@ function rowToApi(r: Record<string, unknown>): Record<string, unknown> {
     stock_minimo: toNumber(r.stock_minimo),
     factor_compra_receta: toNumber(r.factor_compra_receta),
     cantidad_importacion: toNumber(r.cantidad_importacion),
+    vendido: toNumber(r.vendido),
     show_room: toNumber(r.show_room),
     exportacion_bolivia: toNumber(r.exportacion_bolivia),
   };
@@ -181,6 +182,10 @@ export async function PATCH(
     if (body.cantidad_importacion !== undefined) {
       const n = Number(body.cantidad_importacion);
       if (Number.isFinite(n) && n >= 0) patch.cantidad_importacion = n;
+    }
+    if (body.vendido !== undefined) {
+      const n = Number(body.vendido);
+      if (Number.isFinite(n) && n >= 0) patch.vendido = n;
     }
     if (body.show_room !== undefined) {
       const n = Number(body.show_room);

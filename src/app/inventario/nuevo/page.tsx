@@ -42,6 +42,7 @@ export default function NuevoProductoPage() {
     tipo_producto: "reventa" as const,
     // Living Room / muebles (inventario histórico + observaciones).
     cantidad_importacion: "",
+    vendido: "",
     show_room: "",
     exportacion_bolivia: "",
     observaciones: "",
@@ -326,6 +327,7 @@ export default function NuevoProductoPage() {
           factor_compra_receta: Math.max(parseFloat(factorCompraReceta) || 1, 0.0001),
           tiempo_prep_minutos: Math.max(parseInt(tiempoPrepMinutos) || 0, 0),
           cantidad_importacion: Math.max(parseFloat(form.cantidad_importacion) || 0, 0),
+          vendido: Math.max(parseFloat(form.vendido) || 0, 0),
           show_room: Math.max(parseFloat(form.show_room) || 0, 0),
           exportacion_bolivia: Math.max(parseFloat(form.exportacion_bolivia) || 0, 0),
           observaciones: form.observaciones.trim() || null,
@@ -459,13 +461,26 @@ export default function NuevoProductoPage() {
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
               Inventario extendido
             </p>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
               <div>
                 <label className={labelClass}>Cantidad importación</label>
                 <input
                   type="number"
                   name="cantidad_importacion"
                   value={form.cantidad_importacion}
+                  onChange={handleChange}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Vendido</label>
+                <input
+                  type="number"
+                  name="vendido"
+                  value={form.vendido}
                   onChange={handleChange}
                   min="0"
                   step="1"
@@ -524,6 +539,10 @@ export default function NuevoProductoPage() {
                 />
               </div>
             </div>
+            <p className="mt-3 text-xs text-slate-500">
+              La cantidad en físico es el <strong>Stock actual</strong> (más abajo). El saldo final se calcula solo:
+              importación − vendido − exportación Bolivia.
+            </p>
           </div>
 
           {/* SKU + Unidad de medida */}

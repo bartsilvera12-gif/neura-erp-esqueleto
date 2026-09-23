@@ -27,6 +27,7 @@ interface Row {
   activo: boolean;
   ubicacion_pais: string | null;
   cantidad_importacion: string | number | null;
+  vendido: string | number | null;
   show_room: string | number | null;
   exportacion_bolivia: string | number | null;
   observaciones: string | null;
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
               u.nombre AS ubicacion_nombre, u.tipo AS ubicacion_tipo, u.pais AS ubicacion_pais,
               p.unidad_medida, p.costo_promedio, p.precio_venta,
               p.stock_actual, p.stock_minimo, p.metodo_valuacion, p.activo,
-              p.cantidad_importacion, p.show_room, p.exportacion_bolivia,
+              p.cantidad_importacion, p.vendido, p.show_room, p.exportacion_bolivia,
               p.observaciones, p.posible_solucion
          FROM ${tProd} p
          LEFT JOIN ${tCat}  c  ON c.id = p.categoria_principal_id
@@ -66,34 +67,19 @@ export async function GET(request: NextRequest) {
     );
 
     const buf = buildXlsxBuffer<Row>(rows, [
-      { header: "N°", value: (_r, i) => i + 1, width: 6 },
+      { header: "N'", value: (_r, i) => i + 1, width: 6 },
       { header: "ALMACEN", value: (r) => r.ubicacion_pais || "PY", width: 12 },
       { header: "DESCRIPCION", value: (r) => r.nombre, width: 38 },
       { header: "CODIGO", value: (r) => r.sku, width: 18 },
-      { header: "CANTIDAD IMPORTACION", value: (r) => Number(r.cantidad_importacion ?? 0), width: 16 },
-      { header: "CANTIDAD FISICO PY", value: (r) => Number(r.stock_actual ?? 0), width: 16 },
-      {
-        header: "VENDIDO",
-        value: (r) => {
-          const imp = Number(r.cantidad_importacion ?? 0);
-          const sr = Number(r.show_room ?? 0);
-          const eb = Number(r.exportacion_bolivia ?? 0);
-          const st = Number(r.stock_actual ?? 0);
-          const v = imp - st - sr - eb;
-          return v > 0 ? v : 0;
-        },
-        width: 10,
-      },
+      { header: "CANTIDAD DE IMPORTACION Y CANTIDAD FISICA", value: (r) => Number(r.cantidad_importacion ?? 0), width: 16 },
+      { header: "CANTIDAD EN FISICO ALMACEN PY", value: (r) => Number(r.stock_actual ?? 0), width: 16 },
+      { header: "VENDIDO", value: (r) => Number(r.vendido ?? 0), width: 10 },
       { header: "SHOW ROOM", value: (r) => Number(r.show_room ?? 0), width: 10 },
       { header: "EXPORTACION BOLIVIA", value: (r) => Number(r.exportacion_bolivia ?? 0), width: 16 },
       {
+        // Misma fórmula que el Excel de Living Room.
         header: "SALDO FINAL",
-        value: (r) => {
-          const st = Number(r.stock_actual ?? 0);
-          const sr = Number(r.show_room ?? 0);
-          const eb = Number(r.exportacion_bolivia ?? 0);
-          return st - sr - eb;
-        },
+        value: (r) => Number(r.cantidad_importacion ?? 0) - Number(r.vendido ?? 0) - Number(r.exportacion_bolivia ?? 0),
         width: 12,
       },
       { header: "OBSERVACIONES", value: (r) => r.observaciones ?? "", width: 30 },
