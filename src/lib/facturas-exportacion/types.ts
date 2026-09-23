@@ -63,7 +63,9 @@ export interface FacturaExportacion {
   regularizacion?: boolean;
   prueba?: boolean;
   regularizacion_id?: string | null;
+  emitida_at?: string | null;
   created_at: string;
+  updated_at?: string | null;
   created_by_nombre?: string | null;
   items?: FacturaExportacionItem[];
 }

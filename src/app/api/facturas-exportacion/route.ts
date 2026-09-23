@@ -13,7 +13,7 @@ const COLS =
   "fecha, moneda, tipo_cambio, cliente_nombre, cliente_documento, cliente_direccion, cliente_pais, " +
   "cliente_ciudad, cliente_telefono, condicion_venta, nota_remision, " +
   "subtotal, total, observaciones, estado, motivo_anulacion, anulada_at, anulada_por_nombre, " +
-  "prueba, regularizacion_id, total_pyg, total_descuento, cliente_id, emitida_at, created_at, created_by_nombre";
+  "prueba, regularizacion_id, total_pyg, total_descuento, cliente_id, emitida_at, created_at, updated_at, created_by_nombre";
 
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);

@@ -18,6 +18,19 @@ function fechaES(iso: string) {
   const [y, mo, d] = iso.slice(0, 10).split("-");
   return `${d}/${mo}/${y}`;
 }
+/** Día y hora (hora de Paraguay) de un timestamp: "23/09/2026 14:32". */
+function fechaHora(iso?: string | null) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("es-PY", {
+    timeZone: "America/Asuncion",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).replace(",", "");
+}
 
 export default function FacturasExportacionPage() {
   const { isAdmin } = useIsAdmin();
@@ -380,7 +393,14 @@ export default function FacturasExportacionPage() {
                     {f.prueba && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Prueba</span>}
                     {f.regularizacion_id && <span className="ml-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">Reemisión</span>}
                   </td>
-                  <td className="py-2 pr-3">{fechaES(f.fecha)}</td>
+                  <td className="py-2 pr-3">
+                    {fechaES(f.fecha)}
+                    <div className="whitespace-nowrap text-[11px] text-slate-400">
+                      {f.estado === "BORRADOR"
+                        ? `Guardado ${fechaHora(f.updated_at ?? f.created_at)}`
+                        : `Emitida ${fechaHora(f.emitida_at ?? f.created_at)}`}
+                    </div>
+                  </td>
                   <td className="py-2 pr-3">{f.cliente_nombre}</td>
                   <td className="py-2 pr-3">{f.cliente_pais}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{fmt(f.total, f.moneda)}</td>
