@@ -209,6 +209,10 @@ export default function ClienteDetailPage() {
     direccion:           "",
     ciudad:              "",
     pais:                "",
+    nombre_facturacion:  "",
+    nivel_precio:        "minorista" as "minorista" | "mayorista" | "distribuidor",
+    es_contribuyente:    false,
+    usa_nota_remision:   false,
     sitio_web:           "",
     instagram:           "",
     linkedin:            "",
@@ -365,6 +369,10 @@ export default function ClienteDetailPage() {
         direccion:           c.direccion           ?? "",
         ciudad:              c.ciudad              ?? "",
         pais:                c.pais                ?? "",
+        nombre_facturacion:  c.nombre_facturacion  ?? "",
+        nivel_precio:        c.nivel_precio        ?? "minorista",
+        es_contribuyente:    c.es_contribuyente === true,
+        usa_nota_remision:   c.usa_nota_remision === true,
         sitio_web:           c.sitio_web           ?? "",
         instagram:           c.instagram           ?? "",
         linkedin:            c.linkedin            ?? "",
@@ -518,7 +526,7 @@ export default function ClienteDetailPage() {
     }
   }, [form.condicion_pago, id]);
 
-  const upper = ["empresa", "nombre_contacto", "ciudad", "pais", "vendedor_asignado", "condicion_pago", "direccion", "sifen_codigo_pais"];
+  const upper = ["empresa", "nombre_contacto", "nombre_facturacion", "ciudad", "pais", "vendedor_asignado", "condicion_pago", "direccion", "sifen_codigo_pais"];
   const lower = ["email", "email_secundario"];
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -652,6 +660,10 @@ export default function ClienteDetailPage() {
         valor_cliente:       parseFloat(form.valor_cliente) || undefined,
         condicion_pago:      form.condicion_pago.trim().toUpperCase()    || undefined,
         moneda_preferida:    form.moneda_preferida,
+        nombre_facturacion:  form.nombre_facturacion.trim().toUpperCase() || "",
+        nivel_precio:        form.nivel_precio,
+        es_contribuyente:    form.tipo_cliente === "persona" ? form.es_contribuyente : false,
+        usa_nota_remision:   form.usa_nota_remision,
         vendedor_asignado:   form.vendedor_asignado.trim().toUpperCase() || undefined,
         vendedor_usuario_id: form.vendedor_usuario_id.trim() || null,
         tipo_servicio_cliente: tipoTs || null,
@@ -1511,6 +1523,33 @@ export default function ClienteDetailPage() {
                   </div>
                 )}
 
+                <div>
+                  <label className={labelClass}>
+                    Nombre para facturación <span className="text-gray-400 font-normal">(opcional)</span>
+                  </label>
+                  <input type="text" name="nombre_facturacion" value={form.nombre_facturacion} onChange={handleChange} placeholder="Ej: Nombre del cónyuge / hijo/a" className={`${inputClass} uppercase`} />
+                  <p className="mt-1.5 text-xs text-gray-400">
+                    Solo si la factura se emite a un nombre distinto de la Razón Social. Si queda vacío, se usa la Razón Social o el nombre de contacto.
+                  </p>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Nivel de precio</label>
+                  <Select
+                    name="nivel_precio"
+                    value={form.nivel_precio}
+                    onChange={(e) => setForm((prev) => ({ ...prev, nivel_precio: e.target.value as "minorista" | "mayorista" | "distribuidor" }))}
+                    className={inputClass}
+                  >
+                    <option value="minorista">Minorista</option>
+                    <option value="mayorista">Mayorista</option>
+                    <option value="distribuidor">Distribuidor</option>
+                  </Select>
+                  <p className="mt-1.5 text-xs text-gray-400">
+                    Se usa como precio por defecto al agregar productos en presupuestos, pedidos y ventas. Igual se puede cambiar en cada línea.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={labelClass}>{form.tipo_cliente === "empresa" ? "Persona de contacto" : "Nombre completo"}</label>
@@ -1525,6 +1564,33 @@ export default function ClienteDetailPage() {
                     )}
                   </div>
                 </div>
+                {form.tipo_cliente === "persona" && (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <label className="flex items-start gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.es_contribuyente}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setForm((prev) => ({ ...prev, es_contribuyente: checked, ruc: checked ? prev.ruc : "" }));
+                        }}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0EA5E9] focus:ring-[#0EA5E9]"
+                      />
+                      <span>
+                        <span className="font-medium">Es contribuyente inscripto en la SET</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">
+                          Marcalo solo si esta persona está registrada como contribuyente en Marangatu. Con esta opción activada se carga su RUC para la factura.
+                        </span>
+                      </span>
+                    </label>
+                    {form.es_contribuyente && (
+                      <div className="mt-3">
+                        <label className={labelClass}>RUC de la persona</label>
+                        <input type="text" name="ruc" value={form.ruc} onChange={handleChange} placeholder="Ej: 2431868-0" className={inputClass} />
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* Contacto */}
@@ -1557,6 +1623,17 @@ export default function ClienteDetailPage() {
                   <label className={labelClass}>Dirección</label>
                   <input type="text" name="direccion" value={form.direccion} onChange={handleChange} className={inputClass} />
                 </div>
+
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={form.usa_nota_remision}
+                    onChange={(e) => setForm((p) => ({ ...p, usa_nota_remision: e.target.checked }))}
+                    className="h-4 w-4 rounded border-slate-300 text-[#0EA5E9] focus:ring-[#0EA5E9]"
+                  />
+                  Usa nota de remisión
+                  <span className="text-xs text-slate-400">(se generará junto al ticket al venderle)</span>
+                </label>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

@@ -43,6 +43,12 @@ export interface Cliente {
 
   /** El cliente requiere nota de remisión al venderle (documento no fiscal). */
   usa_nota_remision?:  boolean;
+  /** Nombre alternativo para emitir la factura. Vacío = razón social o nombre de contacto. */
+  nombre_facturacion?: string;
+  /** Precio por defecto al cargar productos. */
+  nivel_precio?:       "minorista" | "mayorista" | "distribuidor";
+  /** Persona inscripta como contribuyente en la SET. */
+  es_contribuyente?:   boolean;
 
   sitio_web?:          string;
   instagram?:          string;

@@ -28,6 +28,7 @@ interface PuntoConfig {
 }
 interface ClienteLista {
   id: string;
+  nombre_facturacion?: string | null;
   empresa?: string | null;
   nombre_contacto?: string | null;
   nombre?: string | null;
@@ -249,7 +250,7 @@ export default function FormFactura() {
   function elegirCliente(c: ClienteLista) {
     setCliente({
       id: c.id,
-      nombre: nombreCliente(c),
+      nombre: (c.nombre_facturacion || "").trim() || nombreCliente(c),
       documento: (c.ruc || c.documento || "").trim(),
       direccion: (c.direccion || "").trim(),
       ciudad: (c.ciudad || "").trim(),

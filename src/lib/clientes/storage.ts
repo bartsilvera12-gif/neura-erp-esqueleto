@@ -29,6 +29,10 @@ interface SupabaseRow {
   telefono_secundario: string | null;
   email:              string | null;
   email_secundario:   string | null;
+  nombre_facturacion?: string | null;
+  nivel_precio?:       string | null;
+  es_contribuyente?:   boolean | null;
+  usa_nota_remision?:  boolean | null;
   direccion:          string | null;
   ciudad:             string | null;
   pais:               string | null;
@@ -108,6 +112,12 @@ function rowToCliente(row: SupabaseRow): Cliente {
     prospecto_id:        row.prospecto_id ?? undefined,
     estado:              (row.estado === "inactivo" ? "inactivo" : "activo") as EstadoCliente,
     notas:               parseNotas(row.notas),
+    nombre_facturacion:  row.nombre_facturacion ?? undefined,
+    nivel_precio:        (row.nivel_precio === "mayorista" || row.nivel_precio === "distribuidor"
+                            ? row.nivel_precio
+                            : "minorista") as Cliente["nivel_precio"],
+    es_contribuyente:    row.es_contribuyente === true,
+    usa_nota_remision:   row.usa_nota_remision === true,
     tipo_servicio_cliente: (row.tipo_servicio_cliente as Cliente["tipo_servicio_cliente"]) ?? undefined,
     created_by_user_id:  row.created_by_user_id ?? undefined,
     created_by_nombre:   row.created_by_nombre ?? undefined,
@@ -358,6 +368,18 @@ export function construirPatchActualizacionCliente(datos: ActualizarClienteInput
   if (datos.telefono_secundario !== undefined) patch.telefono_secundario = datos.telefono_secundario ?? null;
   if (datos.email !== undefined) patch.email = datos.email ?? null;
   if (datos.email_secundario !== undefined) patch.email_secundario = datos.email_secundario ?? null;
+  if (datos.nombre_facturacion !== undefined) {
+    patch.nombre_facturacion =
+      datos.nombre_facturacion == null || String(datos.nombre_facturacion).trim() === ""
+        ? null
+        : String(datos.nombre_facturacion).trim().toUpperCase();
+  }
+  if (datos.nivel_precio !== undefined) {
+    const nv = String(datos.nivel_precio);
+    patch.nivel_precio = ["minorista", "mayorista", "distribuidor"].includes(nv) ? nv : "minorista";
+  }
+  if (datos.es_contribuyente !== undefined) patch.es_contribuyente = datos.es_contribuyente === true;
+  if (datos.usa_nota_remision !== undefined) patch.usa_nota_remision = datos.usa_nota_remision === true;
   if (datos.direccion !== undefined) patch.direccion = datos.direccion ?? null;
   if (datos.ciudad !== undefined) patch.ciudad = datos.ciudad ?? null;
   if (datos.pais !== undefined) patch.pais = datos.pais ?? null;
