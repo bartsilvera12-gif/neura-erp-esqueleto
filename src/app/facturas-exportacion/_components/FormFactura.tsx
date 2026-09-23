@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MONEDAS_EXPORTACION, TIPOS_FACTURA, type TipoFactura } from "@/lib/facturas-exportacion/config";
 import type { IvaTipo } from "@/lib/facturas-exportacion/types";
+import PaisSelect from "@/components/ui/PaisSelect";
 
 interface Item {
   producto_id: string;
@@ -211,7 +212,7 @@ export default function FormFactura() {
     setTipo(t);
     setMoneda(reemision?.moneda ?? TIPOS_FACTURA[t].monedaDefault);
     setTipoCambio("");
-    setCliente((c) => ({ ...c, pais: reemision?.cliente_pais ?? c.pais ?? (t === "LOCAL" ? "PARAGUAY" : "") }));
+    setCliente((c) => ({ ...c, pais: reemision?.cliente_pais ?? (c.pais || (t === "LOCAL" ? "PARAGUAY" : "BOLIVIA")) }));
     setItems([itemVacio(t)]);
     setError(null);
   }
@@ -593,7 +594,7 @@ export default function FormFactura() {
           </div>
           <div>
             <label className={lbl}>País *</label>
-            <input value={cliente.pais} onChange={(e) => setCliente({ ...cliente, pais: e.target.value.toUpperCase() })} className={input} placeholder={esExpo ? "BOLIVIA" : "PARAGUAY"} />
+            <PaisSelect value={cliente.pais} onChange={(pais) => setCliente({ ...cliente, pais })} className={input} />
           </div>
           <div>
             <label className={lbl}>Ciudad</label>
