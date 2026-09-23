@@ -34,6 +34,7 @@ const ACCIONES: Record<string, string> = {
   PASAR_A_PRODUCCION: "Pasó a producción",
   ACTIVAR_MODO_PRUEBA: "Volvió a modo prueba",
   BORRAR_PRUEBAS: "Borró facturas de prueba",
+  NUMERO_CONSUMIDO_SIN_FACTURA: "Número consumido sin factura (error al guardar)",
 };
 
 const CAMPOS: Record<string, string> = {
@@ -58,6 +59,7 @@ function describir(r: Registro): string {
   if (d.numero_original) partes.push(`Factura original ${String(d.numero_original)}`);
   if (d.punto && r.accion.startsWith("CONFIG")) partes.push(`Punto ${String(d.punto)}`);
   if (typeof d.borradas === "number") partes.push(`${d.borradas} facturas`);
+  if (r.accion === "NUMERO_CONSUMIDO_SIN_FACTURA" && d.numero) partes.push(`Número ${String(d.numero)} · ${String(d.error ?? "")}`);
   if (d.total != null && d.moneda) partes.push(`Total ${String(d.moneda)} ${Number(d.total).toLocaleString("es-PY")}`);
   const antes = d.antes as Record<string, unknown> | undefined;
   const despues = d.despues as Record<string, unknown> | undefined;

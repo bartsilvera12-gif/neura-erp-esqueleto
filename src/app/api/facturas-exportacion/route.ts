@@ -277,9 +277,30 @@ export async function POST(request: NextRequest) {
           .single();
     if (res.error) {
       const msg = res.error.message ?? "";
-      if (/duplicate|unique|23505/i.test(msg)) return bad("Ese número ya está usado en ese punto y timbrado.", 409);
       console.error("[facturas-exportacion guardar]", msg);
-      return bad("No se pudo guardar la factura.", 500);
+      // Política del spec 4.3: si el número ya se reservó y la factura no se pudo guardar,
+      // el número queda consumido y se deja registrado (nunca un hueco silencioso).
+      if (numero != null) {
+        await supabase.from("facturas_exportacion_auditoria").insert({
+          empresa_id: auth.empresa_id,
+          accion: "NUMERO_CONSUMIDO_SIN_FACTURA",
+          detalle: {
+            numero: `${est}-${punto}-${String(numero).padStart(7, "0")}`,
+            timbrado: cfg.timbrado,
+            prueba,
+            error: msg.slice(0, 300),
+          },
+          usuario_id: auth.user.id,
+          usuario_nombre: usuarioNombre,
+        });
+      }
+      if (/duplicate|unique|23505/i.test(msg)) return bad("Ese número ya está usado en ese punto y timbrado.", 409);
+      return bad(
+        numero != null
+          ? `No se pudo guardar la factura. El número ${est}-${punto}-${String(numero).padStart(7, "0")} quedó registrado como consumido en el Historial.`
+          : "No se pudo guardar la factura.",
+        500
+      );
     }
     const factura = res.data as unknown as Record<string, unknown>;
 
