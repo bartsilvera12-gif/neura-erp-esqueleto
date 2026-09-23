@@ -6,9 +6,8 @@ import { assertAllowedChatDataSchema } from "@/lib/supabase/chat-data-schema";
 import { buildXlsxBuffer, xlsxResponseHeaders, nowStamp } from "@/lib/excel/export";
 
 /**
- * GET /api/inventario/productos/export — descarga .xlsx con todos los
- * productos activos del tenant + nombres de categoria/proveedor/ubicacion
- * principal (resueltos via LEFT JOIN).
+ * GET /api/inventario/productos/export — .xlsx con las 12 columnas del Excel
+ * de inventario de Living Room ("INVENTARIO DE STOCK ASUNCION PARAGUAY").
  */
 interface Row {
   nombre: string;
@@ -61,14 +60,14 @@ export async function GET(request: NextRequest) {
          LEFT JOIN ${tCat}  c  ON c.id = p.categoria_principal_id
          LEFT JOIN ${tProv} pr ON pr.id = p.proveedor_principal_id
          LEFT JOIN ${tUbi}  u  ON u.id = p.ubicacion_principal_id
-        WHERE p.empresa_id = $1::uuid
+        WHERE p.empresa_id = $1::uuid AND p.activo IS NOT FALSE
         ORDER BY p.nombre`,
       [empresaId]
     );
 
     const buf = buildXlsxBuffer<Row>(rows, [
       { header: "N°", value: (_r, i) => i + 1, width: 6 },
-      { header: "ALMACEN", value: (r) => r.ubicacion_pais ?? r.ubicacion_nombre ?? "", width: 12 },
+      { header: "ALMACEN", value: (r) => r.ubicacion_pais || "PY", width: 12 },
       { header: "DESCRIPCION", value: (r) => r.nombre, width: 38 },
       { header: "CODIGO", value: (r) => r.sku, width: 18 },
       { header: "CANTIDAD IMPORTACION", value: (r) => Number(r.cantidad_importacion ?? 0), width: 16 },
@@ -99,14 +98,6 @@ export async function GET(request: NextRequest) {
       },
       { header: "OBSERVACIONES", value: (r) => r.observaciones ?? "", width: 30 },
       { header: "POSIBLE SOLUCION", value: (r) => r.posible_solucion ?? "", width: 30 },
-      { header: "CATEGORIA", value: (r) => r.categoria_nombre ?? "", width: 22 },
-      { header: "PROVEEDOR PRINCIPAL", value: (r) => r.proveedor_nombre ?? "", width: 28 },
-      { header: "UBICACION", value: (r) => r.ubicacion_nombre ? `${r.ubicacion_nombre}${r.ubicacion_tipo ? ` (${r.ubicacion_tipo})` : ""}` : "", width: 24 },
-      { header: "UNIDAD MEDIDA", value: (r) => r.unidad_medida, width: 12 },
-      { header: "COSTO PROMEDIO", value: (r) => Number(r.costo_promedio), width: 14 },
-      { header: "PRECIO VENTA", value: (r) => Number(r.precio_venta), width: 14 },
-      { header: "STOCK MINIMO", value: (r) => Number(r.stock_minimo), width: 12 },
-      { header: "METODO VALUACION", value: (r) => r.metodo_valuacion, width: 10 },
     ], { sheetName: "Stock" });
 
     return new Response(new Uint8Array(buf), {
