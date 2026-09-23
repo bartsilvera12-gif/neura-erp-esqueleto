@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MONEDAS_EXPORTACION, TIPOS_FACTURA, type TipoFactura } from "@/lib/facturas-exportacion/config";
 import type { IvaTipo } from "@/lib/facturas-exportacion/types";
@@ -123,6 +123,12 @@ export default function FormFactura() {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [confirmarEmision, setConfirmarEmision] = useState(false);
+  const [autoEstado, setAutoEstado] = useState<string | null>(null);
+  // Guardado automático: refs para no pisarse con un guardado manual ni duplicar el borrador.
+  const borradorIdRef = useRef<string | null>(borradorParam);
+  const autoEnCurso = useRef<Promise<void> | null>(null);
+  const ultimaFirma = useRef<string | null>(null);
+  const emitida = useRef(false);
 
   useEffect(() => {
     fetch("/api/facturas-exportacion/config", { credentials: "include", cache: "no-store" })
@@ -337,6 +343,83 @@ export default function FormFactura() {
     setConfirmarEmision(true);
   }
 
+  /** Datos de la factura tal como se mandan a la API (sin acción ni id). */
+  function cuerpo(clienteId: string | null) {
+    return {
+      tipo,
+      establecimiento: cfg!.establecimiento,
+      punto_expedicion: cfg!.punto_expedicion,
+      fecha,
+      moneda,
+      tipo_cambio: esPyg ? 1 : tc,
+      condicion_venta: condicion,
+      cliente_id: clienteId,
+      cliente_nombre: cliente.nombre.trim(),
+      cliente_documento: cliente.documento,
+      cliente_direccion: cliente.direccion,
+      cliente_ciudad: cliente.ciudad,
+      cliente_telefono: cliente.telefono,
+      cliente_email: cliente.email,
+      cliente_pais: cliente.pais,
+      nota_remision: notaRemision,
+      ...(esExpo ? op : {}),
+      observaciones,
+      items: items
+        .filter((it) => it.descripcion.trim())
+        .map((it) => ({
+          producto_id: it.producto_id || null,
+          codigo: it.codigo,
+          descripcion: it.descripcion.trim(),
+          unidad: it.unidad,
+          cantidad: Number(it.cantidad) || 0,
+          precio_unitario: Number(it.precio_unitario) || 0,
+          descuento: Number(it.descuento) || 0,
+          iva_tipo: it.iva_tipo,
+        })),
+      ...(reemiteId ? { regularizacion_id: reemiteId } : {}),
+    };
+  }
+
+  /** Guarda en silencio como borrador si hay algo cargado y cambió desde el último guardado. */
+  async function autoGuardar() {
+    if (emitida.current || enviando || autoEnCurso.current || confirmarEmision || !tipo || !cfg) return;
+    if (!cliente.nombre.trim() && !items.some((it) => it.descripcion.trim())) return;
+    const datos = cuerpo(cliente.id || null);
+    const firma = JSON.stringify(datos);
+    if (firma === ultimaFirma.current) return;
+    const tarea = (async () => {
+      try {
+        const j = await fetch("/api/facturas-exportacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ ...datos, accion: "borrador", id: borradorIdRef.current, auto: true }),
+        }).then((r) => r.json());
+        if (!j?.success) throw new Error();
+        const id = j.data?.factura?.id as string | undefined;
+        if (id && !borradorIdRef.current) {
+          borradorIdRef.current = id;
+          setBorradorId(id);
+        }
+        ultimaFirma.current = firma;
+        setAutoEstado(`Guardado automático a las ${new Date().toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}`);
+      } catch {
+        setAutoEstado("No se pudo guardar automáticamente; se reintenta en 30 segundos.");
+      } finally {
+        autoEnCurso.current = null;
+      }
+    })();
+    autoEnCurso.current = tarea;
+    await tarea;
+  }
+
+  const autoGuardarRef = useRef(autoGuardar);
+  autoGuardarRef.current = autoGuardar;
+  useEffect(() => {
+    const t = setInterval(() => void autoGuardarRef.current(), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
   async function guardar(accion: "borrador" | "emitir") {
     if (enviando || !tipo) return;
     setError(null);
@@ -345,6 +428,8 @@ export default function FormFactura() {
 
     setEnviando(accion);
     try {
+      // Si justo corre el guardado automático, se espera para usar el mismo borrador.
+      if (autoEnCurso.current) await autoEnCurso.current;
       // Alta del cliente en Clientes, si lo pidió y todavía no existe.
       let clienteId = cliente.id || null;
       if (guardarCliente && !clienteId && cliente.nombre.trim()) {
@@ -378,50 +463,21 @@ export default function FormFactura() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          accion,
-          id: borradorId,
-          tipo,
-          establecimiento: cfg!.establecimiento,
-          punto_expedicion: cfg!.punto_expedicion,
-          fecha,
-          moneda,
-          tipo_cambio: esPyg ? 1 : tc,
-          condicion_venta: condicion,
-          cliente_id: clienteId,
-          cliente_nombre: cliente.nombre.trim(),
-          cliente_documento: cliente.documento,
-          cliente_direccion: cliente.direccion,
-          cliente_ciudad: cliente.ciudad,
-          cliente_telefono: cliente.telefono,
-          cliente_email: cliente.email,
-          cliente_pais: cliente.pais,
-          nota_remision: notaRemision,
-          ...(esExpo ? op : {}),
-          observaciones,
-          items: items
-            .filter((it) => it.descripcion.trim())
-            .map((it) => ({
-              producto_id: it.producto_id || null,
-              codigo: it.codigo,
-              descripcion: it.descripcion.trim(),
-              unidad: it.unidad,
-              cantidad: Number(it.cantidad) || 0,
-              precio_unitario: Number(it.precio_unitario) || 0,
-              descuento: Number(it.descuento) || 0,
-              iva_tipo: it.iva_tipo,
-            })),
-          ...(reemiteId ? { regularizacion_id: reemiteId } : {}),
-        }),
+        body: JSON.stringify({ ...cuerpo(clienteId), accion, id: borradorIdRef.current }),
       });
       const j = await res.json();
       if (!res.ok || !j?.success) return setError(j?.error ?? "No se pudo guardar la factura.");
       const id = j.data?.factura?.id as string | undefined;
       if (accion === "borrador") {
-        if (id) setBorradorId(id);
+        if (id) {
+          borradorIdRef.current = id;
+          setBorradorId(id);
+        }
+        ultimaFirma.current = JSON.stringify(cuerpo(clienteId));
         setAviso("Borrador guardado. Todavía no tiene número: podés seguirlo desde el listado.");
         return;
       }
+      emitida.current = true;
       setConfirmarEmision(false);
       if (id) window.open(`/api/facturas-exportacion/${id}/pdf`, "_blank");
       router.push(reemiteId ? "/facturas-exportacion/regularizacion" : "/facturas-exportacion");
@@ -893,6 +949,7 @@ export default function FormFactura() {
         <button type="button" onClick={() => router.push("/facturas-exportacion")} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">
           Cancelar
         </button>
+        {autoEstado && <span className="self-center text-xs text-slate-400">{autoEstado}</span>}
       </div>
     </form>
   );

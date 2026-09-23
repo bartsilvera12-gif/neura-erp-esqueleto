@@ -324,7 +324,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await supabase.from("facturas_exportacion_auditoria").insert({
+    // El guardado automático de un borrador ya creado no se audita (sería una fila cada 30 s).
+    const autoSinAuditar = esBorrador && borradorId && body.auto === true;
+    if (!autoSinAuditar) await supabase.from("facturas_exportacion_auditoria").insert({
       empresa_id: auth.empresa_id,
       factura_id: factura.id,
       accion: esBorrador ? (borradorId ? "BORRADOR_MODIFICAR" : "BORRADOR_CREAR") : regularizacionId ? "REEMITIR" : "EMITIR",
