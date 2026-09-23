@@ -70,6 +70,9 @@ import type { LucideIcon } from "lucide-react";
 // Se ocultan de la interfaz sin borrar lógica ni datos. true = reactivar.
 const MOSTRAR_SIFEN_CLIENTE = false;
 const MOSTRAR_PERFIL_TRIBUTARIO_CLIENTE = false;
+// Suscripciones, factura al contado y pagos usan el circuito de facturas SaaS, que no
+// es el de Facturación (timbrado Autoimpresor): en esta instancia no se usan.
+const MOSTRAR_SUSCRIPCIONES_Y_PAGOS = false;
 
 // ── Estilos ────────────────────────────────────────────────────────────────────
 
@@ -91,10 +94,10 @@ type TabId = "informacion" | "estado_cuenta" | "suscripciones" | "marketing" | "
 
 const TABS: { id: TabId; label: string; showWhen?: (c: Cliente) => boolean }[] = [
   { id: "informacion",   label: "Información"      },
-  { id: "estado_cuenta", label: "Estado de cuenta" },
-  { id: "suscripciones", label: "Suscripciones"    },
+  { id: "estado_cuenta", label: "Estado de cuenta", showWhen: () => MOSTRAR_SUSCRIPCIONES_Y_PAGOS },
+  { id: "suscripciones", label: "Suscripciones",    showWhen: () => MOSTRAR_SUSCRIPCIONES_Y_PAGOS },
   { id: "marketing",     label: "Marketing",        showWhen: (c) => c.tipo_servicio_cliente === "marketing" },
-  { id: "proyectos",     label: "Proyectos"         },
+  { id: "proyectos",     label: "Proyectos",        showWhen: () => MOSTRAR_SUSCRIPCIONES_Y_PAGOS },
   { id: "actividad",     label: "Actividad"         },
   { id: "notas",         label: "Notas"             },
 ];
@@ -137,8 +140,8 @@ function ClienteFichaSkeleton() {
       <div className={`h-3 w-28 ${bar}`} aria-hidden />
       <div className="zx-surface overflow-hidden">
         <div className="h-40 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 animate-pulse" aria-hidden />
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 divide-x divide-gray-100 border-t border-gray-100">
-          {Array.from({ length: 7 }).map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-100 border-t border-gray-100">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="px-5 py-3 space-y-2">
               <div className={`h-2.5 w-16 ${bar}`} />
               <div className={`h-4 w-24 ${bar}`} />
@@ -1048,6 +1051,7 @@ export default function ClienteDetailPage() {
               )}
             </div>
           </div>
+          {MOSTRAR_SUSCRIPCIONES_Y_PAGOS && (
           <div className="mt-4 pt-4 border-t border-white/15 flex flex-wrap gap-2">
             <button
               type="button"
@@ -1086,43 +1090,18 @@ export default function ClienteDetailPage() {
               Registrar pago
             </button>
           </div>
+          )}
         </div>
 
         {/* Estadísticas rápidas */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 divide-x divide-gray-100 border-t border-gray-100">
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-100 border-t border-gray-100">
           {(
             [
-              { label: "Origen", value: cliente.origen },
-              {
-                label: "Tipo servicio",
-                value: etiquetaVisibleTipoServicio(
-                  cliente.tipo_servicio_cliente ?? null,
-                  labelTipoServicioMap
-                ),
-              },
-              { label: "Condición", value: cliente.condicion_pago ?? "—" },
-              {
-                label: "Plan activo",
-                value: cargandoDetalleCliente ? (
-                  <span className="inline-block h-4 w-36 max-w-full animate-pulse rounded-md bg-slate-200" aria-hidden />
-                ) : suscripcionActiva ? (
-                  `${planes.find((p) => p.id === suscripcionActiva.plan_id)?.nombre ?? suscripcionActiva.plan_nombre ?? "Plan"} (${suscripcionActiva.moneda})`
-                ) : (
-                  "—"
-                ),
-              },
+              { label: "Condición de pago", value: cliente.condicion_pago ?? "—" },
               { label: "Moneda", value: cliente.moneda_preferida ?? "GS" },
               {
-                label: "Vendedor",
-                value: (() => {
-                  const uid = cliente.vendedor_usuario_id?.trim();
-                  if (uid) {
-                    const u = usuariosEmpresa.find((x) => x.id === uid);
-                    const nom = (u?.nombre ?? "").trim() || u?.email?.trim();
-                    if (nom) return nom;
-                  }
-                  return cliente.vendedor_asignado ?? "—";
-                })(),
+                label: "Nivel de precio",
+                value: { minorista: "Minorista", mayorista: "Mayorista", distribuidor: "Distribuidor" }[cliente.nivel_precio ?? "minorista"],
               },
               { label: "Creado por", value: cliente.created_by_nombre?.trim() || "—" },
             ] as { label: string; value: ReactNode }[]
