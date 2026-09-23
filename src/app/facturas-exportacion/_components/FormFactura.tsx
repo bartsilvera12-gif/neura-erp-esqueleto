@@ -6,6 +6,7 @@ import { MONEDAS_EXPORTACION, TIPOS_FACTURA, type TipoFactura } from "@/lib/fact
 import type { IvaTipo } from "@/lib/facturas-exportacion/types";
 
 interface Item {
+  producto_id: string;
   codigo: string;
   descripcion: string;
   unidad: string;
@@ -51,7 +52,17 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 const fechaES = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
 const input = "zx-surface w-full px-3 py-2 text-sm";
 const lbl = "mb-1 block text-xs font-medium text-slate-500";
+interface ProductoLista {
+  id: string;
+  nombre: string;
+  sku: string | null;
+  unidad_medida: string | null;
+  precio_venta: number;
+  stock_actual: number;
+}
+
 const itemVacio = (t: TipoFactura | null): Item => ({
+  producto_id: "",
   codigo: "",
   descripcion: "",
   unidad: "UN",
@@ -85,6 +96,8 @@ export default function FormFactura() {
   const [condicion, setCondicion] = useState<"CONTADO" | "CREDITO">("CONTADO");
   const [cliente, setCliente] = useState(clienteVacio);
   const [clientes, setClientes] = useState<ClienteLista[]>([]);
+  const [productos, setProductos] = useState<ProductoLista[]>([]);
+  const [buscaProd, setBuscaProd] = useState<{ fila: number; texto: string } | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [verLista, setVerLista] = useState(false);
   const [guardarCliente, setGuardarCliente] = useState(false);
@@ -107,6 +120,10 @@ export default function FormFactura() {
     fetch("/api/facturas-exportacion/config", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((j) => { if (j?.success) setConfig(j.data?.config ?? []); })
+      .catch(() => undefined);
+    fetch("/api/productos", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setProductos((j?.data?.productos ?? []) as ProductoLista[]))
       .catch(() => undefined);
     fetch("/api/clientes", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
@@ -172,6 +189,7 @@ export default function FormFactura() {
         setItems(
           its.length
             ? its.map((it) => ({
+                producto_id: s(it.producto_id),
                 codigo: s(it.codigo),
                 descripcion: s(it.descripcion),
                 unidad: s(it.unidad),
@@ -246,6 +264,36 @@ export default function FormFactura() {
 
   function updateItem(i: number, campo: keyof Item, valor: string) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [campo]: valor } : it)));
+  }
+
+  function productosQueCoinciden(texto: string) {
+    const q = texto.trim().toLowerCase();
+    const lista = q
+      ? productos.filter((p) => `${p.nombre} ${p.sku ?? ""}`.toLowerCase().includes(q))
+      : productos;
+    return lista.slice(0, 8);
+  }
+
+  /** Completa el renglón con el producto del inventario. El precio de venta está en Gs.:
+   *  en otra moneda se convierte con el tipo de cambio (si todavía no hay, queda vacío). */
+  function elegirProducto(i: number, p: ProductoLista) {
+    const precioGs = Number(p.precio_venta) || 0;
+    const precio = esPyg ? String(Math.round(precioGs)) : tc > 1 && precioGs > 0 ? (precioGs / tc).toFixed(2) : "";
+    setItems((prev) =>
+      prev.map((it, idx) =>
+        idx === i
+          ? {
+              ...it,
+              producto_id: p.id,
+              codigo: p.sku ?? "",
+              descripcion: p.nombre,
+              unidad: (p.unidad_medida ?? "").toUpperCase() === "UNIDAD" ? "UN" : (p.unidad_medida ?? it.unidad),
+              precio_unitario: precio || it.precio_unitario,
+            }
+          : it
+      )
+    );
+    setBuscaProd(null);
   }
 
   /** Mismas reglas que valida el servidor (QA-12/13/14), para avisar antes de enviar. */
@@ -340,6 +388,7 @@ export default function FormFactura() {
           items: items
             .filter((it) => it.descripcion.trim())
             .map((it) => ({
+              producto_id: it.producto_id || null,
               codigo: it.codigo,
               descripcion: it.descripcion.trim(),
               unidad: it.unidad,
@@ -662,6 +711,41 @@ export default function FormFactura() {
         <div className="space-y-3">
           {items.map((it, i) => (
             <div key={i} className="rounded-lg border border-slate-200 p-3">
+              <div className="relative mb-3">
+                <input
+                  value={buscaProd?.fila === i ? buscaProd.texto : ""}
+                  onChange={(e) => setBuscaProd({ fila: i, texto: e.target.value })}
+                  onFocus={() => setBuscaProd({ fila: i, texto: buscaProd?.fila === i ? buscaProd.texto : "" })}
+                  onBlur={() => setTimeout(() => setBuscaProd((b) => (b?.fila === i ? null : b)), 150)}
+                  placeholder={it.producto_id ? "Producto del inventario elegido · buscar otro…" : "Buscar producto del inventario por nombre o código…"}
+                  className="zx-surface w-full px-3 py-1.5 text-sm"
+                />
+                {buscaProd?.fila === i && (
+                  <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                    {productosQueCoinciden(buscaProd.texto).length === 0 && (
+                      <li className="px-3 py-2 text-sm text-slate-400">No hay productos que coincidan. Podés cargarlo a mano abajo.</li>
+                    )}
+                    {productosQueCoinciden(buscaProd.texto).map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => elegirProducto(i, p)}
+                          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                        >
+                          <span>
+                            <span className="font-medium text-slate-800">{p.nombre}</span>
+                            {p.sku && <span className="ml-2 font-mono text-xs text-slate-400">{p.sku}</span>}
+                          </span>
+                          <span className="whitespace-nowrap text-xs text-slate-500">
+                            Gs. {Math.round(Number(p.precio_venta) || 0).toLocaleString("es-PY")} · stock {Number(p.stock_actual) || 0}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-6 lg:grid-cols-12">
                 <div className="col-span-1 sm:col-span-2 lg:col-span-2">
                   <label className={lbl}>Código</label>
