@@ -72,7 +72,7 @@ export default function RegularizacionPage() {
       const fd = new FormData();
       fd.append("file", file);
       const j = await fetch(`/api/facturas-regularizacion/${id}/pdf`, { method: "POST", body: fd, credentials: "include" }).then((r) => r.json());
-      if (!j?.success) alert(j?.error ?? "No se pudo subir el PDF.");
+      if (!j?.success) setError(j?.error ?? "No se pudo subir el PDF.");
     } finally {
       setSubiendoId(null);
     }
@@ -111,7 +111,7 @@ export default function RegularizacionPage() {
       credentials: "include",
       body: JSON.stringify({ estado }),
     }).then((res) => res.json());
-    if (!j?.success) alert(j?.error ?? "No se pudo cambiar el estado.");
+    if (!j?.success) setError(j?.error ?? "No se pudo cambiar el estado.");
     void cargar();
   }
 
@@ -221,7 +221,7 @@ export default function RegularizacionPage() {
           ))}
         </div>
 
-        {!mostrarForm && error && <div className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">

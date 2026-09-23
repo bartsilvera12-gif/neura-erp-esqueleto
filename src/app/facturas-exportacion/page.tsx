@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { TipoFactura } from "@/lib/facturas-exportacion/config";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { FacturaExportacion, FacturaExportacionEstado } from "@/lib/facturas-exportacion/types";
 
 export const dynamic = "force-dynamic";
@@ -41,34 +42,74 @@ export default function FacturasExportacionPage() {
     if (activos.length) setModoPrueba(activos.some((c) => c.modo_prueba !== false));
   }
 
-  async function cambiarModo(prueba: boolean) {
-    const msg = prueba
-      ? "¿Volver a modo prueba? Las próximas facturas saldrán como PRUEBA, sin valor fiscal."
-      : "¿Pasar a producción? Desde ahora cada factura usa un número REAL del timbrado 19025402.\n\nHacelo solo cuando el contador haya confirmado el uso de Zentra.";
-    if (!window.confirm(msg)) return;
-    const j = await fetch("/api/facturas-exportacion/config", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ modo_prueba: prueba }),
-    }).then((r) => r.json());
-    if (!j?.success) return alert(j?.error ?? "No se pudo cambiar el modo.");
-    void cargarModo();
-  }
+  type Pendiente =
+    | { tipo: "modo"; prueba: boolean }
+    | { tipo: "borrador"; f: FacturaExportacion }
+    | { tipo: "pruebas" }
+    | { tipo: "anular"; f: FacturaExportacion };
+  const [pendiente, setPendiente] = useState<Pendiente | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const [motivoError, setMotivoError] = useState(false);
+  const [procesando, setProcesando] = useState(false);
+  const [aviso, setAviso] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
 
-  async function borrarBorrador(f: FacturaExportacion) {
-    if (!window.confirm("¿Borrar este borrador? No tiene número, así que no afecta la numeración.")) return;
-    const j = await fetch(`/api/facturas-exportacion/${f.id}`, { method: "DELETE", credentials: "include" }).then((r) => r.json());
-    if (!j?.success) return alert(j?.error ?? "No se pudo borrar.");
-    void cargar();
-  }
+  const cambiarModo = (prueba: boolean) => setPendiente({ tipo: "modo", prueba });
+  const borrarBorrador = (f: FacturaExportacion) => setPendiente({ tipo: "borrador", f });
+  const borrarPruebas = () => setPendiente({ tipo: "pruebas" });
+  const anular = (f: FacturaExportacion) => {
+    setMotivo("");
+    setMotivoError(false);
+    setPendiente({ tipo: "anular", f });
+  };
 
-  async function borrarPruebas() {
-    if (!window.confirm("¿Borrar todas las facturas de PRUEBA? Las facturas reales no se tocan.")) return;
-    const j = await fetch("/api/facturas-exportacion/pruebas", { method: "DELETE", credentials: "include" }).then((r) => r.json());
-    if (!j?.success) return alert(j?.error ?? "No se pudieron borrar.");
-    alert(`Se borraron ${j.data?.borradas ?? 0} facturas de prueba.`);
-    void cargar();
+  async function ejecutarPendiente() {
+    if (!pendiente || procesando) return;
+    if (pendiente.tipo === "anular" && !motivo.trim()) return setMotivoError(true);
+    setProcesando(true);
+    try {
+      let j: { success?: boolean; error?: string; data?: { borradas?: number } } | null = null;
+      if (pendiente.tipo === "modo") {
+        j = await fetch("/api/facturas-exportacion/config", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ modo_prueba: pendiente.prueba }),
+        }).then((r) => r.json());
+      } else if (pendiente.tipo === "borrador") {
+        j = await fetch(`/api/facturas-exportacion/${pendiente.f.id}`, { method: "DELETE", credentials: "include" }).then((r) => r.json());
+      } else if (pendiente.tipo === "pruebas") {
+        j = await fetch("/api/facturas-exportacion/pruebas", { method: "DELETE", credentials: "include" }).then((r) => r.json());
+      } else {
+        j = await fetch(`/api/facturas-exportacion/${pendiente.f.id}/anular`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ motivo: motivo.trim() }),
+        }).then((r) => r.json());
+      }
+      if (!j?.success) {
+        setAviso({ tipo: "error", texto: j?.error ?? "No se pudo completar la acción." });
+      } else {
+        setAviso({
+          tipo: "ok",
+          texto:
+            pendiente.tipo === "modo"
+              ? pendiente.prueba ? "Volviste a modo prueba." : "Facturación en producción: desde ahora se usan números reales."
+              : pendiente.tipo === "borrador"
+              ? "Borrador borrado."
+              : pendiente.tipo === "pruebas"
+              ? `Se borraron ${j.data?.borradas ?? 0} facturas de prueba.`
+              : `Factura ${pendiente.f.numero_formateado} anulada.`,
+        });
+        if (pendiente.tipo === "modo") void cargarModo();
+        else void cargar();
+      }
+    } catch {
+      setAviso({ tipo: "error", texto: "Error de conexión. Probá de nuevo." });
+    } finally {
+      setProcesando(false);
+      setPendiente(null);
+    }
   }
 
   async function cargar() {
@@ -95,22 +136,7 @@ export default function FacturasExportacionPage() {
   }
   useEffect(() => { void cargar(); void cargarModo(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  async function anular(f: FacturaExportacion) {
-    const motivo = window.prompt(`Anular ${f.numero_formateado}. Motivo:`);
-    if (!motivo || !motivo.trim()) return;
-    const res = await fetch(`/api/facturas-exportacion/${f.id}/anular`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ motivo: motivo.trim() }),
-    });
-    const j = await res.json();
-    if (!res.ok || !j?.success) {
-      alert(j?.error ?? "No se pudo anular.");
-      return;
-    }
-    void cargar();
-  }
+
 
   return (
     <div className="space-y-6">
@@ -157,6 +183,69 @@ export default function FacturasExportacionPage() {
           </Link>
         </div>
       </div>
+
+      <ConfirmModal
+        open={pendiente !== null}
+        loading={procesando}
+        tone={pendiente?.tipo === "modo" && !pendiente.prueba ? "primary" : pendiente?.tipo === "modo" ? "primary" : "danger"}
+        title={
+          pendiente?.tipo === "modo"
+            ? pendiente.prueba ? "Volver a modo prueba" : "Pasar a producción"
+            : pendiente?.tipo === "borrador"
+            ? "Borrar borrador"
+            : pendiente?.tipo === "pruebas"
+            ? "Borrar facturas de prueba"
+            : `Anular factura ${pendiente?.tipo === "anular" ? pendiente.f.numero_formateado ?? "" : ""}`
+        }
+        confirmLabel={
+          pendiente?.tipo === "modo"
+            ? pendiente.prueba ? "Volver a prueba" : "Pasar a producción"
+            : pendiente?.tipo === "anular" ? "Anular" : "Borrar"
+        }
+        message={
+          pendiente?.tipo === "modo" ? (
+            pendiente.prueba ? (
+              "Las próximas facturas saldrán como PRUEBA, sin valor fiscal."
+            ) : (
+              <>
+                Desde ahora cada factura usa un número <strong>real</strong> del timbrado 19025402.
+                <br />
+                Hacelo solo cuando el contador haya confirmado el uso de Zentra.
+              </>
+            )
+          ) : pendiente?.tipo === "borrador" ? (
+            "El borrador no tiene número, así que borrarlo no afecta la numeración."
+          ) : pendiente?.tipo === "pruebas" ? (
+            "Se borran todas las facturas de PRUEBA y su numeración vuelve a 1. Las facturas reales no se tocan."
+          ) : (
+            <div className="space-y-2">
+              <p>La factura queda anulada y su número no se vuelve a usar. Esto no se puede deshacer.</p>
+              <label className="block text-xs font-medium text-slate-500">Motivo de la anulación *</label>
+              <textarea
+                rows={2}
+                value={motivo}
+                onChange={(e) => { setMotivo(e.target.value); setMotivoError(false); }}
+                className="zx-surface w-full px-3 py-2 text-sm"
+                placeholder="Ej: error en el precio"
+              />
+              {motivoError && <p className="text-xs text-red-600">Escribí el motivo para poder anular.</p>}
+            </div>
+          )
+        }
+        onConfirm={() => void ejecutarPendiente()}
+        onCancel={() => setPendiente(null)}
+      />
+
+      {aviso && (
+        <div
+          className={`flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm ${
+            aviso.tipo === "ok" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"
+          }`}
+        >
+          <span>{aviso.texto}</span>
+          <button onClick={() => setAviso(null)} className="text-xs opacity-70 hover:opacity-100" aria-label="Cerrar aviso">✕</button>
+        </div>
+      )}
 
       {modoPrueba !== null && (
         <div

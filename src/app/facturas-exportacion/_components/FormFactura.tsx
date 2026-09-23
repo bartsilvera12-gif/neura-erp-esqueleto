@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MONEDAS_EXPORTACION, TIPOS_FACTURA, type TipoFactura } from "@/lib/facturas-exportacion/config";
 import type { IvaTipo } from "@/lib/facturas-exportacion/types";
 import PaisSelect from "@/components/ui/PaisSelect";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 interface Item {
   producto_id: string;
@@ -121,6 +122,7 @@ export default function FormFactura() {
   const [enviando, setEnviando] = useState<"" | "borrador" | "emitir">("");
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [confirmarEmision, setConfirmarEmision] = useState(false);
 
   useEffect(() => {
     fetch("/api/facturas-exportacion/config", { credentials: "include", cache: "no-store" })
@@ -325,20 +327,21 @@ export default function FormFactura() {
     return null;
   }
 
+  /** Valida y abre la confirmación; la emisión real corre al confirmar. */
+  function pedirEmision() {
+    if (enviando || !tipo) return;
+    setAviso(null);
+    const err = validarEmision();
+    if (err) return setError(err);
+    setError(null);
+    setConfirmarEmision(true);
+  }
+
   async function guardar(accion: "borrador" | "emitir") {
     if (enviando || !tipo) return;
     setError(null);
     setAviso(null);
-    if (accion === "emitir") {
-      const err = validarEmision();
-      if (err) return setError(err);
-      const msg = esPrueba
-        ? "¿Emitir la factura de prueba?"
-        : `¿Emitir la factura ${cfg ? `${cfg.establecimiento}-${cfg.punto_expedicion}-${String(cfg.proximo_numero).padStart(7, "0")}` : ""}? Después no se puede modificar, solo anular.`;
-      if (!window.confirm(msg)) return;
-    } else if (!cfg) {
-      return setError("Elegí el punto de expedición.");
-    }
+    if (accion === "borrador" && !cfg) return setError("Elegí el punto de expedición.");
 
     setEnviando(accion);
     try {
@@ -419,10 +422,13 @@ export default function FormFactura() {
         setAviso("Borrador guardado. Todavía no tiene número: podés seguirlo desde el listado.");
         return;
       }
+      setConfirmarEmision(false);
       if (id) window.open(`/api/facturas-exportacion/${id}/pdf`, "_blank");
       router.push(reemiteId ? "/facturas-exportacion/regularizacion" : "/facturas-exportacion");
     } finally {
       setEnviando("");
+      // Si el servidor rechazó la emisión, se cierra la ventana para que se vea el error.
+      if (accion === "emitir") setConfirmarEmision(false);
     }
   }
 
@@ -471,7 +477,38 @@ export default function FormFactura() {
   }
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); void guardar("emitir"); }} className="space-y-6">
+    <form onSubmit={(e) => { e.preventDefault(); pedirEmision(); }} className="space-y-6">
+      <ConfirmModal
+        open={confirmarEmision}
+        title={esPrueba ? "Emitir factura de prueba" : "Emitir factura"}
+        message={
+          <div className="space-y-2">
+            <p>
+              {cfg && (
+                <>
+                  Número{esPrueba ? " de prueba" : ""}:{" "}
+                  <strong className="font-mono">
+                    {`${cfg.establecimiento}-${cfg.punto_expedicion}-${String(esPrueba ? cfg.proximo_numero_prueba : cfg.proximo_numero).padStart(7, "0")}`}
+                  </strong>
+                  <br />
+                </>
+              )}
+              Cliente: <strong>{cliente.nombre}</strong>
+              <br />
+              Total: <strong>{esPyg ? "Gs." : moneda} {fmt(total)}</strong>
+            </p>
+            <p className="text-xs text-slate-500">
+              {esPrueba
+                ? "Sale marcada como PRUEBA, sin valor fiscal."
+                : "Una vez emitida no se puede modificar: solo se puede anular."}
+            </p>
+          </div>
+        }
+        confirmLabel="Emitir"
+        loading={enviando === "emitir"}
+        onConfirm={() => void guardar("emitir")}
+        onCancel={() => setConfirmarEmision(false)}
+      />
       <div className="flex flex-wrap items-start justify-between gap-3">
         {encabezado}
         <div className="flex gap-2">
