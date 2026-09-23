@@ -2,7 +2,7 @@
  * PDF de factura Autoimpresor Living Room: EXPORTACION (USD, exenta, datos de
  * operación/logística/banco) o LOCAL (Gs., IVA 5/10, contado/crédito).
  */
-import { PDFDocument, StandardFonts, rgb, degrees, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, degrees, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { FacturaExportacion, FacturaConfigFiscal } from "./types";
@@ -84,59 +84,63 @@ export async function buildFacturaExportacionPdf(
   const ruc = fiscal.ruc ?? EMPRESA_FACTURA.ruc;
   const autoimp = fiscal.autoimpresor_nro ?? EMPRESA_FACTURA.autoimpresorNro;
 
-  // ── Cabecera izquierda: logo + empresa ──────────────────────────────────
-  let logoOk = false;
+  let logo: PDFImage | null = null;
   try {
-    const bytes = await fs.readFile(path.join(process.cwd(), "public", EMPRESA_FACTURA.logoPath));
-    const img = await doc.embedPng(bytes);
-    const h = 62;
-    const w = Math.min((h / img.height) * img.width, 230);
-    c.page.drawImage(img, { x: MX + 4, y: Y(30 + h), width: w, height: h });
-    logoOk = true;
+    logo = await doc.embedPng(await fs.readFile(path.join(process.cwd(), "public", EMPRESA_FACTURA.logoPath)));
   } catch {
     /* sin archivo de logo: se dibuja en texto */
   }
-  if (!logoOk) {
-    text(c, "Franquicia", MX + 62, 42, 14, serifIt, TINTA);
-    text(c, "LivingRoom", MX + 4, 74, 34, serif, rgb(0.27, 0.27, 0.27));
-    textRight(c, "MUEBLES IMPORTADOS", MX + 4 + serif.widthOfTextAtSize("LivingRoom", 34), 86, 8, reg, NARANJA);
-  }
-  text(c, EMPRESA_FACTURA.razonSocial, MX + 4, 108, 11, bold);
-  EMPRESA_FACTURA.actividad.forEach((l, i) => text(c, l, MX + 4, 121 + i * 10, 7.3, reg, GRIS, 290));
-  text(c, EMPRESA_FACTURA.direccion, MX + 4, 141, 7.3, reg, GRIS, 300);
 
-  // ── Cabecera derecha: recuadro fiscal ───────────────────────────────────
-  const bx = 345;
-  const bw = W - MX - bx;
-  box(c, bx, 28, bw, 118, undefined, true);
-  if (esExpo) {
-    text(c, TIPOS_FACTURA.EXPORTACION.titulo, bx + 12, 48, 11.5, bold);
-    text(c, f.numero_formateado ?? "", bx + 12, 68, 15, bold);
-    const filas: [string, string][] = [
-      ["RUC", ruc],
-      ["TIMBRADO", fiscal.timbrado],
-      ["VIGENCIA", `${fechaES(fiscal.vigencia_desde)} - ${fechaES(fiscal.vigencia_hasta)}`],
-      ["AUTOIMPRESOR", autoimp],
-    ];
-    filas.forEach(([k, v], i) => {
-      text(c, k, bx + 12, 90 + i * 14, 6.5, reg, GRIS);
-      text(c, v, bx + 85, 90 + i * 14, 8.5);
-    });
-  } else {
-    text(c, TIPOS_FACTURA.LOCAL.titulo, bx + 12, 52, 17, bold);
-    text(c, f.numero_formateado ?? "", bx + 12, 72, 15, bold);
-    c.page.drawLine({ start: { x: bx + 12, y: Y(80) }, end: { x: bx + bw - 12, y: Y(80) }, thickness: 0.6, color: BORDE });
-    const filas: [string, string][] = [
-      ["TIMBRADO Nº", fiscal.timbrado],
-      ["FECHA INICIO VIGENCIA:", fechaES(fiscal.vigencia_desde)],
-      ["FECHA FIN VIGENCIA:", fechaES(fiscal.vigencia_hasta)],
-      ["RUC:", ruc],
-    ];
-    filas.forEach(([k, v], i) => {
-      text(c, k, bx + 12, 95 + i * 13, 7.5, reg, GRIS);
-      text(c, v, bx + 120, 95 + i * 13, 8.5);
-    });
-  }
+  /** Logo, empresa y recuadro fiscal: se repite arriba en cada página. */
+  const cabecera = () => {
+    // ── Cabecera izquierda: logo + empresa ──────────────────────────────────
+    if (logo) {
+      const h = 62;
+      const w = Math.min((h / logo.height) * logo.width, 230);
+      c.page.drawImage(logo, { x: MX + 4, y: Y(30 + h), width: w, height: h });
+    } else {
+      text(c, "Franquicia", MX + 62, 42, 14, serifIt, TINTA);
+      text(c, "LivingRoom", MX + 4, 74, 34, serif, rgb(0.27, 0.27, 0.27));
+      textRight(c, "MUEBLES IMPORTADOS", MX + 4 + serif.widthOfTextAtSize("LivingRoom", 34), 86, 8, reg, NARANJA);
+    }
+    text(c, EMPRESA_FACTURA.razonSocial, MX + 4, 108, 11, bold);
+    EMPRESA_FACTURA.actividad.forEach((l, i) => text(c, l, MX + 4, 121 + i * 10, 7.3, reg, GRIS, 290));
+    text(c, EMPRESA_FACTURA.direccion, MX + 4, 141, 7.3, reg, GRIS, 300);
+
+    // ── Cabecera derecha: recuadro fiscal ───────────────────────────────────
+    const bx = 345;
+    const bw = W - MX - bx;
+    box(c, bx, 28, bw, 118, undefined, true);
+    if (esExpo) {
+      text(c, TIPOS_FACTURA.EXPORTACION.titulo, bx + 12, 48, 11.5, bold);
+      text(c, f.numero_formateado ?? "", bx + 12, 68, 15, bold);
+      const filas: [string, string][] = [
+        ["RUC", ruc],
+        ["TIMBRADO", fiscal.timbrado],
+        ["VIGENCIA", `${fechaES(fiscal.vigencia_desde)} - ${fechaES(fiscal.vigencia_hasta)}`],
+        ["AUTOIMPRESOR", autoimp],
+      ];
+      filas.forEach(([k, v], i) => {
+        text(c, k, bx + 12, 90 + i * 14, 6.5, reg, GRIS);
+        text(c, v, bx + 85, 90 + i * 14, 8.5);
+      });
+    } else {
+      text(c, TIPOS_FACTURA.LOCAL.titulo, bx + 12, 52, 17, bold);
+      text(c, f.numero_formateado ?? "", bx + 12, 72, 15, bold);
+      c.page.drawLine({ start: { x: bx + 12, y: Y(80) }, end: { x: bx + bw - 12, y: Y(80) }, thickness: 0.6, color: BORDE });
+      const filas: [string, string][] = [
+        ["TIMBRADO Nº", fiscal.timbrado],
+        ["FECHA INICIO VIGENCIA:", fechaES(fiscal.vigencia_desde)],
+        ["FECHA FIN VIGENCIA:", fechaES(fiscal.vigencia_hasta)],
+        ["RUC:", ruc],
+      ];
+      filas.forEach(([k, v], i) => {
+        text(c, k, bx + 12, 95 + i * 13, 7.5, reg, GRIS);
+        text(c, v, bx + 120, 95 + i * 13, 8.5);
+      });
+    }
+  };
+  cabecera();
 
   // ── Bloques de datos ────────────────────────────────────────────────────
   let t = 158;
@@ -214,7 +218,9 @@ export async function buildFacturaExportacionPdf(
   colW.reduce((x, w, i) => ((colX[i] = x), x + w), MX);
   const heads = ["CANT.", "DESCRIPCIÓN", "PRECIO UNITARIO", "EXENTAS", "5%", "10%"];
   const rowH = 13;
+  // Última página: deja lugar para subtotales y totales. Páginas intermedias: hasta el pie.
   const bottomLimit = H - 205;
+  const pageLimit = H - 60;
 
   const drawHead = (top: number) => {
     c.page.drawRectangle({ x: MX, y: Y(top + 20), width: CW, height: 20, color: FONDO, borderColor: BORDE, borderWidth: 0.8 });
@@ -233,16 +239,20 @@ export async function buildFacturaExportacionPdf(
   let tableTop = t;
   let y = drawHead(t) + 4;
   const items = f.items ?? [];
-  for (const it of items) {
-    if (y + rowH + 9 > bottomLimit) {
-      drawBody(tableTop + 20, y + 4);
-      c = { page: doc.addPage([W, H]), reg, bold };
-      text(c, `${f.numero_formateado} (continuación)`, MX, 40, 9, bold);
-      tableTop = 52;
-      y = drawHead(52) + 4;
-    }
+  items.forEach((it, i) => {
     const extra = Number(it.descuento) > 0 ? `Descuento: ${num(Number(it.descuento))}` : "";
     const alto = extra ? rowH + 9 : rowH;
+    // Pasa a otra página si no entra; el último ítem además necesita lugar para los totales.
+    if (y + alto > pageLimit || (i === items.length - 1 && y + alto > bottomLimit)) {
+      drawBody(tableTop + 20, esExpo ? y + 4 : pageLimit);
+      c = { page: doc.addPage([W, H]), reg, bold };
+      cabecera();
+      text(c, "CLIENTE", MX, 166, 7.5, reg, GRIS);
+      text(c, f.cliente_nombre, MX + 45, 166, 9, bold, TINTA, 300);
+      textRight(c, `FECHA DE EMISIÓN  ${fechaES(f.fecha)}   ·   continuación`, MX + CW, 166, 7.5, reg, GRIS);
+      tableTop = 176;
+      y = drawHead(tableTop) + 4;
+    }
     const base = y + 9;
     const iva = it.iva_tipo ?? "EXENTA";
     const cant = (Number(it.cantidad) || 0).toLocaleString("es-PY", { minimumFractionDigits: esExpo ? 2 : 0, maximumFractionDigits: 2 });
@@ -255,7 +265,7 @@ export async function buildFacturaExportacionPdf(
     textRight(c, num(iva === "5" ? it.subtotal : 0), colX[4] + colW[4] - 6, base, 8.5);
     textRight(c, num(iva === "10" ? it.subtotal : 0), colX[5] + colW[5] - 6, base, 8.5);
     y += alto;
-  }
+  });
   // La tabla local ocupa el alto disponible, como el talonario.
   const tableBottom = esExpo ? Math.max(y + 6, tableTop + 60) : bottomLimit;
   drawBody(tableTop + 20, tableBottom);
@@ -320,9 +330,12 @@ export async function buildFacturaExportacionPdf(
 
   // Pie en todas las páginas + marca ANULADA
   const pie = `Autorización de Autoimpresor y Timbrado de Documentos Nº ${autoimp}`;
-  for (const p of doc.getPages()) {
+  const paginas = doc.getPages();
+  paginas.forEach((p, i) => {
     p.drawLine({ start: { x: MX, y: 42 }, end: { x: W - MX, y: 42 }, thickness: 0.5, color: BORDE });
     p.drawText(pie, { x: (W - reg.widthOfTextAtSize(pie, 7)) / 2, y: 30, size: 7, font: reg, color: GRIS });
+    const nro = `Página ${i + 1} de ${paginas.length}`;
+    p.drawText(nro, { x: W - MX - bold.widthOfTextAtSize(nro, 7.5), y: 30, size: 7.5, font: bold, color: TINTA });
     if (f.prueba) {
       p.drawRectangle({ x: 0, y: H - 16, width: W, height: 16, color: rgb(0.85, 0.15, 0.15) });
       const aviso = "FACTURA DE PRUEBA · SIN VALOR FISCAL";
@@ -332,7 +345,7 @@ export async function buildFacturaExportacionPdf(
     if (f.estado === "ANULADA") {
       p.drawText("ANULADA", { x: 150, y: 330, size: 90, font: bold, color: rgb(0.85, 0.15, 0.15), opacity: 0.2, rotate: degrees(35) });
     }
-  }
+  });
 
   return doc.save();
 }
