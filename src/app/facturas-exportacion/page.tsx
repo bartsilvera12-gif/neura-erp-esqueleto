@@ -415,7 +415,7 @@ export default function FacturasExportacionPage() {
                         rel="noopener"
                         className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
                       >
-                        PDF
+                        Imprimir
                       </a>
                       )}
                       {isAdmin && f.estado === "EMITIDA" && (
