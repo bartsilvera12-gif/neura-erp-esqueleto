@@ -430,8 +430,8 @@ export default function InventarioPage() {
 
           <span className="ml-auto text-xs text-slate-500">
             {productos.length === todos.length
-              ? `${todos.length} productos`
-              : `${productos.length} de ${todos.length} productos`}
+              ? `${todos.length} ${todos.length === 1 ? "producto" : "productos"}`
+              : `${productos.length} de ${todos.length} ${todos.length === 1 ? "producto" : "productos"}`}
           </span>
         </div>
 
