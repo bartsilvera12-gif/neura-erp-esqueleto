@@ -382,7 +382,12 @@ export default function FormFactura() {
   if (!tipo) {
     return (
       <div className="space-y-6">
-        {encabezado}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          {encabezado}
+          <button type="button" onClick={() => router.push("/facturas-exportacion")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+            ← Volver
+          </button>
+        </div>
         {error && <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
         <p className="text-sm font-medium text-slate-700">¿Qué factura querés hacer?</p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -409,11 +414,16 @@ export default function FormFactura() {
     <form onSubmit={(e) => { e.preventDefault(); void guardar("emitir"); }} className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         {encabezado}
-        {!borradorId && (
-          <button type="button" onClick={() => setTipo(null)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-            Cambiar tipo
+        <div className="flex gap-2">
+          {!borradorId && (
+            <button type="button" onClick={() => setTipo(null)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+              Cambiar tipo
+            </button>
+          )}
+          <button type="button" onClick={() => router.push(reemiteId ? "/facturas-exportacion/regularizacion" : "/facturas-exportacion")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+            ← Volver
           </button>
-        )}
+        </div>
       </div>
 
       {esPrueba && (

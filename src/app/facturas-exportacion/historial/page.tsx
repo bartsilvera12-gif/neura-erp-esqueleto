@@ -110,7 +110,7 @@ export default function HistorialPage() {
           <p className="mt-0.5 text-xs text-slate-500">Quién hizo qué, cuándo y por qué. No se puede modificar ni borrar.</p>
         </div>
         <Link href="/facturas-exportacion" className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-          Volver
+          ← Volver
         </Link>
       </div>
 

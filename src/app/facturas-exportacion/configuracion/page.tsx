@@ -172,7 +172,7 @@ export default function ConfiguracionTimbradoPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/facturas-exportacion" className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-            Volver
+            ← Volver
           </Link>
           {!nuevo && (
             <button onClick={() => setNuevo({ ...nuevoVacio })} className="rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3F8E91]">
@@ -200,13 +200,20 @@ export default function ConfiguracionTimbradoPage() {
         </div>
       )}
 
-      {puntos.map((p) => {
+      {[...puntos.filter((x) => x.activo), ...puntos.filter((x) => !x.activo)].map((p, i, lista) => {
         const e = edits[p.id];
+        const primeroInactivo = !p.activo && (i === 0 || lista[i - 1].activo);
         if (!e) return null;
         const usados = Math.max(0, p.proximo_numero - p.rango_desde);
         const quedan = Math.max(0, p.rango_hasta - p.proximo_numero + 1);
         return (
-          <div key={p.id} className={`zx-surface space-y-4 p-4 sm:p-6 ${p.activo ? "" : "opacity-60"}`}>
+          <div key={p.id} className="space-y-3">
+          {primeroInactivo && (
+            <h2 className="pt-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Timbrados anteriores (inactivos, no se usan para facturar)
+            </h2>
+          )}
+          <div className={`zx-surface space-y-4 p-4 sm:p-6 ${p.activo ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-slate-800">
                 Punto {p.establecimiento}-{p.punto_expedicion}
@@ -232,6 +239,7 @@ export default function ConfiguracionTimbradoPage() {
                 {guardando === p.id ? "Guardando…" : "Guardar cambios"}
               </button>
             </div>
+          </div>
           </div>
         );
       })}

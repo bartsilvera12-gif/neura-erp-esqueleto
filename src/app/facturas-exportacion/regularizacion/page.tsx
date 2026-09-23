@@ -131,6 +131,10 @@ export default function RegularizacionPage() {
             quedan vinculadas.
           </p>
         </div>
+        <div className="flex gap-2">
+        <Link href="/facturas-exportacion" className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+          ← Volver
+        </Link>
         <button
           type="button"
           onClick={() => setMostrarForm((v) => !v)}
@@ -138,6 +142,7 @@ export default function RegularizacionPage() {
         >
           {mostrarForm ? "Cerrar" : "+ Registrar factura de agosto"}
         </button>
+        </div>
       </div>
 
       {mostrarForm && (
