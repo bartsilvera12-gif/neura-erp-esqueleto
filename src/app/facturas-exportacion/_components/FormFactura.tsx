@@ -212,6 +212,11 @@ export default function FormFactura() {
 
   const puntos = useMemo(() => config.filter((c) => c.activo), [config]);
 
+  // Un error de validación viejo no debe quedar a la vista después de corregir los datos.
+  useEffect(() => {
+    setError(null);
+  }, [items, cliente, tipoCambio, moneda, fecha, punto]);
+
   function elegirTipo(t: TipoFactura) {
     setTipo(t);
     setMoneda(reemision?.moneda ?? TIPOS_FACTURA[t].monedaDefault);
