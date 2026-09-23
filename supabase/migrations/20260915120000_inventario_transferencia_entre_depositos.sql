@@ -39,7 +39,7 @@ BEGIN
     FROM pg_namespace n
     JOIN pg_class c ON c.relnamespace = n.oid
     WHERE c.relname = 'movimientos_inventario'
-      AND n.nspname NOT IN ('pg_catalog','information_schema')
+      AND n.nspname = 'esqueletoerp'  -- base compartida: solo este esquema
   LOOP
     RAISE NOTICE '[transferencia_depositos] schema=%', r.sch;
 

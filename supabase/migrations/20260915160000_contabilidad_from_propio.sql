@@ -25,7 +25,7 @@ BEGIN
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relname = 'empresas' AND c.relkind = 'r'
-      AND n.nspname NOT IN ('pg_catalog','information_schema')
+      AND n.nspname = 'esqueletoerp'  -- base compartida: solo este esquema
   LOOP
     RAISE NOTICE '[contabilidad] schema=%', r.sch;
 

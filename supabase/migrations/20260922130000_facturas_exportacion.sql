@@ -8,7 +8,7 @@
 -- de configuración y devuelve el siguiente número. Nunca hay huecos ni
 -- duplicados aunque emitan dos usuarios a la vez.
 --
--- Idempotente + aditivo. Ejecuta por cada tenant que tenga schema propio.
+-- Idempotente + aditivo. Solo esqueletoerp (la base es compartida con otros clientes).
 -- =============================================================================
 
 DO $mig$
@@ -18,7 +18,7 @@ BEGIN
   FOR r IN
     SELECT n.nspname AS sch
     FROM pg_namespace n
-    WHERE n.nspname NOT IN ('pg_catalog','information_schema','public','auth','storage','extensions','graphql','graphql_public','realtime','pgrst','pgbouncer','vault','net')
+    WHERE n.nspname = 'esqueletoerp'  -- base compartida: solo este esquema
       AND EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relname = 'empresas' AND c.relkind = 'r')
   LOOP
     RAISE NOTICE '[facturas_exportacion] schema=%', r.sch;

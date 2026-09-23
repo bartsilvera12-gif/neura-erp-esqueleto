@@ -19,7 +19,7 @@ BEGIN
     SELECT n.nspname AS sch
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relname = 'sucursales' AND c.relkind = 'r'
-      AND n.nspname NOT IN ('pg_catalog','information_schema')
+      AND n.nspname = 'esqueletoerp'  -- base compartida: solo este esquema
   LOOP
     RAISE NOTICE '[cajas_chicas_por_local] schema=%', r.sch;
 
