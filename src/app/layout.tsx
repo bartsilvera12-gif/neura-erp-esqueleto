@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Demo ERP",
-  description: "Sistema de gestión empresarial Demo ERP",
+  title: "Living Room Muebles",
+  description: "Sistema de gestión de Living Room Muebles E.A.S."
 };
 
 export default function RootLayout({

@@ -120,17 +120,17 @@ export default function Header() {
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="zx-surface zx-surface-interactive flex items-center gap-2 px-3 py-1.5 transition-all"
           >
-            {/* Avatar: logo de la empresa (Esqueleto ERP); la inicial queda de respaldo. */}
+            {/* Avatar: logo de la empresa. Es apaisado, por eso el recuadro es más ancho que alto. */}
             <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white"
+              className="flex h-9 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white px-2"
               style={{ boxShadow: "0 0 0 3px rgba(79, 174, 178, 0.25)" }}
             >
               <Image
-                src="/brand/esqueleto-logo.png"
-                alt="Esqueleto ERP"
-                width={72}
-                height={72}
-                className="h-full w-full object-cover"
+                src="/brand/livingroom-logo.png"
+                alt="Living Room Muebles"
+                width={385}
+                height={135}
+                className="h-full w-full object-contain"
                 title={avatarInitial}
               />
             </div>
