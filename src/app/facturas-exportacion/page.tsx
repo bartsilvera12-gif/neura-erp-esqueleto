@@ -56,6 +56,13 @@ export default function FacturasExportacionPage() {
     void cargarModo();
   }
 
+  async function borrarBorrador(f: FacturaExportacion) {
+    if (!window.confirm("¿Borrar este borrador? No tiene número, así que no afecta la numeración.")) return;
+    const j = await fetch(`/api/facturas-exportacion/${f.id}`, { method: "DELETE", credentials: "include" }).then((r) => r.json());
+    if (!j?.success) return alert(j?.error ?? "No se pudo borrar.");
+    void cargar();
+  }
+
   async function borrarPruebas() {
     if (!window.confirm("¿Borrar todas las facturas de PRUEBA? Las facturas reales no se tocan.")) return;
     const j = await fetch("/api/facturas-exportacion/pruebas", { method: "DELETE", credentials: "include" }).then((r) => r.json());
@@ -117,7 +124,23 @@ export default function FacturasExportacionPage() {
             Timbrado 19025402 · vigencia 03/08/2026 al 31/08/2027 · puntos 001-004 y 001-005
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {isAdmin && (
+            <>
+              <Link
+                href="/facturas-exportacion/configuracion"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Timbrado
+              </Link>
+              <Link
+                href="/facturas-exportacion/historial"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Historial
+              </Link>
+            </>
+          )}
           {isAdmin && (
             <Link
               href="/facturas-exportacion/regularizacion"
@@ -171,8 +194,8 @@ export default function FacturasExportacionPage() {
         </div>
       )}
 
-      <div className="zx-surface zx-surface-accent p-6">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-7">
+      <div className="zx-surface zx-surface-accent p-4 sm:p-6">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           <div>
             <label className="mb-1 block text-xs text-slate-500">Tipo</label>
             <select value={tipo} onChange={(e) => setTipo(e.target.value as "" | TipoFactura)} className="zx-surface w-full px-3 py-2 text-sm">
@@ -203,6 +226,7 @@ export default function FacturasExportacionPage() {
               <option value="">Todos</option>
               <option value="EMITIDA">Emitidas</option>
               <option value="ANULADA">Anuladas</option>
+              <option value="BORRADOR">Borradores</option>
             </select>
           </div>
           <div>
@@ -215,8 +239,8 @@ export default function FacturasExportacionPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-500">Cliente</label>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nombre…" className="zx-surface w-full px-3 py-2 text-sm" />
+            <label className="mb-1 block text-xs text-slate-500">Cliente o número</label>
+            <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void cargar(); }} placeholder="Nombre o 0000012…" className="zx-surface w-full px-3 py-2 text-sm" />
           </div>
         </div>
         <div className="mb-4 flex gap-2">
@@ -263,7 +287,7 @@ export default function FacturasExportacionPage() {
                     </span>
                   </td>
                   <td className="py-2 pr-3 font-mono text-slate-800">
-                    {f.numero_formateado}
+                    {f.numero_formateado ?? <span className="font-sans text-xs text-slate-400">sin número</span>}
                     {f.prueba && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Prueba</span>}
                     {f.regularizacion_id && <span className="ml-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">Reemisión</span>}
                   </td>
@@ -274,6 +298,8 @@ export default function FacturasExportacionPage() {
                   <td className="py-2 pr-3">
                     {f.estado === "ANULADA" ? (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Anulada</span>
+                    ) : f.estado === "BORRADOR" ? (
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">Borrador</span>
                     ) : (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Emitida</span>
                     )}
@@ -281,6 +307,19 @@ export default function FacturasExportacionPage() {
                   <td className="py-2 pr-3 text-xs text-slate-500">{f.created_by_nombre ?? "—"}</td>
                   <td className="py-2 pr-3 text-right">
                     <div className="inline-flex gap-2">
+                      {f.estado === "BORRADOR" ? (
+                        <>
+                          <Link
+                            href={`/facturas-exportacion/nueva?borrador=${f.id}`}
+                            className="rounded border border-[#4FAEB2] px-2 py-1 text-xs font-medium text-[#3F8E91] hover:bg-[#4FAEB2]/10"
+                          >
+                            Continuar
+                          </Link>
+                          <button onClick={() => borrarBorrador(f)} className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">
+                            Borrar
+                          </button>
+                        </>
+                      ) : (
                       <a
                         href={`/api/facturas-exportacion/${f.id}/pdf`}
                         target="_blank"
@@ -289,6 +328,7 @@ export default function FacturasExportacionPage() {
                       >
                         PDF
                       </a>
+                      )}
                       {isAdmin && f.estado === "EMITIDA" && (
                         <button
                           onClick={() => anular(f)}

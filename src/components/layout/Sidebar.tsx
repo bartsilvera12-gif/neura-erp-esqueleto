@@ -138,6 +138,8 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Facturas", href: "/facturas-exportacion", exactMatch: true },
     { label: "Nueva factura", href: "/facturas-exportacion/nueva" },
     { label: "Regularización", href: "/facturas-exportacion/regularizacion" },
+    { label: "Timbrado", href: "/facturas-exportacion/configuracion" },
+    { label: "Historial", href: "/facturas-exportacion/historial" },
   ]},
   { key: "reportes", slug: "reportes", label: "Reportes", href: "/reportes", icon: BarChart3, children: [
     { label: "Estado de cuenta", href: "/reportes/estado-cuenta" },

@@ -1,13 +1,16 @@
 import type { TipoFactura } from "./config";
 
-export type FacturaExportacionEstado = "EMITIDA" | "ANULADA";
+export type FacturaExportacionEstado = "BORRADOR" | "EMITIDA" | "ANULADA";
 export type IvaTipo = "EXENTA" | "5" | "10";
 
 export interface FacturaExportacionItem {
   id?: string;
   factura_id?: string;
   producto_id?: string | null;
+  codigo?: string | null;
   descripcion: string;
+  unidad?: string | null;
+  descuento?: number;
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
@@ -22,8 +25,8 @@ export interface FacturaExportacion {
   establecimiento: string;
   punto_expedicion: string;
   timbrado: string;
-  numero: number;
-  numero_formateado: string;
+  numero: number | null;
+  numero_formateado: string | null;
   fecha: string;
   moneda: string;
   tipo_cambio: number;
@@ -44,6 +47,10 @@ export interface FacturaExportacion {
   subtotal: number;
   total: number;
   total_exentas: number;
+  total_pyg?: number | null;
+  total_descuento?: number;
+  cliente_id?: string | null;
+  cliente_email?: string | null;
   total_gravado5: number;
   total_gravado10: number;
   iva5: number;

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
       empresa_id: auth.empresa_id,
       factura_id: id,
       accion: "ANULAR",
-      detalle: { motivo },
+      detalle: { motivo, antes: { estado: "EMITIDA" }, despues: { estado: "ANULADA" } },
       usuario_id: auth.user.id,
       usuario_nombre: nombre,
     });

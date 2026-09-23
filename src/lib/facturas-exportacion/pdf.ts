@@ -111,7 +111,7 @@ export async function buildFacturaExportacionPdf(
   box(c, bx, 28, bw, 118, undefined, true);
   if (esExpo) {
     text(c, TIPOS_FACTURA.EXPORTACION.titulo, bx + 12, 48, 11.5, bold);
-    text(c, f.numero_formateado, bx + 12, 68, 15, bold);
+    text(c, f.numero_formateado ?? "", bx + 12, 68, 15, bold);
     const filas: [string, string][] = [
       ["RUC", ruc],
       ["TIMBRADO", fiscal.timbrado],
@@ -124,7 +124,7 @@ export async function buildFacturaExportacionPdf(
     });
   } else {
     text(c, TIPOS_FACTURA.LOCAL.titulo, bx + 12, 52, 17, bold);
-    text(c, f.numero_formateado, bx + 12, 72, 15, bold);
+    text(c, f.numero_formateado ?? "", bx + 12, 72, 15, bold);
     c.page.drawLine({ start: { x: bx + 12, y: Y(80) }, end: { x: bx + bw - 12, y: Y(80) }, thickness: 0.6, color: BORDE });
     const filas: [string, string][] = [
       ["TIMBRADO Nº", fiscal.timbrado],
@@ -208,7 +208,7 @@ export async function buildFacturaExportacionPdf(
   }
 
   // ── Tabla de ítems ──────────────────────────────────────────────────────
-  const colW = [40, 0, 64, 64, 50, 64];
+  const colW = [52, 0, 64, 64, 46, 60];
   colW[1] = CW - colW.reduce((a, b) => a + b, 0);
   const colX: number[] = [];
   colW.reduce((x, w, i) => ((colX[i] = x), x + w), MX);
@@ -234,23 +234,27 @@ export async function buildFacturaExportacionPdf(
   let y = drawHead(t) + 4;
   const items = f.items ?? [];
   for (const it of items) {
-    if (y + rowH > bottomLimit) {
+    if (y + rowH + 9 > bottomLimit) {
       drawBody(tableTop + 20, y + 4);
       c = { page: doc.addPage([W, H]), reg, bold };
       text(c, `${f.numero_formateado} (continuación)`, MX, 40, 9, bold);
       tableTop = 52;
       y = drawHead(52) + 4;
     }
+    const extra = Number(it.descuento) > 0 ? `Descuento: ${num(Number(it.descuento))}` : "";
+    const alto = extra ? rowH + 9 : rowH;
     const base = y + 9;
     const iva = it.iva_tipo ?? "EXENTA";
     const cant = (Number(it.cantidad) || 0).toLocaleString("es-PY", { minimumFractionDigits: esExpo ? 2 : 0, maximumFractionDigits: 2 });
-    textRight(c, cant, colX[0] + colW[0] - 8, base, 8.5);
-    text(c, it.descripcion.toUpperCase(), colX[1] + 6, base, 8, reg, TINTA, colW[1] - 10);
+    textRight(c, it.unidad ? `${cant} ${it.unidad}` : cant, colX[0] + colW[0] - 6, base, it.unidad ? 7.5 : 8.5);
+    const desc = `${it.codigo ? `${it.codigo}  ` : ""}${it.descripcion}`.toUpperCase();
+    text(c, desc, colX[1] + 6, base, 8, reg, TINTA, colW[1] - 10);
+    if (extra) text(c, extra, colX[1] + 6, base + 9, 6.8, reg, GRIS, colW[1] - 10);
     textRight(c, num(it.precio_unitario), colX[2] + colW[2] - 6, base, 8.5);
     textRight(c, num(iva === "EXENTA" ? it.subtotal : 0), colX[3] + colW[3] - 6, base, 8.5);
     textRight(c, num(iva === "5" ? it.subtotal : 0), colX[4] + colW[4] - 6, base, 8.5);
     textRight(c, num(iva === "10" ? it.subtotal : 0), colX[5] + colW[5] - 6, base, 8.5);
-    y += rowH;
+    y += alto;
   }
   // La tabla local ocupa el alto disponible, como el talonario.
   const tableBottom = esExpo ? Math.max(y + 6, tableTop + 60) : bottomLimit;
@@ -269,14 +273,31 @@ export async function buildFacturaExportacionPdf(
   // Total en letras + total + liquidación IVA
   box(c, MX, t, CW, 92);
   const monedaTxt = NOMBRE_MONEDA[f.moneda] ?? f.moneda;
+  // Monto en letras: un renglón si entra; si no, dos renglones a menor tamaño.
+  const letras = (txt: string) => {
+    if (bold.widthOfTextAtSize(txt, 10.5) <= 355) return text(c, txt, MX + 10, t + 32, 10.5, bold);
+    const palabras = txt.split(" ");
+    let l1 = "";
+    while (palabras.length && bold.widthOfTextAtSize(`${l1} ${palabras[0]}`.trim(), 9.5) <= 355) l1 = `${l1} ${palabras.shift()}`.trim();
+    text(c, l1, MX + 10, t + 29, 9.5, bold);
+    text(c, palabras.join(" "), MX + 10, t + 41, 9.5, bold, TINTA, 355);
+  };
   if (esExpo) {
     text(c, "TOTAL A PAGAR EN LETRAS", MX + 10, t + 16, 7.5, reg, GRIS);
-    text(c, `${numeroALetras(f.total)} ${monedaTxt}`, MX + 10, t + 32, 10.5, bold, TINTA, 355);
+    letras(`${numeroALetras(f.total)} ${monedaTxt}`);
   } else {
     text(c, "TOTAL A PAGAR (en letras)", MX + 10, t + 16, 7.5, reg, GRIS);
     text(c, monedaTxt.charAt(0) + monedaTxt.slice(1).toLowerCase(), MX + 118, t + 16, 7.5, serifIt, GRIS);
-    text(c, numeroALetras(f.total), MX + 10, t + 32, 10.5, bold, TINTA, 355);
+    letras(numeroALetras(f.total));
   }
+  const notas: string[] = [];
+  if (f.moneda !== "PYG" && Number(f.total_pyg) > 0)
+    notas.push(
+      `Equivalente en guaraníes: Gs. ${Number(f.total_pyg).toLocaleString("es-PY", { maximumFractionDigits: 0 })}` +
+        ` (tipo de cambio ${Number(f.tipo_cambio).toLocaleString("es-PY", { maximumFractionDigits: 4 })})`
+    );
+  if (Number(f.total_descuento) > 0) notas.push(`Descuentos: ${num(Number(f.total_descuento))}`);
+  if (notas.length) text(c, notas.join("   ·   "), MX + 10, t + 54, 7.3, reg, GRIS, 355);
   const tx = MX + CW - 165;
   c.page.drawRectangle({ x: tx, y: Y(t + 56), width: 157, height: 48, color: FONDO });
   textRight(c, "TOTAL", tx + 150, t + 20, 8.5, bold);
