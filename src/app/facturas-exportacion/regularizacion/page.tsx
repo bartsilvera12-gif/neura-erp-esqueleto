@@ -129,8 +129,11 @@ export default function RegularizacionPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4FAEB2]">Zentra · Autoimpresor</p>
           <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Regularización de facturas de agosto</h1>
           <p className="mt-0.5 max-w-2xl text-xs text-slate-500">
-            Registro de las facturas que hizo el sistema anterior con el timbrado incorrecto. Registrarlas no genera una
-            factura nueva ni usa números. Si hay que rehacer una, se usa el botón <strong>Reemitir</strong> y las dos
+            Acá solo se anotan las facturas que hizo el sistema anterior con el timbrado incorrecto (número, fecha,
+            cliente y total) y se adjunta su PDF. Anotarlas no genera una factura nueva ni usa números.
+            <br />
+            Para <strong>cargar los productos e imprimir</strong> la factura correcta, tocá <strong>Reemitir</strong>: se
+            abre una factura nueva con los datos del cliente, se agregan los productos, se emite y se imprime. Las dos
             quedan vinculadas.
           </p>
         </div>
@@ -302,9 +305,20 @@ export default function RegularizacionPage() {
                           />
                         </label>
                       )}
+                      {r.factura_vinculada_id && (
+                        <a
+                          href={`/api/facturas-exportacion/${r.factura_vinculada_id}/pdf`}
+                          target="_blank"
+                          rel="noopener"
+                          className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          Imprimir
+                        </a>
+                      )}
                       {r.estado !== "REEMITIDA" && r.estado !== "CORRECTA" && r.estado !== "ANULADA" && (
                         <Link
                           href={`/facturas-exportacion/nueva?reemite=${r.id}&tipo=${tipoReemision(r)}`}
+                          title="Abre una factura nueva con los datos del cliente para cargar los productos e imprimirla"
                           className="rounded border border-[#4FAEB2] px-2 py-1 text-xs font-medium text-[#3F8E91] hover:bg-[#4FAEB2]/10"
                         >
                           Reemitir
