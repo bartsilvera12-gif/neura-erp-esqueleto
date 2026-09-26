@@ -87,6 +87,9 @@ export default function FormFactura() {
   const tipoParam = params.get("tipo");
   const reemiteId = params.get("reemite");
   const borradorParam = params.get("borrador");
+  // Editar una factura ya emitida: mismo número y timbrado, cambian datos y productos.
+  const editarParam = params.get("editar");
+  const cargarId = borradorParam ?? editarParam;
 
   const [borradorId, setBorradorId] = useState<string | null>(borradorParam);
   const [reemision, setReemision] = useState<Reemision | null>(null);
@@ -123,6 +126,7 @@ export default function FormFactura() {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [confirmarEmision, setConfirmarEmision] = useState(false);
+  const [editada, setEditada] = useState<{ numero: string | null; prueba: boolean } | null>(null);
   const [autoEstado, setAutoEstado] = useState<string | null>(null);
   // Guardado automático: refs para no pisarse con un guardado manual ni duplicar el borrador.
   const borradorIdRef = useRef<string | null>(borradorParam);
@@ -163,15 +167,18 @@ export default function FormFactura() {
       .catch(() => undefined);
   }, [reemiteId]);
 
-  // Continuar un borrador guardado.
+  // Continuar un borrador guardado, o cargar una factura emitida para editarla.
   useEffect(() => {
-    if (!borradorParam) return;
-    fetch(`/api/facturas-exportacion/${borradorParam}`, { credentials: "include", cache: "no-store" })
+    if (!cargarId) return;
+    fetch(`/api/facturas-exportacion/${cargarId}`, { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
         const f = j?.data?.factura;
-        if (!f) return setError("No se encontró el borrador.");
-        if (f.estado !== "BORRADOR") return setError("Esa factura ya fue emitida.");
+        if (!f) return setError(editarParam ? "No se encontró la factura." : "No se encontró el borrador.");
+        if (editarParam) {
+          if (f.estado !== "EMITIDA") return setError("Solo se pueden editar facturas emitidas (no anuladas).");
+          setEditada({ numero: f.numero_formateado ?? null, prueba: f.prueba === true });
+        } else if (f.estado !== "BORRADOR") return setError("Esa factura ya fue emitida.");
         const s = (v: unknown) => (v == null ? "" : String(v));
         setTipo(f.tipo === "LOCAL" ? "LOCAL" : "EXPORTACION");
         setPunto(s(f.punto_expedicion));
@@ -216,7 +223,7 @@ export default function FormFactura() {
         );
       })
       .catch(() => setError("No se pudo cargar el borrador."));
-  }, [borradorParam]);
+  }, [cargarId, editarParam]);
 
   const puntos = useMemo(() => config.filter((c) => c.activo), [config]);
 
@@ -235,7 +242,7 @@ export default function FormFactura() {
   }
 
   useEffect(() => {
-    if (tipo && !items.length && !borradorParam) elegirTipo(tipo);
+    if (tipo && !items.length && !cargarId) elegirTipo(tipo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo]);
 
@@ -243,9 +250,10 @@ export default function FormFactura() {
     if (!punto && puntos.length) setPunto(puntos[0].punto_expedicion);
   }, [puntos, punto]);
 
-  const cfg = puntos.find((c) => c.punto_expedicion === punto);
+  // Al editar vale el punto original aunque hoy esté inactivo.
+  const cfg = (editarParam ? config : puntos).find((c) => c.punto_expedicion === punto);
   const fueraVigencia = cfg ? fecha < cfg.vigencia_desde || fecha > cfg.vigencia_hasta : false;
-  const esPrueba = cfg ? cfg.modo_prueba !== false : true;
+  const esPrueba = editada ? editada.prueba : cfg ? cfg.modo_prueba !== false : true;
   const esPyg = moneda === "PYG";
   const tc = Number(tipoCambio) || 0;
 
@@ -382,7 +390,7 @@ export default function FormFactura() {
 
   /** Guarda en silencio como borrador si hay algo cargado y cambió desde el último guardado. */
   async function autoGuardar() {
-    if (emitida.current || enviando || autoEnCurso.current || confirmarEmision || !tipo || !cfg) return;
+    if (editarParam || emitida.current || enviando || autoEnCurso.current || confirmarEmision || !tipo || !cfg) return;
     if (!cliente.nombre.trim() && !items.some((it) => it.descripcion.trim())) return;
     const datos = cuerpo(cliente.id || null);
     const firma = JSON.stringify(datos);
@@ -463,7 +471,11 @@ export default function FormFactura() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...cuerpo(clienteId), accion, id: borradorIdRef.current }),
+        body: JSON.stringify({
+          ...cuerpo(clienteId),
+          accion: editarParam ? "editar" : accion,
+          id: editarParam ?? borradorIdRef.current,
+        }),
       });
       const j = await res.json();
       if (!res.ok || !j?.success) return setError(j?.error ?? "No se pudo guardar la factura.");
@@ -492,11 +504,19 @@ export default function FormFactura() {
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4FAEB2]">Zentra · Autoimpresor</p>
       <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">
-        {reemiteId ? "Reemitir factura de agosto" : borradorId ? "Borrador de factura" : "Nueva factura"}
+        {editarParam
+          ? `Editar factura ${editada?.numero ?? ""}`
+          : reemiteId
+          ? "Reemitir factura de agosto"
+          : borradorId
+          ? "Borrador de factura"
+          : "Nueva factura"}
         {tipo && <span className="text-slate-400"> · {TIPOS_FACTURA[tipo].label}</span>}
       </h1>
       <p className="mt-0.5 text-xs text-slate-500">
-        El número se pone solo al emitir. Un borrador se puede guardar y seguir después sin usar número.
+        {editarParam
+          ? "Se mantienen el número, el timbrado y el punto. Qué había antes y qué quedó queda registrado en el Historial."
+          : "El número se pone solo al emitir. Un borrador se puede guardar y seguir después sin usar número."}
       </p>
     </div>
   );
@@ -536,11 +556,11 @@ export default function FormFactura() {
     <form onSubmit={(e) => { e.preventDefault(); pedirEmision(); }} className="space-y-6">
       <ConfirmModal
         open={confirmarEmision}
-        title={esPrueba ? "Emitir factura de prueba" : "Emitir factura"}
+        title={editarParam ? `Guardar cambios en la factura ${editada?.numero ?? ""}` : esPrueba ? "Emitir factura de prueba" : "Emitir factura"}
         message={
           <div className="space-y-2">
             <p>
-              {cfg && (
+              {cfg && !editarParam && (
                 <>
                   Número{esPrueba ? " de prueba" : ""}:{" "}
                   <strong className="font-mono">
@@ -554,13 +574,15 @@ export default function FormFactura() {
               Total: <strong>{esPyg ? "Gs." : moneda} {fmt(total)}</strong>
             </p>
             <p className="text-xs text-slate-500">
-              {esPrueba
+              {editarParam
+                ? "La factura mantiene su número. Si ya estaba impresa, volvé a imprimirla y reemplazá la copia anterior."
+                : esPrueba
                 ? "Sale marcada como PRUEBA, sin valor fiscal."
-                : "Una vez emitida no se puede modificar: solo se puede anular."}
+                : "Se emite con número real del timbrado."}
             </p>
           </div>
         }
-        confirmLabel="Emitir"
+        confirmLabel={editarParam ? "Guardar cambios" : "Emitir"}
         loading={enviando === "emitir"}
         onConfirm={() => void guardar("emitir")}
         onCancel={() => setConfirmarEmision(false)}
@@ -568,7 +590,7 @@ export default function FormFactura() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         {encabezado}
         <div className="flex gap-2">
-          {!borradorId && (
+          {!borradorId && !editarParam && (
             <button type="button" onClick={() => setTipo(null)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
               Cambiar tipo
             </button>
@@ -597,7 +619,12 @@ export default function FormFactura() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className={lbl}>Punto de expedición</label>
-            <select value={punto} onChange={(e) => setPunto(e.target.value)} className={input}>
+            <select value={punto} onChange={(e) => setPunto(e.target.value)} disabled={!!editarParam} className={input}>
+              {editarParam && cfg && !puntos.some((p) => p.punto_expedicion === punto) && (
+                <option value={punto}>
+                  {cfg.establecimiento}-{cfg.punto_expedicion}
+                </option>
+              )}
               {puntos.length === 0 && <option value="">Sin timbrado configurado</option>}
               {puntos.map((p) => (
                 <option key={p.punto_expedicion} value={p.punto_expedicion}>
@@ -936,16 +963,18 @@ export default function FormFactura() {
           disabled={!!enviando || !cfg || fueraVigencia}
           className="rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:opacity-50"
         >
-          {enviando === "emitir" ? "Emitiendo…" : esPrueba ? "Emitir factura de prueba" : "Emitir factura"}
+          {enviando === "emitir" ? (editarParam ? "Guardando…" : "Emitiendo…") : editarParam ? "Guardar cambios" : esPrueba ? "Emitir factura de prueba" : "Emitir factura"}
         </button>
-        <button
-          type="button"
-          onClick={() => void guardar("borrador")}
-          disabled={!!enviando || !cfg}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
-          {enviando === "borrador" ? "Guardando…" : "Guardar borrador"}
-        </button>
+        {!editarParam && (
+          <button
+            type="button"
+            onClick={() => void guardar("borrador")}
+            disabled={!!enviando || !cfg}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {enviando === "borrador" ? "Guardando…" : "Guardar borrador"}
+          </button>
+        )}
         <button type="button" onClick={() => router.push("/facturas-exportacion")} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50">
           Cancelar
         </button>

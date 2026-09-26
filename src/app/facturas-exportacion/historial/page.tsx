@@ -27,6 +27,7 @@ const ACCIONES: Record<string, string> = {
   BORRADOR_MODIFICAR: "Modificó borrador",
   BORRADOR_ELIMINAR: "Borró borrador",
   PRUEBA_ELIMINAR: "Eliminó factura de prueba",
+  EDITAR: "Editó la factura",
   REGULARIZACION_REGISTRAR: "Registró factura de agosto",
   REGULARIZACION_MODIFICAR: "Cambió factura de agosto",
   REGULARIZACION_ADJUNTAR_PDF: "Adjuntó PDF original",
@@ -51,6 +52,11 @@ const CAMPOS: Record<string, string> = {
   activo: "activo",
   ruc: "RUC",
   autoimpresor_nro: "Nº autorización",
+  fecha: "fecha",
+  cliente: "cliente",
+  total: "total",
+  moneda: "moneda",
+  productos: "cantidad de productos",
 };
 
 function describir(r: Registro): string {
@@ -64,8 +70,10 @@ function describir(r: Registro): string {
   if (d.total != null && d.moneda) partes.push(`Total ${String(d.moneda)} ${Number(d.total).toLocaleString("es-PY")}`);
   const antes = d.antes as Record<string, unknown> | undefined;
   const despues = d.despues as Record<string, unknown> | undefined;
+  if (r.accion === "EDITAR" && d.numero) partes.unshift(`Factura ${String(d.numero)}`);
   if (antes && despues && r.accion !== "ANULAR") {
     for (const k of Object.keys(despues)) {
+      if (r.accion === "EDITAR" && String(antes[k] ?? "") === String(despues[k] ?? "")) continue;
       partes.push(`${CAMPOS[k] ?? k}: ${String(antes[k] ?? "—")} → ${String(despues[k] ?? "—")}`);
     }
   }

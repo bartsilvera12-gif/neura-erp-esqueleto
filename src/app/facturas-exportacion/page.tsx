@@ -446,6 +446,14 @@ export default function FacturasExportacionPage() {
                         Imprimir
                       </a>
                       )}
+                      {isAdmin && f.estado === "EMITIDA" && (
+                        <Link
+                          href={`/facturas-exportacion/nueva?editar=${f.id}&tipo=${f.tipo}`}
+                          className="rounded border border-[#4FAEB2] px-2 py-1 text-xs font-medium text-[#3F8E91] hover:bg-[#4FAEB2]/10"
+                        >
+                          Editar
+                        </Link>
+                      )}
                       {isAdmin && f.prueba && f.estado !== "BORRADOR" && (
                         <button
                           onClick={() => eliminarPrueba(f)}

@@ -87,12 +87,35 @@ export async function POST(request: NextRequest) {
     }
 
     const esBorrador = body.accion === "borrador";
-    const borradorId = txt(body.id);
+    // Editar una factura ya emitida (autoimpresor propio): mantiene número, timbrado y punto.
+    const esEdicion = body.accion === "editar";
+    const editarId = esEdicion ? txt(body.id) : null;
+    const borradorId = esEdicion ? null : txt(body.id);
     const tipo: TipoFactura = body.tipo === "LOCAL" ? "LOCAL" : "EXPORTACION";
     const bad = (msg: string, status = 400) => NextResponse.json(errorResponse(msg), { status });
 
     // Reemisión de una factura de agosto: acción explícita, solo admin.
-    const regularizacionId = txt(body.regularizacion_id);
+    let regularizacionId = txt(body.regularizacion_id);
+
+    type Original = { tipo: string; establecimiento: string; punto_expedicion: string; timbrado: string; numero: number; prueba: boolean; regularizacion_id: string | null; emitida_at: string | null; numero_formateado: string | null; fecha: string; total: number; cliente_nombre: string; moneda: string };
+    let original: Original | null = null;
+    if (esEdicion) {
+      if (!esRolAdminEmpresaOGlobal(auth.rol)) return bad("Solo un administrador puede editar facturas emitidas.", 403);
+      if (!editarId) return bad("Falta la factura a editar.");
+      const o = await supabase
+        .from("facturas_exportacion")
+        .select("tipo, estado, establecimiento, punto_expedicion, timbrado, numero, prueba, regularizacion_id, emitida_at, numero_formateado, fecha, total, cliente_nombre, moneda")
+        .eq("empresa_id", auth.empresa_id)
+        .eq("id", editarId)
+        .maybeSingle();
+      if (o.error) throw new Error(o.error.message);
+      const d = o.data as unknown as (Original & { estado: string }) | null;
+      if (!d) return bad("La factura no existe.", 404);
+      if (d.estado !== "EMITIDA") return bad("Solo se editan facturas emitidas (no anuladas ni borradores).");
+      if ((body.tipo === "LOCAL" ? "LOCAL" : "EXPORTACION") !== d.tipo) return bad("No se puede cambiar el tipo de factura al editar.");
+      original = d;
+      regularizacionId = d.regularizacion_id;
+    }
     if (regularizacionId && !esRolAdminEmpresaOGlobal(auth.rol))
       return bad("Solo un administrador puede reemitir facturas regularizadas.", 403);
 
@@ -109,8 +132,8 @@ export async function POST(request: NextRequest) {
       if (estadoPrev !== "BORRADOR") return bad("Esa factura ya fue emitida; no se puede modificar.");
     }
 
-    const est = String(body.establecimiento ?? "").trim();
-    const punto = String(body.punto_expedicion ?? "").trim();
+    const est = original ? original.establecimiento : String(body.establecimiento ?? "").trim();
+    const punto = original ? original.punto_expedicion : String(body.punto_expedicion ?? "").trim();
     const cliente = String(body.cliente_nombre ?? "").trim();
     const pais = txt(body.cliente_pais);
     const fecha = typeof body.fecha === "string" && body.fecha ? body.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10);
@@ -171,7 +194,8 @@ export async function POST(request: NextRequest) {
       .eq("empresa_id", auth.empresa_id)
       .eq("establecimiento", est)
       .eq("punto_expedicion", punto)
-      .eq("activo", true)
+      .eq(original ? "timbrado" : "activo", original ? original.timbrado : true)
+      .limit(1)
       .maybeSingle();
     if (cfgRes.error) throw new Error(cfgRes.error.message);
     const cfg = cfgRes.data as unknown as {
@@ -182,9 +206,9 @@ export async function POST(request: NextRequest) {
     if (!esBorrador && (fecha < cfg.vigencia_desde || fecha > cfg.vigencia_hasta))
       return bad(`La fecha ${fecha} está fuera de la vigencia del timbrado ${cfg.timbrado} (${cfg.vigencia_desde} a ${cfg.vigencia_hasta}).`);
 
-    const prueba = cfg.modo_prueba !== false;
+    const prueba = original ? original.prueba : cfg.modo_prueba !== false;
 
-    if (regularizacionId) {
+    if (regularizacionId && !esEdicion) {
       const reg = await supabase
         .from("facturas_regularizacion")
         .select("id, estado")
@@ -198,8 +222,8 @@ export async function POST(request: NextRequest) {
     }
 
     // El número se asigna solo al emitir. La RPC valida el rango y revierte si se excede; en prueba usa otro contador.
-    let numero: number | null = null;
-    if (!esBorrador) {
+    let numero: number | null = original ? original.numero : null;
+    if (!esBorrador && !esEdicion) {
       const rpc = await supabase.rpc("reservar_correlativo_factura_exportacion", {
         p_empresa_id: auth.empresa_id,
         p_establecimiento: est,
@@ -256,12 +280,26 @@ export async function POST(request: NextRequest) {
       observaciones: txt(body.observaciones),
       prueba,
       regularizacion_id: regularizacionId,
-      emitida_at: esBorrador ? null : ahora,
+      emitida_at: esBorrador ? null : original ? original.emitida_at : ahora,
       updated_at: ahora,
       updated_by_nombre: usuarioNombre,
     };
 
-    const res = borradorId
+    // Ítems anteriores de la factura editada, para restaurarlos si algo falla.
+    const itemsPrevios = editarId
+      ? (((await supabase.from("facturas_exportacion_items").select("*").eq("empresa_id", auth.empresa_id).eq("factura_id", editarId)).data ?? []) as Record<string, unknown>[])
+      : [];
+
+    const res = editarId
+      ? await supabase
+          .from("facturas_exportacion")
+          .update(datos)
+          .eq("empresa_id", auth.empresa_id)
+          .eq("id", editarId)
+          .eq("estado", "EMITIDA")
+          .select(COLS)
+          .single()
+      : borradorId
       ? await supabase
           .from("facturas_exportacion")
           .update(datos)
@@ -280,7 +318,7 @@ export async function POST(request: NextRequest) {
       console.error("[facturas-exportacion guardar]", msg);
       // Política del spec 4.3: si el número ya se reservó y la factura no se pudo guardar,
       // el número queda consumido y se deja registrado (nunca un hueco silencioso).
-      if (numero != null) {
+      if (numero != null && !esEdicion) {
         await supabase.from("facturas_exportacion_auditoria").insert({
           empresa_id: auth.empresa_id,
           accion: "NUMERO_CONSUMIDO_SIN_FACTURA",
@@ -296,7 +334,7 @@ export async function POST(request: NextRequest) {
       }
       if (/duplicate|unique|23505/i.test(msg)) return bad("Ese número ya está usado en ese punto y timbrado.", 409);
       return bad(
-        numero != null
+        numero != null && !esEdicion
           ? `No se pudo guardar la factura. El número ${est}-${punto}-${String(numero).padStart(7, "0")} quedó registrado como consumido en el Historial.`
           : "No se pudo guardar la factura.",
         500
@@ -312,6 +350,11 @@ export async function POST(request: NextRequest) {
         .insert(items.map((it) => ({ ...it, empresa_id: auth.empresa_id, factura_id: factura.id })));
       if (itemsIns.error) {
         console.error("[facturas-exportacion items]", itemsIns.error.message);
+        if (esEdicion) {
+          // Se vuelven a poner los productos que tenía; la factura queda como estaba en ítems.
+          if (itemsPrevios.length) await supabase.from("facturas_exportacion_items").insert(itemsPrevios);
+          return bad("No se pudieron guardar los productos; la factura conserva los anteriores. Probá de nuevo.", 500);
+        }
         if (!esBorrador) {
           // Sin ítems la factura no sirve: se anula para no dejar un número fiscal a medias.
           await supabase
@@ -329,14 +372,20 @@ export async function POST(request: NextRequest) {
     if (!autoSinAuditar) await supabase.from("facturas_exportacion_auditoria").insert({
       empresa_id: auth.empresa_id,
       factura_id: factura.id,
-      accion: esBorrador ? (borradorId ? "BORRADOR_MODIFICAR" : "BORRADOR_CREAR") : regularizacionId ? "REEMITIR" : "EMITIR",
-      detalle: { tipo, numero, punto, total, moneda, prueba, regularizacion_id: regularizacionId },
+      accion: esEdicion ? "EDITAR" : esBorrador ? (borradorId ? "BORRADOR_MODIFICAR" : "BORRADOR_CREAR") : regularizacionId ? "REEMITIR" : "EMITIR",
+      detalle: esEdicion && original
+        ? {
+            numero: original.numero_formateado,
+            antes: { fecha: original.fecha, cliente: original.cliente_nombre, total: original.total, moneda: original.moneda, productos: itemsPrevios.length },
+            despues: { fecha, cliente, total, moneda, productos: items.length },
+          }
+        : { tipo, numero, punto, total, moneda, prueba, regularizacion_id: regularizacionId },
       usuario_id: auth.user.id,
       usuario_nombre: usuarioNombre,
     });
 
     // Una reemisión de prueba no cierra la factura de agosto: solo la real la marca REEMITIDA.
-    if (!esBorrador && regularizacionId && !prueba) {
+    if (!esBorrador && !esEdicion && regularizacionId && !prueba) {
       await supabase
         .from("facturas_regularizacion")
         .update({ estado: "REEMITIDA", factura_vinculada_id: factura.id, updated_at: ahora })
