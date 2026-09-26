@@ -19,7 +19,6 @@ import {
   sinFlechas,
 } from "@/components/comex/ui";
 
-const money = (v: number, m: string) => `${m} ${Number(v).toLocaleString("es-PY", { maximumFractionDigits: 2 })}`;
 const cant = (v: number) => Number(v).toLocaleString("es-PY");
 
 export default function MercaderiaTab({
@@ -40,7 +39,7 @@ export default function MercaderiaTab({
   const [quitar, setQuitar] = useState<ImportacionItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const contNumero = new Map(contenedores.map((c) => [c.id, c.numero]));
-  const total = items.reduce((s, i) => s + Number(i.subtotal), 0);
+  const totalUnidades = items.reduce((s, i) => s + Number(i.cantidad), 0);
   const sinVincular = items.filter((i) => !i.producto_id);
 
   async function cambiarContenedor(it: ImportacionItem, contenedorId: string) {
@@ -88,14 +87,12 @@ export default function MercaderiaTab({
       )}
       {error && <Aviso>{error}</Aviso>}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[620px] text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">Producto</th>
               <th className="px-4 py-3 text-right">Pedido</th>
               <th className="px-4 py-3 text-right">Recibido</th>
-              <th className="px-4 py-3 text-right">Precio</th>
-              <th className="px-4 py-3 text-right">Subtotal</th>
               <th className="px-4 py-3">Contenedor</th>
               <th className="px-4 py-3">Seriales</th>
               <th className="px-4 py-3" />
@@ -104,7 +101,7 @@ export default function MercaderiaTab({
           <tbody>
             {items.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                   Todavía no hay productos.
                 </td>
               </tr>
@@ -126,8 +123,6 @@ export default function MercaderiaTab({
                     <div className={hayRecepcion && dif !== 0 ? "font-semibold text-rose-700" : "text-slate-700"}>{cant(it.cantidad_recibida)}</div>
                     {hayRecepcion && dif !== 0 && <div className="text-[11px] text-rose-600">{dif > 0 ? `sobran ${cant(dif)}` : `faltan ${cant(-dif)}`}</div>}
                   </td>
-                  <td className="px-4 py-3 text-right">{money(it.precio_unitario, it.moneda)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{money(it.subtotal, it.moneda)}</td>
                   <td className="px-4 py-3">
                     {cerrada || !contenedores.length ? (
                       <span className="text-xs text-slate-500">{(it.contenedor_id && contNumero.get(it.contenedor_id)) || "—"}</span>
@@ -166,11 +161,9 @@ export default function MercaderiaTab({
           {items.length > 0 && (
             <tfoot>
               <tr className="border-t border-slate-200 bg-slate-50">
-                <td colSpan={4} className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-500">
-                  Total
-                </td>
-                <td className="px-4 py-3 text-right font-semibold">{money(total, imp.moneda)}</td>
-                <td colSpan={3} />
+                <td className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-500">Total unidades</td>
+                <td className="px-4 py-3 text-right font-semibold">{cant(totalUnidades)}</td>
+                <td colSpan={4} />
               </tr>
             </tfoot>
           )}
@@ -217,7 +210,6 @@ function ModalProducto({
     item?.producto_id ? { id: item.producto_id, nombre: item.producto_nombre, sku: item.sku } : null
   );
   const [cantidad, setCantidad] = useState(item ? String(item.cantidad) : "");
-  const [precio, setPrecio] = useState(item ? String(item.precio_unitario) : "");
   const [contenedor, setContenedor] = useState(item?.contenedor_id ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -232,8 +224,6 @@ function ModalProducto({
     const body = {
       producto_id: producto.id,
       cantidad: Number(cantidad),
-      precio_unitario: Number(precio) || 0,
-      moneda: imp.moneda,
       contenedor_id: contenedor || null,
     };
     try {
@@ -261,10 +251,6 @@ function ModalProducto({
           <div>
             <label className={labelClass}>Cantidad *</label>
             <input type="number" step="any" min={0} value={cantidad} onWheel={noRueda} onChange={(e) => setCantidad(e.target.value)} className={num} />
-          </div>
-          <div>
-            <label className={labelClass}>Precio unitario ({imp.moneda})</label>
-            <input type="number" step="any" min={0} value={precio} onWheel={noRueda} onChange={(e) => setPrecio(e.target.value)} className={num} />
           </div>
         </div>
         {contenedores.length > 0 && (

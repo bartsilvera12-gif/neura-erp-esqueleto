@@ -116,7 +116,6 @@ export default function ImportacionesPage() {
               <th className="px-4 py-3">Origen</th>
               <th className="px-4 py-3">Responsable</th>
               <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3 text-right">Monto estimado</th>
               <th className="px-4 py-3">Fechas</th>
               <th className="px-4 py-3" />
             </tr>
@@ -124,14 +123,14 @@ export default function ImportacionesPage() {
           <tbody>
             {loading && rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   Cargando…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   No hay importaciones{filtros.estado || filtros.responsable || filtros.q ? " con esos filtros" : ". Creá una para arrancar"}.
                 </td>
               </tr>
@@ -150,9 +149,6 @@ export default function ImportacionesPage() {
                   <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ESTADO_BADGE[imp.estado]}`}>
                     {ESTADO_IMPORTACION_LABEL[imp.estado]}
                   </span>
-                </td>
-                <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                  {imp.moneda} {Number(imp.monto_estimado).toLocaleString("es-PY", { maximumFractionDigits: 2 })}
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">
                   <div>Pedido: {fechaES(imp.fecha_pedido)}</div>

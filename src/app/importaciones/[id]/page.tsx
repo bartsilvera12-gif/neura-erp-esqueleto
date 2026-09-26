@@ -4,7 +4,7 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, Circle } from "lucide-react";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
-import type { EstadoImportacion, Importacion, ImportacionCajaMov, ImportacionItem, ImportacionRecepcion } from "@/lib/importaciones/types";
+import type { EstadoImportacion, Importacion, ImportacionItem, ImportacionRecepcion } from "@/lib/importaciones/types";
 import type { Contenedor, Incidencia } from "@/lib/comex/types";
 import { ESTADO_IMPORTACION_LABEL, FLUJO_IMPORTACION, anteriorImportacion, incidenciaAbierta } from "@/lib/comex/estados";
 import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaHora, inputClass, jsonInit, labelClass } from "@/components/comex/ui";
@@ -15,23 +15,17 @@ import ContenedoresPanel from "@/components/comex/ContenedoresPanel";
 import FichaForm, { fichaAPayload, type Ficha } from "../_components/FichaForm";
 import MercaderiaTab from "./_components/MercaderiaTab";
 import RecepcionTab from "./_components/RecepcionTab";
-import CajaTab from "./_components/CajaTab";
 
-type Tab = "datos" | "mercaderia" | "contenedores" | "recepcion" | "incidencias" | "caja" | "documentos" | "historial";
+type Tab = "datos" | "mercaderia" | "contenedores" | "recepcion" | "incidencias" | "documentos" | "historial";
 
 const aFicha = (i: Importacion): Ficha => ({
   proveedor_id: i.proveedor_id,
   proveedor_nombre: i.proveedor_nombre ?? "",
   pais_origen: i.pais_origen ?? "",
-  incoterm: i.incoterm ?? "",
-  moneda: i.moneda,
-  tipo_cambio: i.tipo_cambio ? String(i.tipo_cambio) : "",
-  monto_estimado: i.monto_estimado ? String(i.monto_estimado) : "",
   fecha_pedido: i.fecha_pedido ?? "",
   fecha_embarque: i.fecha_embarque ?? "",
   fecha_arribo: i.fecha_arribo ?? "",
   fecha_nacionalizacion: i.fecha_nacionalizacion ?? "",
-  ubicacion_exterior_id: i.ubicacion_exterior_id ?? "",
   ubicacion_destino_py_id: i.ubicacion_destino_py_id ?? "",
   responsable_id: i.responsable_id,
   responsable_nombre: i.responsable_nombre,
@@ -47,7 +41,6 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
   const [items, setItems] = useState<ImportacionItem[]>([]);
   const [contenedores, setContenedores] = useState<Contenedor[]>([]);
   const [recepciones, setRecepciones] = useState<ImportacionRecepcion[]>([]);
-  const [caja, setCaja] = useState<ImportacionCajaMov[]>([]);
   const [incAbiertas, setIncAbiertas] = useState(0);
   const [tab, setTab] = useState<Tab>("datos");
   const [ficha, setFicha] = useState<Ficha | null>(null);
@@ -60,12 +53,11 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
 
   const load = useCallback(async () => {
     try {
-      const [d, it, co, re, cj, inc] = await Promise.all([
+      const [d, it, co, re, inc] = await Promise.all([
         api<{ importacion: Importacion; siguiente: EstadoImportacion | null; faltantes: string[] }>(`/api/importaciones/${id}`),
         api<{ items: ImportacionItem[] }>(`/api/importaciones/${id}/items`),
         api<{ contenedores: Contenedor[] }>(`/api/importaciones/${id}/contenedores`),
         api<{ recepciones: ImportacionRecepcion[] }>(`/api/importaciones/${id}/recepciones`),
-        api<{ movimientos: ImportacionCajaMov[] }>(`/api/importaciones/${id}/caja`),
         api<{ incidencias: Incidencia[] }>(`/api/comex/incidencias?origen_tipo=IMPORTACION&origen_id=${id}`),
       ]);
       setImp(d.importacion);
@@ -78,7 +70,6 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
       setItems(it.items);
       setContenedores(co.contenedores);
       setRecepciones(re.recepciones);
-      setCaja(cj.movimientos ?? []);
       setIncAbiertas(inc.incidencias.filter((i) => incidenciaAbierta(i.estado)).length);
       setRecargaHist((n) => n + 1);
     } catch (e) {
@@ -142,7 +133,6 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
     { k: "contenedores", label: "Contenedores", badge: contenedores.length },
     { k: "recepcion", label: "Recepción" },
     { k: "incidencias", label: "Incidencias", badge: incAbiertas },
-    { k: "caja", label: "Caja" },
     { k: "documentos", label: "Documentos" },
     { k: "historial", label: "Historial" },
   ];
@@ -275,7 +265,6 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
       )}
       {tab === "recepcion" && <RecepcionTab imp={imp} items={items} recepciones={recepciones} onCambio={() => void load()} />}
       {tab === "incidencias" && <IncidenciasPanel origenTipo="IMPORTACION" origenId={id} bloqueado={imp.estado === "anulada"} onCambio={() => void load()} />}
-      {tab === "caja" && <CajaTab imp={imp} caja={caja} onCambio={() => void load()} />}
       {tab === "documentos" && <AdjuntosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={imp.estado === "anulada"} />}
       {tab === "historial" && <HistorialPanel origenTipo="IMPORTACION" origenId={id} recarga={recargaHist} />}
 
