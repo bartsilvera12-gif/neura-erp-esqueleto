@@ -95,6 +95,8 @@ export interface FacturaRegularizacion {
   estado: RegularizacionEstado;
   factura_vinculada_id: string | null;
   factura_vinculada_numero?: string | null;
+  /** Reemisiones hechas en modo prueba (no cierran la regularización). */
+  reemisiones_prueba?: { id: string; numero: string | null }[];
   observaciones: string | null;
   created_by_nombre: string | null;
   created_at: string;

@@ -36,11 +36,30 @@ export async function GET(request: NextRequest) {
       const fx = await ctx.supabase.from("facturas_exportacion").select("id, numero_formateado").in("id", ids);
       for (const r of (fx.data ?? []) as unknown as Array<{ id: string; numero_formateado: string }>) numeros.set(r.id, r.numero_formateado);
     }
+    // Reemisiones hechas en modo PRUEBA: no cierran la factura de agosto, pero se muestran.
+    const pruebas = new Map<string, { id: string; numero: string | null }[]>();
+    const regIds = filas.map((f) => f.id as string);
+    if (regIds.length) {
+      const fp = await ctx.supabase
+        .from("facturas_exportacion")
+        .select("id, numero_formateado, regularizacion_id")
+        .eq("empresa_id", ctx.auth.empresa_id)
+        .eq("prueba", true)
+        .eq("estado", "EMITIDA")
+        .in("regularizacion_id", regIds)
+        .order("numero", { ascending: true });
+      for (const r of (fp.data ?? []) as unknown as Array<{ id: string; numero_formateado: string | null; regularizacion_id: string }>) {
+        const l = pruebas.get(r.regularizacion_id) ?? [];
+        l.push({ id: r.id, numero: r.numero_formateado });
+        pruebas.set(r.regularizacion_id, l);
+      }
+    }
     return NextResponse.json(
       successResponse({
         regularizaciones: filas.map((f) => ({
           ...f,
           factura_vinculada_numero: f.factura_vinculada_id ? numeros.get(f.factura_vinculada_id as string) ?? null : null,
+          reemisiones_prueba: pruebas.get(f.id as string) ?? [],
         })),
       })
     );

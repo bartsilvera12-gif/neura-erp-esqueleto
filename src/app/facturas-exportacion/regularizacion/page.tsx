@@ -136,6 +136,13 @@ export default function RegularizacionPage() {
             abre una factura nueva con los datos del cliente, se agregan los productos, se emite y se imprime. Las dos
             quedan vinculadas.
           </p>
+          {filas.some((r) => r.reemisiones_prueba?.length && !r.factura_vinculada_id) && (
+            <p className="mt-2 max-w-2xl rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <strong>Reemisiones de prueba:</strong> mientras Facturación está en modo prueba, las reemisiones salen como PRUEBA (sin valor
+              fiscal) y la factura de agosto sigue pendiente. Se ven en la columna “Factura nueva”. Cuando pasen a producción, se reemite de
+              verdad y ahí queda cerrada.
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
         <Link href="/facturas-exportacion" className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
@@ -281,9 +288,22 @@ export default function RegularizacionPage() {
                       <a href={`/api/facturas-exportacion/${r.factura_vinculada_id}/pdf`} target="_blank" rel="noopener" className="font-mono text-xs text-[#3F8E91] hover:underline">
                         {r.factura_vinculada_numero ?? "Ver"}
                       </a>
-                    ) : (
+                    ) : !r.reemisiones_prueba?.length ? (
                       <span className="text-slate-300">—</span>
-                    )}
+                    ) : null}
+                    {!r.factura_vinculada_id &&
+                      r.reemisiones_prueba?.map((p) => (
+                        <a
+                          key={p.id}
+                          href={`/api/facturas-exportacion/${p.id}/pdf`}
+                          target="_blank"
+                          rel="noopener"
+                          title="Reemisión de prueba: no tiene valor fiscal y no cierra esta factura"
+                          className="block whitespace-nowrap font-mono text-xs text-amber-700 hover:underline"
+                        >
+                          {p.numero ?? "Ver"} <span className="rounded bg-amber-100 px-1 font-sans text-[10px] font-semibold">PRUEBA</span>
+                        </a>
+                      ))}
                   </td>
                   <td className="py-2 pr-3 text-right">
                     <div className="inline-flex flex-wrap justify-end gap-2">
