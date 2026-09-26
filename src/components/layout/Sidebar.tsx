@@ -182,8 +182,8 @@ const MENU_STRUCTURE: MenuItem[] = [
 const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "inicio", titulo: "Inicio", keys: ["dashboard"] },
   { id: "finanzas", titulo: "Finanzas", keys: ["ventas", "recibos", "cobros", "gastos"] },
-  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision", "importaciones"] },
-  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "facturas_exportacion"] },
+  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision"] },
+  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "facturas_exportacion", "importaciones"] },
   { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
   { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
   { id: "contabilidad", titulo: "Contabilidad", keys: ["contabilidad"] },
