@@ -11,9 +11,9 @@ import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaHora, inputCla
 import IncidenciasPanel from "@/components/comex/IncidenciasPanel";
 import AdjuntosPanel from "@/components/comex/AdjuntosPanel";
 import HistorialPanel from "@/components/comex/HistorialPanel";
+import ContenedoresPanel from "@/components/comex/ContenedoresPanel";
 import FichaForm, { fichaAPayload, type Ficha } from "../_components/FichaForm";
 import MercaderiaTab from "./_components/MercaderiaTab";
-import ContenedoresTab from "./_components/ContenedoresTab";
 import RecepcionTab from "./_components/RecepcionTab";
 import CajaTab from "./_components/CajaTab";
 
@@ -260,7 +260,15 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
         </section>
       )}
       {tab === "mercaderia" && <MercaderiaTab imp={imp} items={items} contenedores={contenedores} onCambio={() => void load()} />}
-      {tab === "contenedores" && <ContenedoresTab imp={imp} contenedores={contenedores} items={items} onCambio={() => void load()} />}
+      {tab === "contenedores" && (
+        <ContenedoresPanel
+          crearUrl={`/api/importaciones/${id}/contenedores`}
+          contenedores={contenedores}
+          items={items}
+          bloqueado={bloqueada}
+          onCambio={() => void load()}
+        />
+      )}
       {tab === "recepcion" && <RecepcionTab imp={imp} items={items} recepciones={recepciones} onCambio={() => void load()} />}
       {tab === "incidencias" && <IncidenciasPanel origenTipo="IMPORTACION" origenId={id} bloqueado={imp.estado === "anulada"} onCambio={() => void load()} />}
       {tab === "caja" && <CajaTab imp={imp} caja={caja} onCambio={() => void load()} />}

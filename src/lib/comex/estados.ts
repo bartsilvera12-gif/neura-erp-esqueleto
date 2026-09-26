@@ -3,6 +3,7 @@
  * y la pantalla (muestra el siguiente paso), así nunca se contradicen.
  */
 import type { EstadoImportacion } from "@/lib/importaciones/types";
+import type { EstadoExportacion } from "@/lib/exportaciones/types";
 import type { EstadoContenedor, EstadoIncidencia } from "./types";
 
 // ── Importación ──────────────────────────────────────────────────────────────
@@ -42,6 +43,37 @@ export function siguienteImportacion(e: EstadoImportacion): EstadoImportacion | 
 export function anteriorImportacion(e: EstadoImportacion): EstadoImportacion | null {
   const i = FLUJO_IMPORTACION.indexOf(e);
   return i > 0 && e !== "cerrada" ? FLUJO_IMPORTACION[i - 1] : null;
+}
+
+// ── Exportación ──────────────────────────────────────────────────────────────
+export const FLUJO_EXPORTACION: EstadoExportacion[] = ["preparacion", "documentacion", "aprobada", "despachada", "entregada", "cerrada"];
+
+export const ESTADO_EXPORTACION_LABEL: Record<EstadoExportacion, string> = {
+  preparacion: "En preparación",
+  documentacion: "Documentación",
+  aprobada: "Despacho aprobado",
+  despachada: "Despachada",
+  entregada: "Entregada",
+  cerrada: "Cerrada",
+  anulada: "Anulada",
+};
+
+export function transicionExportacionValida(desde: EstadoExportacion, hacia: EstadoExportacion): boolean {
+  if (desde === "anulada" || desde === "cerrada") return false;
+  if (hacia === "anulada") return true;
+  const a = FLUJO_EXPORTACION.indexOf(desde);
+  const b = FLUJO_EXPORTACION.indexOf(hacia);
+  return a >= 0 && b >= 0 && Math.abs(a - b) === 1;
+}
+
+export function siguienteExportacion(e: EstadoExportacion): EstadoExportacion | null {
+  const i = FLUJO_EXPORTACION.indexOf(e);
+  return i >= 0 && i < FLUJO_EXPORTACION.length - 1 ? FLUJO_EXPORTACION[i + 1] : null;
+}
+
+export function anteriorExportacion(e: EstadoExportacion): EstadoExportacion | null {
+  const i = FLUJO_EXPORTACION.indexOf(e);
+  return i > 0 && e !== "cerrada" ? FLUJO_EXPORTACION[i - 1] : null;
 }
 
 // ── Contenedor ───────────────────────────────────────────────────────────────

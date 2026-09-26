@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { HistorialComex, OrigenComex } from "@/lib/comex/types";
-import { ESTADO_CONTENEDOR_LABEL, ESTADO_IMPORTACION_LABEL, ESTADO_INCIDENCIA_LABEL } from "@/lib/comex/estados";
+import { ESTADO_CONTENEDOR_LABEL, ESTADO_EXPORTACION_LABEL, ESTADO_IMPORTACION_LABEL, ESTADO_INCIDENCIA_LABEL } from "@/lib/comex/estados";
 import { Aviso, api, fechaHora } from "./ui";
 
 const ACCION: Record<string, string> = {
@@ -27,6 +27,10 @@ const ACCION: Record<string, string> = {
   ADJUNTAR: "Adjuntó documentos",
   QUITAR_ADJUNTO: "Quitó un documento",
   MOVIMIENTO_CAJA: "Registró un movimiento de caja",
+  APROBAR_DESPACHO: "Aprobó el despacho",
+  CHECKLIST_OK: "Marcó un control como hecho",
+  CHECKLIST_PENDIENTE: "Desmarcó un control",
+  COPIAR_PRODUCTOS_FACTURA: "Copió los productos de la factura",
 };
 
 const CAMPO: Record<string, string> = {
@@ -53,10 +57,20 @@ const CAMPO: Record<string, string> = {
   contenedor_id: "Contenedor",
   accion_correctiva: "Acción correctiva",
   prioridad: "Prioridad",
+  cliente_nombre: "Cliente",
+  pais_destino: "País de destino",
+  productor: "Proveedor / productor",
+  fecha_comprometida_embarque: "Embarque comprometido",
+  fecha_comprometida_entrega: "Entrega comprometida",
+  fecha_entrega: "Fecha de entrega",
+  factura_id: "Factura vinculada",
+  nota_remision_id: "Nota de remisión vinculada",
+  requiere_proforma: "Lleva proforma",
+  motivo_sin_proforma: "Motivo sin proforma",
 };
 const OCULTOS = new Set(["proveedor_id", "responsable_id", "ubicacion_exterior_id", "ubicacion_destino_py_id", "subtotal", "producto_id", "sku", "resuelto_at", "verificado_at", "verificado_por_nombre"]);
 
-const ESTADOS: Record<string, string> = { ...ESTADO_IMPORTACION_LABEL, ...ESTADO_CONTENEDOR_LABEL, ...ESTADO_INCIDENCIA_LABEL };
+const ESTADOS: Record<string, string> = { ...ESTADO_EXPORTACION_LABEL, ...ESTADO_IMPORTACION_LABEL, ...ESTADO_CONTENEDOR_LABEL, ...ESTADO_INCIDENCIA_LABEL };
 const valor = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : ESTADOS[String(v)] ?? String(v));
 
 /** Resume el detalle de una acción en líneas legibles. */
@@ -74,6 +88,8 @@ function lineas(h: HistorialComex): string[] {
   if (Array.isArray(d.detalle)) out.push(...(d.detalle as string[]));
   if (Array.isArray(d.archivos)) out.push(`${d.archivos.join(", ")}${d.categoria ? ` (${d.categoria})` : ""}`);
   if (d.archivo) out.push(String(d.archivo));
+  if (d.control) out.push(`${d.control}${d.observacion ? ` · ${d.observacion}` : ""}`);
+  if (Array.isArray(d.copiados)) out.push(...(d.copiados as string[]));
   if (Array.isArray(d.recibido))
     out.push(...(d.recibido as { producto?: string; cantidad?: number }[]).map((r) => `Llegó: ${r.producto} × ${r.cantidad}`));
   if (Array.isArray(d.diferencias)) out.push(...(d.diferencias as string[]).map((x) => `⚠ ${x}`));
@@ -81,6 +97,14 @@ function lineas(h: HistorialComex): string[] {
   if (d.cambios && typeof d.cambios === "object") {
     for (const [k, c] of Object.entries(d.cambios as Record<string, { antes: unknown; despues: unknown }>)) {
       if (OCULTOS.has(k)) continue;
+      if (k === "factura_id" || k === "nota_remision_id" || k === "contenedor_id") {
+        out.push(`${CAMPO[k]}: ${c.despues ? (c.antes ? "cambiada" : "asignada") : "quitada"}`);
+        continue;
+      }
+      if (k === "requiere_proforma") {
+        out.push(c.despues ? "Ahora lleva proforma" : "Ahora no lleva proforma");
+        continue;
+      }
       out.push(`${CAMPO[k] ?? k}: ${valor(c.antes)} → ${valor(c.despues)}`);
     }
   }

@@ -3,23 +3,25 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import type { Importacion, ImportacionItem } from "@/lib/importaciones/types";
 import type { Contenedor } from "@/lib/comex/types";
 import { ESTADO_CONTENEDOR_LABEL, FLUJO_CONTENEDOR } from "@/lib/comex/estados";
-import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaES, inputClass, jsonInit, labelClass } from "@/components/comex/ui";
+import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaES, inputClass, jsonInit, labelClass } from "./ui";
 
-export default function ContenedoresTab({
-  imp,
+/** Contenedores de una importación o exportación, con su línea de estados. */
+export default function ContenedoresPanel({
+  crearUrl,
   contenedores,
   items,
+  bloqueado,
   onCambio,
 }: {
-  imp: Importacion;
+  /** POST para agregar uno: /api/importaciones/:id/contenedores o /api/exportaciones/:id/contenedores */
+  crearUrl: string;
   contenedores: Contenedor[];
-  items: ImportacionItem[];
+  items: { contenedor_id: string | null; producto_nombre: string }[];
+  bloqueado: boolean;
   onCambio: () => void;
 }) {
-  const bloqueado = imp.estado === "cerrada" || imp.estado === "anulada";
   const [modal, setModal] = useState<Contenedor | "nuevo" | null>(null);
   const [quitar, setQuitar] = useState<Contenedor | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +127,7 @@ export default function ContenedoresTab({
         );
       })}
 
-      {modal && <ModalContenedor impId={imp.id} cont={modal === "nuevo" ? null : modal} onClose={() => setModal(null)} onSaved={onCambio} />}
+      {modal && <ModalContenedor crearUrl={crearUrl} cont={modal === "nuevo" ? null : modal} onClose={() => setModal(null)} onSaved={onCambio} />}
       <ConfirmModal
         open={!!quitar}
         title="Quitar contenedor"
@@ -139,7 +141,7 @@ export default function ContenedoresTab({
   );
 }
 
-function ModalContenedor({ impId, cont, onClose, onSaved }: { impId: string; cont: Contenedor | null; onClose: () => void; onSaved: () => void }) {
+function ModalContenedor({ crearUrl, cont, onClose, onSaved }: { crearUrl: string; cont: Contenedor | null; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
     numero: cont?.numero ?? "",
     naviera: cont?.naviera ?? "",
@@ -157,7 +159,7 @@ function ModalContenedor({ impId, cont, onClose, onSaved }: { impId: string; con
     setError(null);
     try {
       if (cont) await api(`/api/comex/contenedores/${cont.id}`, jsonInit("PATCH", f));
-      else await api(`/api/importaciones/${impId}/contenedores`, jsonInit("POST", f));
+      else await api(crearUrl, jsonInit("POST", f));
       onSaved();
       onClose();
     } catch (e) {

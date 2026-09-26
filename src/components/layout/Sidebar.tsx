@@ -122,7 +122,10 @@ const MENU_STRUCTURE: MenuItem[] = [
     ],
   },
   { key: "remision", slug: "remision", label: "Remisiones", href: "/notas-remision", icon: Truck },
-  { key: "importaciones", slug: "importaciones", label: "Importaciones", href: "/importaciones", icon: Container },
+  { key: "importaciones", slug: "importaciones", label: "Comercio exterior", href: "/importaciones", icon: Container, children: [
+    { label: "Importaciones", href: "/importaciones" },
+    { label: "Exportaciones", href: "/exportaciones" },
+  ]},
   { key: "recibos", slug: "recibos", label: "Recibos", href: "/recibos", icon: Receipt },
   { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown, children: [
     { label: "Gastos", href: "/gastos", exactMatch: true },
