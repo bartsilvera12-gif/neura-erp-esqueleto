@@ -30,7 +30,19 @@ const CATEGORIAS_EXPORTACION = [
 ];
 
 /** Documentos de una operación: subir, abrir y quitar. */
-export default function AdjuntosPanel({ origenTipo, origenId, bloqueado }: { origenTipo: OrigenComex; origenId: string; bloqueado?: boolean }) {
+export default function AdjuntosPanel({
+  origenTipo,
+  origenId,
+  bloqueado,
+  sinQuitar,
+}: {
+  origenTipo: OrigenComex;
+  origenId: string;
+  /** No se sube ni se quita nada (operación cerrada o anulada). */
+  bloqueado?: boolean;
+  /** Se puede subir pero no quitar (exportación con despacho aprobado). */
+  sinQuitar?: boolean;
+}) {
   const [lista, setLista] = useState<AdjuntoComex[]>([]);
   const CATEGORIAS = origenTipo === "EXPORTACION" ? CATEGORIAS_EXPORTACION : CATEGORIAS_IMPORTACION;
   const [categoria, setCategoria] = useState(CATEGORIAS[0]);
@@ -129,7 +141,7 @@ export default function AdjuntosPanel({ origenTipo, origenId, bloqueado }: { ori
                 </p>
               </div>
             </div>
-            {!bloqueado && (
+            {!bloqueado && !sinQuitar && (
               <button onClick={() => setQuitar(a)} className="text-xs font-medium text-rose-600 hover:underline">
                 Quitar
               </button>

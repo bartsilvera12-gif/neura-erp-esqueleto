@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { HistorialComex, OrigenComex } from "@/lib/comex/types";
 import { ESTADO_CONTENEDOR_LABEL, ESTADO_EXPORTACION_LABEL, ESTADO_IMPORTACION_LABEL, ESTADO_INCIDENCIA_LABEL } from "@/lib/comex/estados";
-import { Aviso, api, fechaHora } from "./ui";
+import { Aviso, api, fechaES, fechaHora } from "./ui";
 
 const ACCION: Record<string, string> = {
   CREAR: "Creó el registro",
@@ -72,7 +72,13 @@ const CAMPO: Record<string, string> = {
 const OCULTOS = new Set(["cliente_id", "proveedor_id", "responsable_id", "ubicacion_exterior_id", "ubicacion_destino_py_id", "subtotal", "producto_id", "sku", "resuelto_at", "verificado_at", "verificado_por_nombre"]);
 
 const ESTADOS: Record<string, string> = { ...ESTADO_EXPORTACION_LABEL, ...ESTADO_IMPORTACION_LABEL, ...ESTADO_CONTENEDOR_LABEL, ...ESTADO_INCIDENCIA_LABEL };
-const valor = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : ESTADOS[String(v)] ?? String(v));
+const valor = (v: unknown) => {
+  if (v === null || v === undefined || v === "") return "—";
+  const t = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return fechaES(t);
+  if (typeof v === "boolean") return v ? "Sí" : "No";
+  return ESTADOS[t] ?? t;
+};
 
 /** Resume el detalle de una acción en líneas legibles. */
 function lineas(h: HistorialComex): string[] {

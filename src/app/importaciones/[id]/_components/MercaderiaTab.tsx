@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, Barcode, Plus } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { Importacion, ImportacionItem } from "@/lib/importaciones/types";
 import type { Contenedor } from "@/lib/comex/types";
@@ -138,8 +138,12 @@ export default function MercaderiaTab({
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setSeriales(it)} className="text-xs font-medium text-emerald-700 hover:underline">
-                      {it.seriales_count ?? 0} de {cant(it.cantidad)}
+                    <button
+                      onClick={() => setSeriales(it)}
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                    >
+                      <Barcode className="h-3.5 w-3.5" />
+                      {cerrada ? "Ver seriales" : "Cargar seriales"} ({it.seriales_count ?? 0}/{cant(it.cantidad)})
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right">

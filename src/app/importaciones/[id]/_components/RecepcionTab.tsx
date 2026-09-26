@@ -127,7 +127,7 @@ export default function RecepcionTab({
                         value={cantidades[i.id] ?? ""}
                         onWheel={noRueda}
                         onChange={(e) => setCantidades({ ...cantidades, [i.id]: e.target.value })}
-                        className={`${inputClass} ${sinFlechas} ml-auto w-28 text-right`}
+                        className={`${sinFlechas} ml-auto block w-28 rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100`}
                       />
                     </td>
                   </tr>

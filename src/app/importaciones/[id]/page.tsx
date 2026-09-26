@@ -81,6 +81,13 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
     void load();
   }, [load]);
 
+  // Los avisos verdes se van solos a los 5 segundos.
+  useEffect(() => {
+    if (!aviso) return;
+    const t = setTimeout(() => setAviso(null), 5000);
+    return () => clearTimeout(t);
+  }, [aviso]);
+
   if (!imp || !ficha) {
     return (
       <div className="space-y-4">
@@ -93,7 +100,12 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
   }
 
   const bloqueada = imp.estado === "cerrada" || imp.estado === "anulada";
-  const anterior = anteriorImportacion(imp.estado);
+  const anteriorPosible = anteriorImportacion(imp.estado);
+  // Con mercadería recibida no se vuelve antes de Arribado (el servidor lo rechaza): no se ofrece.
+  const anterior =
+    anteriorPosible && recepciones.length > 0 && FLUJO_IMPORTACION.indexOf(anteriorPosible) < FLUJO_IMPORTACION.indexOf("arribado")
+      ? null
+      : anteriorPosible;
   const idxEstado = FLUJO_IMPORTACION.indexOf(imp.estado);
   const fichaCambiada = JSON.stringify(ficha) !== JSON.stringify(aFicha(imp));
 
@@ -221,7 +233,11 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
         {TABS.map((t) => (
           <button
             key={t.k}
-            onClick={() => setTab(t.k)}
+            onClick={() => {
+              setTab(t.k);
+              setAviso(null);
+              setError(null);
+            }}
             className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${
               tab === t.k ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
@@ -264,8 +280,8 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
         />
       )}
       {tab === "recepcion" && <RecepcionTab imp={imp} items={items} recepciones={recepciones} onCambio={() => void load()} />}
-      {tab === "incidencias" && <IncidenciasPanel origenTipo="IMPORTACION" origenId={id} bloqueado={imp.estado === "anulada"} onCambio={() => void load()} />}
-      {tab === "documentos" && <AdjuntosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={imp.estado === "anulada"} />}
+      {tab === "incidencias" && <IncidenciasPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
+      {tab === "documentos" && <AdjuntosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} />}
       {tab === "historial" && <HistorialPanel origenTipo="IMPORTACION" origenId={id} recarga={recargaHist} />}
 
       {modalMotivo && (

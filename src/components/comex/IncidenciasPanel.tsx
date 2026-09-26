@@ -94,31 +94,41 @@ export default function IncidenciasPanel({
       <div className="space-y-2">
         {lista.length === 0 && <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No hay incidencias.</p>}
         {lista.map((i) => (
-          <div key={i.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className={`rounded-full px-2 py-0.5 font-semibold ${BADGE_ESTADO[i.estado]}`}>{ESTADO_INCIDENCIA_LABEL[i.estado]}</span>
-                  <span className="font-medium text-slate-700">{TIPO_INCIDENCIA_LABEL[i.tipo] ?? i.tipo}</span>
-                  <span className={`font-semibold uppercase ${BADGE_PRIORIDAD[i.prioridad]}`}>Prioridad {i.prioridad}</span>
-                </div>
-                <p className="mt-1.5 text-sm text-slate-800">{i.descripcion}</p>
-                {i.accion_correctiva && (
-                  <p className="mt-1 text-xs text-slate-600">
-                    <strong>Acción:</strong> {i.accion_correctiva}
-                  </p>
-                )}
-                <p className="mt-1 text-[11px] text-slate-400">
-                  {fechaHora(i.created_at)} · {i.created_by_nombre ?? "Sistema"} · Responsable: {i.responsable_nombre ?? "sin asignar"}
-                  {i.verificado_por_nombre && ` · Verificó ${i.verificado_por_nombre} el ${fechaHora(i.verificado_at)}`}
-                </p>
+          <div key={i.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className={`rounded-full px-2.5 py-1 font-semibold ${BADGE_ESTADO[i.estado]}`}>{ESTADO_INCIDENCIA_LABEL[i.estado]}</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">{TIPO_INCIDENCIA_LABEL[i.tipo] ?? i.tipo}</span>
+                <span className={`font-semibold uppercase ${BADGE_PRIORIDAD[i.prioridad]}`}>Prioridad {i.prioridad}</span>
               </div>
-              {i.estado !== "verificado" && (
+              {i.estado !== "verificado" && !bloqueado && (
                 <button onClick={() => setEditando(i)} className={btnSecundario}>
                   Gestionar
                 </button>
               )}
             </div>
+            <p className="mt-3 text-sm leading-relaxed text-slate-800">{i.descripcion}</p>
+            {i.accion_correctiva && (
+              <div className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                <span className="font-semibold">Qué se hizo:</span> {i.accion_correctiva}
+              </div>
+            )}
+            <dl className="mt-3 grid gap-x-6 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500 sm:grid-cols-3">
+              <div>
+                <dt className="inline font-medium text-slate-600">Creada: </dt>
+                <dd className="inline">{fechaHora(i.created_at)} · {i.created_by_nombre ?? "Sistema"}</dd>
+              </div>
+              <div>
+                <dt className="inline font-medium text-slate-600">Responsable: </dt>
+                <dd className="inline">{i.responsable_nombre ?? "sin asignar"}</dd>
+              </div>
+              {i.verificado_por_nombre && (
+                <div>
+                  <dt className="inline font-medium text-slate-600">Verificó: </dt>
+                  <dd className="inline">{i.verificado_por_nombre} · {fechaHora(i.verificado_at)}</dd>
+                </div>
+              )}
+            </dl>
           </div>
         ))}
       </div>

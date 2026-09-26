@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     if (!ORIGENES.has(tipo) || !origenId) return NextResponse.json(errorResponse("Falta la operación."), { status: 400 });
     const op = await operacionDeOrigen(ctx.supabase, ctx.auth.empresa_id, tipo, origenId);
     if (!op) return NextResponse.json(errorResponse("Operación no encontrada."), { status: 404 });
-    if (op.estado === "anulada") return NextResponse.json(errorResponse("La operación está anulada."), { status: 400 });
+    if (operacionCerrada(op.estado)) return NextResponse.json(errorResponse("La operación está cerrada o anulada: no se pueden agregar documentos."), { status: 400 });
 
     const files = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
     if (!files.length) return NextResponse.json(errorResponse("Elegí un archivo."), { status: 400 });

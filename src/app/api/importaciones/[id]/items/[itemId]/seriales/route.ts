@@ -75,8 +75,8 @@ export async function POST(request: NextRequest, p: Params) {
 
     if (repetidosEnLista.size || enOtras.length) {
       const detalle = [
-        ...(repetidosEnLista.size ? [`repetidos en lo que escribiste: ${[...repetidosEnLista].join(", ")}`] : []),
-        ...(enOtras.length ? [`ya cargados: ${enOtras.join(", ")}`] : []),
+        ...(repetidosEnLista.size ? [`Repetidos en lo que escribiste: ${[...repetidosEnLista].join(", ")}`] : []),
+        ...(enOtras.length ? [`Ya cargados: ${enOtras.join(", ")}`] : []),
       ];
       await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", id, "SERIAL_DUPLICADO_RECHAZADO", { producto: it.producto_nombre, detalle });
       return NextResponse.json(errorResponse(`Seriales duplicados, no se guardó nada. ${detalle.join(" · ")}.`), { status: 400 });

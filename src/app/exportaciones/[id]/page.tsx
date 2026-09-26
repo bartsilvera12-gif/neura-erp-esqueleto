@@ -94,6 +94,13 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
     void load();
   }, [load]);
 
+  // Los avisos verdes se van solos a los 5 segundos.
+  useEffect(() => {
+    if (!aviso) return;
+    const t = setTimeout(() => setAviso(null), 5000);
+    return () => clearTimeout(t);
+  }, [aviso]);
+
   if (!exp || !ficha) {
     return (
       <div className="space-y-4">
@@ -239,7 +246,11 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
         {TABS.map((t) => (
           <button
             key={t.k}
-            onClick={() => setTab(t.k)}
+            onClick={() => {
+              setTab(t.k);
+              setAviso(null);
+              setError(null);
+            }}
             className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${
               tab === t.k ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
@@ -291,11 +302,11 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
               </button>
             )}
           </div>
-          <AdjuntosPanel origenTipo="EXPORTACION" origenId={id} bloqueado={exp.estado === "anulada"} />
+          <AdjuntosPanel origenTipo="EXPORTACION" origenId={id} bloqueado={bloqueada} sinQuitar={!["preparacion", "documentacion"].includes(exp.estado)} />
         </div>
       )}
       {tab === "checklist" && <ChecklistTab exp={exp} onCambio={() => void load()} />}
-      {tab === "incidencias" && <IncidenciasPanel origenTipo="EXPORTACION" origenId={id} bloqueado={exp.estado === "anulada"} onCambio={() => void load()} />}
+      {tab === "incidencias" && <IncidenciasPanel origenTipo="EXPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "historial" && <HistorialPanel origenTipo="EXPORTACION" origenId={id} recarga={recargaHist} />}
 
       {modalMotivo && (
