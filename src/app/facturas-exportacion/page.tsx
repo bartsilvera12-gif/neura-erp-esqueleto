@@ -58,6 +58,7 @@ export default function FacturasExportacionPage() {
   type Pendiente =
     | { tipo: "modo"; prueba: boolean }
     | { tipo: "borrador"; f: FacturaExportacion }
+    | { tipo: "prueba"; f: FacturaExportacion }
     | { tipo: "pruebas" }
     | { tipo: "anular"; f: FacturaExportacion };
   const [pendiente, setPendiente] = useState<Pendiente | null>(null);
@@ -69,6 +70,7 @@ export default function FacturasExportacionPage() {
   const cambiarModo = (prueba: boolean) => setPendiente({ tipo: "modo", prueba });
   const borrarBorrador = (f: FacturaExportacion) => setPendiente({ tipo: "borrador", f });
   const borrarPruebas = () => setPendiente({ tipo: "pruebas" });
+  const eliminarPrueba = (f: FacturaExportacion) => setPendiente({ tipo: "prueba", f });
   const anular = (f: FacturaExportacion) => {
     setMotivo("");
     setMotivoError(false);
@@ -88,7 +90,7 @@ export default function FacturasExportacionPage() {
           credentials: "include",
           body: JSON.stringify({ modo_prueba: pendiente.prueba }),
         }).then((r) => r.json());
-      } else if (pendiente.tipo === "borrador") {
+      } else if (pendiente.tipo === "borrador" || pendiente.tipo === "prueba") {
         j = await fetch(`/api/facturas-exportacion/${pendiente.f.id}`, { method: "DELETE", credentials: "include" }).then((r) => r.json());
       } else if (pendiente.tipo === "pruebas") {
         j = await fetch("/api/facturas-exportacion/pruebas", { method: "DELETE", credentials: "include" }).then((r) => r.json());
@@ -110,6 +112,8 @@ export default function FacturasExportacionPage() {
               ? pendiente.prueba ? "Volviste a modo prueba." : "Facturación en producción: desde ahora se usan números reales."
               : pendiente.tipo === "borrador"
               ? "Borrador borrado."
+              : pendiente.tipo === "prueba"
+              ? `Factura de prueba ${pendiente.f.numero_formateado ?? ""} eliminada.`
               : pendiente.tipo === "pruebas"
               ? `Se borraron ${j.data?.borradas ?? 0} facturas de prueba.`
               : `Factura ${pendiente.f.numero_formateado} anulada.`,
@@ -206,6 +210,8 @@ export default function FacturasExportacionPage() {
             ? pendiente.prueba ? "Volver a modo prueba" : "Pasar a producción"
             : pendiente?.tipo === "borrador"
             ? "Borrar borrador"
+            : pendiente?.tipo === "prueba"
+            ? `Eliminar factura de prueba ${pendiente.f.numero_formateado ?? ""}`
             : pendiente?.tipo === "pruebas"
             ? "Borrar facturas de prueba"
             : `Anular factura ${pendiente?.tipo === "anular" ? pendiente.f.numero_formateado ?? "" : ""}`
@@ -213,7 +219,7 @@ export default function FacturasExportacionPage() {
         confirmLabel={
           pendiente?.tipo === "modo"
             ? pendiente.prueba ? "Volver a prueba" : "Pasar a producción"
-            : pendiente?.tipo === "anular" ? "Anular" : "Borrar"
+            : pendiente?.tipo === "anular" ? "Anular" : pendiente?.tipo === "prueba" ? "Eliminar" : "Borrar"
         }
         message={
           pendiente?.tipo === "modo" ? (
@@ -228,6 +234,8 @@ export default function FacturasExportacionPage() {
             )
           ) : pendiente?.tipo === "borrador" ? (
             "El borrador no tiene número, así que borrarlo no afecta la numeración."
+          ) : pendiente?.tipo === "prueba" ? (
+            "Es una factura de PRUEBA, sin valor fiscal: se elimina por completo. Las facturas reales no se pueden eliminar, solo anular."
           ) : pendiente?.tipo === "pruebas" ? (
             "Se borran todas las facturas de PRUEBA y su numeración vuelve a 1. Las facturas reales no se tocan."
           ) : (
@@ -438,7 +446,15 @@ export default function FacturasExportacionPage() {
                         Imprimir
                       </a>
                       )}
-                      {isAdmin && f.estado === "EMITIDA" && (
+                      {isAdmin && f.prueba && f.estado !== "BORRADOR" && (
+                        <button
+                          onClick={() => eliminarPrueba(f)}
+                          className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                      {isAdmin && !f.prueba && f.estado === "EMITIDA" && (
                         <button
                           onClick={() => anular(f)}
                           className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"

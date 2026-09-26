@@ -26,6 +26,7 @@ const ACCIONES: Record<string, string> = {
   BORRADOR_CREAR: "Creó borrador",
   BORRADOR_MODIFICAR: "Modificó borrador",
   BORRADOR_ELIMINAR: "Borró borrador",
+  PRUEBA_ELIMINAR: "Eliminó factura de prueba",
   REGULARIZACION_REGISTRAR: "Registró factura de agosto",
   REGULARIZACION_MODIFICAR: "Cambió factura de agosto",
   REGULARIZACION_ADJUNTAR_PDF: "Adjuntó PDF original",
