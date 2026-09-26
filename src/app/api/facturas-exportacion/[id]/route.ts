@@ -47,11 +47,18 @@ export async function DELETE(request: NextRequest, ctxParams: { params: Promise<
     // Se borran solo borradores y facturas de PRUEBA (sin valor fiscal). Una factura real se anula.
     const { data: prev } = await ctx.supabase
       .from("facturas_exportacion")
-      .select("estado, prueba, numero_formateado")
+      .select("estado, prueba, numero_formateado, establecimiento, punto_expedicion, timbrado")
       .eq("empresa_id", ctx.auth.empresa_id)
       .eq("id", id)
       .maybeSingle();
-    const f = prev as { estado: string; prueba: boolean; numero_formateado: string | null } | null;
+    const f = prev as {
+      estado: string;
+      prueba: boolean;
+      numero_formateado: string | null;
+      establecimiento: string;
+      punto_expedicion: string;
+      timbrado: string;
+    } | null;
     if (!f) return NextResponse.json(errorResponse("La factura no existe."), { status: 404 });
     const esBorrador = f.estado === "BORRADOR";
     if (!esBorrador && !f.prueba)
@@ -67,6 +74,30 @@ export async function DELETE(request: NextRequest, ctxParams: { params: Promise<
       .select("id");
     if (del.error) throw new Error(del.error.message);
     if (!(del.data ?? []).length) return NextResponse.json(errorResponse("No se pudo borrar la factura."), { status: 400 });
+
+    // Prueba: el contador vuelve al último número de prueba que sigue existiendo + 1,
+    // así la próxima factura de prueba reutiliza el número eliminado. Nunca toca la numeración real.
+    if (!esBorrador && f.prueba) {
+      const { data: ult } = await ctx.supabase
+        .from("facturas_exportacion")
+        .select("numero")
+        .eq("empresa_id", ctx.auth.empresa_id)
+        .eq("prueba", true)
+        .eq("establecimiento", f.establecimiento)
+        .eq("punto_expedicion", f.punto_expedicion)
+        .eq("timbrado", f.timbrado)
+        .not("numero", "is", null)
+        .order("numero", { ascending: false })
+        .limit(1);
+      const maximo = Number(((ult ?? [])[0] as { numero?: number } | undefined)?.numero ?? 0);
+      await ctx.supabase
+        .from("facturas_exportacion_config")
+        .update({ proximo_numero_prueba: maximo + 1, updated_at: new Date().toISOString() })
+        .eq("empresa_id", ctx.auth.empresa_id)
+        .eq("establecimiento", f.establecimiento)
+        .eq("punto_expedicion", f.punto_expedicion)
+        .eq("timbrado", f.timbrado);
+    }
     await ctx.supabase.from("facturas_exportacion_auditoria").insert({
       empresa_id: ctx.auth.empresa_id,
       accion: esBorrador ? "BORRADOR_ELIMINAR" : "PRUEBA_ELIMINAR",

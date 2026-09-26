@@ -462,7 +462,7 @@ export default function FacturasExportacionPage() {
                           Eliminar
                         </button>
                       )}
-                      {isAdmin && !f.prueba && f.estado === "EMITIDA" && (
+                      {isAdmin && f.estado === "EMITIDA" && (
                         <button
                           onClick={() => anular(f)}
                           className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
