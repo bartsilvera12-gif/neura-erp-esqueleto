@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { esUuid, getComexCtx, insertarConNumero, textoBusqueda, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 
 const COLS =
   "id, numero, proveedor_id, proveedor_nombre, pais_origen, incoterm, moneda, monto_estimado, tipo_cambio, " +
@@ -22,7 +21,7 @@ const ESTADOS = new Set([
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const sp = new URL(request.url).searchParams;
     let q = ctx.supabase
@@ -34,10 +33,10 @@ export async function GET(request: NextRequest) {
     const estado = sp.get("estado");
     if (estado && ESTADOS.has(estado)) q = q.eq("estado", estado);
     const responsable = sp.get("responsable");
-    if (responsable) q = q.eq("responsable_id", responsable);
+    if (esUuid(responsable)) q = q.eq("responsable_id", responsable);
     const pais = sp.get("pais");
     if (pais) q = q.eq("pais_origen", pais);
-    const busca = (sp.get("q") ?? "").trim().replace(/[,()%]/g, " ");
+    const busca = textoBusqueda(sp.get("q"));
     if (busca) q = q.or(`numero.ilike.%${busca}%,proveedor_nombre.ilike.%${busca}%`);
     const { data, error } = await q;
     if (error) throw new Error(error.message);
@@ -48,22 +47,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function nextNumero(sb: NonNullable<Awaited<ReturnType<typeof getTenantSupabaseFromAuthWithRol>>>["supabase"], empresaId: string): Promise<string> {
-  const { data } = await sb
-    .from("importaciones")
-    .select("numero")
-    .eq("empresa_id", empresaId)
-    .order("created_at", { ascending: false })
-    .limit(1);
-  const ultimo = ((data ?? [])[0] as { numero?: string } | undefined)?.numero ?? "IMP-000000";
-  const match = ultimo.match(/(\d+)$/);
-  const n = match ? Number(match[1]) + 1 : 1;
-  return `IMP-${String(n).padStart(6, "0")}`;
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const moneda = String(b.moneda ?? "USD").toUpperCase();
@@ -80,13 +66,8 @@ export async function POST(request: NextRequest) {
     ].filter(Boolean);
     if (faltan.length) return NextResponse.json(errorResponse(`Completá: ${faltan.join(", ")}.`), { status: 400 });
 
-    const numero = b.numero ? String(b.numero).trim() : await nextNumero(ctx.supabase, ctx.auth.empresa_id);
 
-    const { data, error } = await ctx.supabase
-      .from("importaciones")
-      .insert({
-        empresa_id: ctx.auth.empresa_id,
-        numero,
+    const creada = await insertarConNumero(ctx.supabase, "importaciones", ctx.auth.empresa_id, "IMP", {
         proveedor_id: b.proveedor_id ? String(b.proveedor_id) : null,
         proveedor_nombre: proveedorNombre.slice(0, 200),
         pais_origen: pais.slice(0, 40),
@@ -106,11 +87,7 @@ export async function POST(request: NextRequest) {
         responsable_nombre: responsableNombre.slice(0, 200),
         created_by_user_id: ctx.auth.usuarioCatalogId ?? null,
         created_by_nombre: nombreUsuario(ctx.auth),
-      })
-      .select("id, numero")
-      .single();
-    if (error) throw new Error(error.message);
-    const creada = data as { id: string; numero: string };
+    });
     await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", creada.id, "CREAR", {
       numero: creada.numero,
       proveedor: proveedorNombre,

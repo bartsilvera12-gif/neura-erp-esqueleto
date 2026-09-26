@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { esUuid, getComexCtx, insertarConNumero, textoBusqueda, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import { ESTADO_EXPORTACION_LABEL } from "@/lib/comex/estados";
 import { EXPORTACION_COLS } from "@/lib/exportaciones/types";
 
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const sp = new URL(request.url).searchParams;
     let q = ctx.supabase
@@ -21,8 +20,8 @@ export async function GET(request: NextRequest) {
     const estado = sp.get("estado");
     if (estado && estado in ESTADO_EXPORTACION_LABEL) q = q.eq("estado", estado);
     const responsable = sp.get("responsable");
-    if (responsable) q = q.eq("responsable_id", responsable);
-    const busca = (sp.get("q") ?? "").trim().replace(/[,()%]/g, " ");
+    if (esUuid(responsable)) q = q.eq("responsable_id", responsable);
+    const busca = textoBusqueda(sp.get("q"));
     if (busca) q = q.or(`numero.ilike.%${busca}%,cliente_nombre.ilike.%${busca}%`);
     const { data, error } = await q;
     if (error) throw new Error(error.message);
@@ -35,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -49,15 +48,7 @@ export async function POST(request: NextRequest) {
     if (sinProforma && !motivoSinProforma)
       return NextResponse.json(errorResponse("Indicá por qué no lleva proforma (por ejemplo: contenedor Sarasota)."), { status: 400 });
 
-    const { data: ult } = await ctx.supabase.from("exportaciones").select("numero").eq("empresa_id", emp).order("created_at", { ascending: false }).limit(1);
-    const m = (((ult ?? [])[0] as { numero?: string } | undefined)?.numero ?? "EXP-000000").match(/(\d+)$/);
-    const numero = `EXP-${String((m ? Number(m[1]) : 0) + 1).padStart(6, "0")}`;
-
-    const { data, error } = await ctx.supabase
-      .from("exportaciones")
-      .insert({
-        empresa_id: emp,
-        numero,
+    const creada = await insertarConNumero(ctx.supabase, "exportaciones", emp, "EXP", {
         cliente_id: b.cliente_id ? String(b.cliente_id) : null,
         cliente_nombre: cliente.slice(0, 200),
         pais_destino: pais.slice(0, 60),
@@ -70,13 +61,9 @@ export async function POST(request: NextRequest) {
         fecha_comprometida_entrega: b.fecha_comprometida_entrega || null,
         observaciones: b.observaciones ? String(b.observaciones).slice(0, 2000) : null,
         created_by_nombre: nombreUsuario(ctx.auth),
-      })
-      .select("id, numero")
-      .single();
-    if (error) throw new Error(error.message);
-    const creada = data as { id: string; numero: string };
+    });
     await registrarHistorial(ctx.supabase, ctx.auth, "EXPORTACION", creada.id, "CREAR", {
-      numero,
+      numero: creada.numero,
       cliente,
       pais,
       responsable,

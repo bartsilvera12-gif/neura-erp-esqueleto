@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
-import { nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import { CHECKLIST_DESPACHO, CHECKLIST_KEYS } from "@/lib/exportaciones/checklist";
 
 type Params = { params: Promise<{ id: string }> };
@@ -11,7 +10,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, p: Params) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data, error } = await ctx.supabase
       .from("exportacion_checklist")
@@ -35,10 +34,10 @@ export async function GET(request: NextRequest, p: Params) {
 export async function POST(request: NextRequest, p: Params) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
-    const b = (await request.json().catch(() => ({}))) as { item?: string; ok?: boolean; observacion?: string };
+    const b = (await request.json().catch(() => ({}))) as { item?: string; ok?: boolean; observacion?: string; solo_observacion?: boolean };
     const item = String(b.item ?? "");
     if (!CHECKLIST_KEYS.has(item)) return NextResponse.json(errorResponse("Control inválido."), { status: 400 });
     const { data } = await ctx.supabase.from("exportaciones").select("estado, responsable_id").eq("empresa_id", emp).eq("id", id).maybeSingle();
@@ -49,8 +48,19 @@ export async function POST(request: NextRequest, p: Params) {
     if (item === "aprobacion_responsable" && !esRolAdminEmpresaOGlobal(ctx.auth.rol) && exp.responsable_id !== (ctx.auth.usuarioCatalogId ?? null))
       return NextResponse.json(errorResponse("Esta aprobación la marca el responsable del envío o un administrador."), { status: 403 });
 
-    const ok = b.ok === true;
     const observacion = b.observacion ? String(b.observacion).trim().slice(0, 1000) : null;
+    // Solo la observación: no toca el resultado ni quién lo marcó.
+    if (b.solo_observacion) {
+      const { data: prev } = await ctx.supabase.from("exportacion_checklist").select("id").eq("empresa_id", emp).eq("exportacion_id", id).eq("item", item).maybeSingle();
+      const r = prev
+        ? await ctx.supabase.from("exportacion_checklist").update({ observacion }).eq("empresa_id", emp).eq("id", (prev as { id: string }).id)
+        : await ctx.supabase.from("exportacion_checklist").insert({ empresa_id: emp, exportacion_id: id, item, ok: false, observacion });
+      if (r.error) throw new Error(r.error.message);
+      const label = CHECKLIST_DESPACHO.find((c) => c.key === item)?.label ?? item;
+      await registrarHistorial(ctx.supabase, ctx.auth, "EXPORTACION", id, "CHECKLIST_OBSERVACION", { control: label, observacion: observacion ?? "(borrada)" });
+      return NextResponse.json(successResponse({ item }));
+    }
+    const ok = b.ok === true;
     const { error } = await ctx.supabase.from("exportacion_checklist").upsert(
       {
         empresa_id: emp,

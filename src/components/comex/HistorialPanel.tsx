@@ -30,6 +30,7 @@ const ACCION: Record<string, string> = {
   APROBAR_DESPACHO: "Aprobó el despacho",
   CHECKLIST_OK: "Marcó un control como hecho",
   CHECKLIST_PENDIENTE: "Desmarcó un control",
+  CHECKLIST_OBSERVACION: "Anotó una observación en un control",
   COPIAR_PRODUCTOS_FACTURA: "Copió los productos de la factura",
 };
 
@@ -68,7 +69,7 @@ const CAMPO: Record<string, string> = {
   requiere_proforma: "Lleva proforma",
   motivo_sin_proforma: "Motivo sin proforma",
 };
-const OCULTOS = new Set(["proveedor_id", "responsable_id", "ubicacion_exterior_id", "ubicacion_destino_py_id", "subtotal", "producto_id", "sku", "resuelto_at", "verificado_at", "verificado_por_nombre"]);
+const OCULTOS = new Set(["cliente_id", "proveedor_id", "responsable_id", "ubicacion_exterior_id", "ubicacion_destino_py_id", "subtotal", "producto_id", "sku", "resuelto_at", "verificado_at", "verificado_por_nombre"]);
 
 const ESTADOS: Record<string, string> = { ...ESTADO_EXPORTACION_LABEL, ...ESTADO_IMPORTACION_LABEL, ...ESTADO_CONTENEDOR_LABEL, ...ESTADO_INCIDENCIA_LABEL };
 const valor = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : ESTADOS[String(v)] ?? String(v));
@@ -78,6 +79,10 @@ function lineas(h: HistorialComex): string[] {
   const d = (h.detalle ?? {}) as Record<string, unknown>;
   const out: string[] = [];
   if (d.antes !== undefined && d.despues !== undefined) out.push(`${valor(d.antes)} → ${valor(d.despues)}`);
+  if (h.accion === "CREAR") {
+    const partes = [d.numero, d.proveedor ?? d.cliente, d.pais, d.responsable && `responsable ${d.responsable}`].filter(Boolean);
+    if (partes.length) out.push(partes.join(" · "));
+  }
   if (d.motivo) out.push(`Motivo: ${d.motivo}`);
   if (d.contenedor) out.push(`Contenedor ${d.contenedor}`);
   if (d.producto) out.push(`Producto: ${d.producto}${d.cantidad !== undefined ? ` · cantidad ${d.cantidad}` : ""}`);

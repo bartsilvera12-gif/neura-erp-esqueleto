@@ -30,6 +30,8 @@ export async function faltantesParaEstado(
     sb.from("importacion_recepciones").select("id, final").eq("empresa_id", empresaId).eq("importacion_id", imp.id),
     sb.from("comex_incidencias").select("id, estado").eq("empresa_id", empresaId).eq("origen_tipo", "IMPORTACION").eq("origen_id", imp.id),
   ]);
+  const errQ = items.error ?? conts.error ?? recs.error ?? incs.error;
+  if (errQ) throw new Error(errQ.message);
   const its = (items.data ?? []) as { producto_id: string | null; producto_nombre: string; cantidad: number; cantidad_recibida: number }[];
 
   // En tránsito: la operación tiene que estar completa.

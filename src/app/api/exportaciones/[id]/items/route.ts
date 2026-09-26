@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, contenedorDeOperacion, registrarHistorial } from "@/lib/comex/server";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, p: Params) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data, error } = await ctx.supabase
       .from("exportacion_items")
@@ -29,7 +28,7 @@ export async function GET(request: NextRequest, p: Params) {
 export async function POST(request: NextRequest, p: Params) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const { data: exp } = await ctx.supabase.from("exportaciones").select("estado").eq("empresa_id", emp).eq("id", id).maybeSingle();
@@ -45,6 +44,9 @@ export async function POST(request: NextRequest, p: Params) {
     const pr = prod as { id: string; nombre: string; sku: string | null; activo: boolean | null } | null;
     if (!pr) return NextResponse.json(errorResponse("Ese producto no existe en el inventario."), { status: 400 });
     if (pr.activo === false) return NextResponse.json(errorResponse(`"${pr.nombre}" está desactivado en el inventario.`), { status: 400 });
+    const contenedorId = b.contenedor_id ? String(b.contenedor_id) : null;
+    if (contenedorId && !(await contenedorDeOperacion(ctx.supabase, emp, "EXPORTACION", id, contenedorId)))
+      return NextResponse.json(errorResponse("Ese contenedor no es de esta exportación."), { status: 400 });
     const { data, error } = await ctx.supabase
       .from("exportacion_items")
       .insert({
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest, p: Params) {
         producto_nombre: pr.nombre,
         sku: pr.sku,
         cantidad,
-        contenedor_id: b.contenedor_id ? String(b.contenedor_id) : null,
+        contenedor_id: contenedorId,
       })
       .select("id")
       .single();

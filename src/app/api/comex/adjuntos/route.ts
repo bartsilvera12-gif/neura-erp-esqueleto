@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import {
@@ -9,8 +8,10 @@ import {
   MIME_ADJUNTO_PERMITIDO,
   ORIGENES,
   asegurarBucketAdjuntos,
+  getComexCtx,
   nombreUsuario,
-  origenDeEmpresa,
+  operacionCerrada,
+  operacionDeOrigen,
   registrarHistorial,
   rutaAdjunto,
 } from "@/lib/comex/server";
@@ -25,7 +26,7 @@ function origenDe(sp: URLSearchParams) {
 /** GET ?origen_tipo=&origen_id= — documentos con enlace temporal para abrirlos. */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const o = origenDe(new URL(request.url).searchParams);
     if (!o) return NextResponse.json(errorResponse("Falta la operación."), { status: 400 });
@@ -53,15 +54,16 @@ export async function GET(request: NextRequest) {
 /** POST multipart: origen_tipo, origen_id, categoria, file (uno o varios). */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const form = await request.formData();
     const tipo = String(form.get("origen_tipo") ?? "") as OrigenComex;
     const origenId = String(form.get("origen_id") ?? "");
     const categoria = String(form.get("categoria") ?? "").trim().slice(0, 60) || null;
     if (!ORIGENES.has(tipo) || !origenId) return NextResponse.json(errorResponse("Falta la operación."), { status: 400 });
-    if (!(await origenDeEmpresa(ctx.supabase, ctx.auth.empresa_id, tipo, origenId)))
-      return NextResponse.json(errorResponse("Operación no encontrada."), { status: 404 });
+    const op = await operacionDeOrigen(ctx.supabase, ctx.auth.empresa_id, tipo, origenId);
+    if (!op) return NextResponse.json(errorResponse("Operación no encontrada."), { status: 404 });
+    if (op.estado === "anulada") return NextResponse.json(errorResponse("La operación está anulada."), { status: 400 });
 
     const files = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
     if (!files.length) return NextResponse.json(errorResponse("Elegí un archivo."), { status: 400 });
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
 /** DELETE ?id= — quita el documento (queda registrado en el historial). */
 export async function DELETE(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const id = new URL(request.url).searchParams.get("id");
     if (!id) return NextResponse.json(errorResponse("Falta el documento."), { status: 400 });
@@ -131,6 +133,10 @@ export async function DELETE(request: NextRequest) {
       .maybeSingle();
     const a = data as { origen_tipo: OrigenComex; origen_id: string; nombre: string; storage_path: string } | null;
     if (!a) return NextResponse.json(errorResponse("Documento no encontrado."), { status: 404 });
+    const op = await operacionDeOrigen(ctx.supabase, ctx.auth.empresa_id, a.origen_tipo, a.origen_id);
+    const bloqueaQuitar = !op || operacionCerrada(op.estado) || (op.tipo === "EXPORTACION" && !["preparacion", "documentacion"].includes(op.estado));
+    if (bloqueaQuitar)
+      return NextResponse.json(errorResponse("Este documento ya no se puede quitar: la operación está aprobada, cerrada o anulada."), { status: 400 });
     const { error } = await ctx.supabase.from("comex_adjuntos").delete().eq("empresa_id", ctx.auth.empresa_id).eq("id", id);
     if (error) throw new Error(error.message);
     await ctx.supabase.storage.from(COMEX_ADJUNTOS_BUCKET).remove([a.storage_path]);

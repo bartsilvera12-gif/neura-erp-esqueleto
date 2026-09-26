@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { diferencias, registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, operacionCerrada, operacionDeOrigen, diferencias, registrarHistorial } from "@/lib/comex/server";
 import { ESTADO_CONTENEDOR_LABEL, transicionContenedorValida } from "@/lib/comex/estados";
 import type { EstadoContenedor } from "@/lib/comex/types";
 
@@ -16,11 +15,14 @@ const COLS =
 export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data } = await ctx.supabase.from("comex_contenedores").select(COLS).eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
     const antes = data as unknown as (Record<string, unknown> & { estado: EstadoContenedor; numero: string; importacion_id: string | null; exportacion_id: string | null }) | null;
     if (!antes) return NextResponse.json(errorResponse("Contenedor no encontrado."), { status: 404 });
+    const op = await operacionDeOrigen(ctx.supabase, ctx.auth.empresa_id, "CONTENEDOR", id);
+    if (!op || operacionCerrada(op.estado))
+      return NextResponse.json(errorResponse("La operación está cerrada o anulada; el contenedor no se puede modificar."), { status: 400 });
 
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const update: Record<string, unknown> = {};
@@ -30,6 +32,17 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
     if (b.numero !== undefined) {
       const n = String(b.numero).trim().toUpperCase();
       if (!n) return NextResponse.json(errorResponse("El número no puede quedar vacío."), { status: 400 });
+      if (n !== antes.numero) {
+        const { data: dup } = await ctx.supabase
+          .from("comex_contenedores")
+          .select("id")
+          .eq("empresa_id", ctx.auth.empresa_id)
+          .eq(antes.importacion_id ? "importacion_id" : "exportacion_id", (antes.importacion_id ?? antes.exportacion_id) as string)
+          .eq("numero", n)
+          .neq("id", id)
+          .maybeSingle();
+        if (dup) return NextResponse.json(errorResponse(`El contenedor ${n} ya está en esta operación.`), { status: 400 });
+      }
       update.numero = n.slice(0, 40);
     }
     if (b.estado !== undefined) {
@@ -76,18 +89,26 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
 export async function DELETE(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const { data } = await ctx.supabase.from("comex_contenedores").select(COLS).eq("empresa_id", emp).eq("id", id).maybeSingle();
-    const c = data as unknown as { estado: string; numero: string; importacion_id: string | null } | null;
+    const c = data as unknown as { estado: string; numero: string; importacion_id: string | null; exportacion_id: string | null } | null;
     if (!c) return NextResponse.json(errorResponse("Contenedor no encontrado."), { status: 404 });
-    const { count } = await ctx.supabase.from("importacion_items").select("id", { count: "exact", head: true }).eq("empresa_id", emp).eq("contenedor_id", id);
-    if (c.estado !== "en_preparacion" || (count ?? 0) > 0)
+    // Solo mientras la operación se está armando (borrador / preparación).
+    const op = await operacionDeOrigen(ctx.supabase, emp, "CONTENEDOR", id);
+    if (!op || !["borrador", "preparacion"].includes(op.estado))
+      return NextResponse.json(errorResponse("El contenedor solo se quita mientras la operación se está armando."), { status: 400 });
+    const [ii, ei] = await Promise.all([
+      ctx.supabase.from("importacion_items").select("id", { count: "exact", head: true }).eq("empresa_id", emp).eq("contenedor_id", id),
+      ctx.supabase.from("exportacion_items").select("id", { count: "exact", head: true }).eq("empresa_id", emp).eq("contenedor_id", id),
+    ]);
+    if (ii.error || ei.error) throw new Error((ii.error ?? ei.error)!.message);
+    if (c.estado !== "en_preparacion" || (ii.count ?? 0) + (ei.count ?? 0) > 0)
       return NextResponse.json(errorResponse("Solo se quita un contenedor en preparación y sin mercadería asignada."), { status: 400 });
     const { error } = await ctx.supabase.from("comex_contenedores").delete().eq("empresa_id", emp).eq("id", id);
     if (error) throw new Error(error.message);
-    if (c.importacion_id) await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", c.importacion_id, "QUITAR_CONTENEDOR", { contenedor: c.numero });
+    await registrarHistorial(ctx.supabase, ctx.auth, op.tipo, op.id, "QUITAR_CONTENEDOR", { contenedor: c.numero });
     return NextResponse.json(successResponse({ id }));
   } catch (err) {
     console.error("[/api/comex/contenedores/:id DELETE]", err);

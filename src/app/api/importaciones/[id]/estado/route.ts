@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
-import { registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, registrarHistorial } from "@/lib/comex/server";
 import { ESTADO_IMPORTACION_LABEL, FLUJO_IMPORTACION, transicionImportacionValida } from "@/lib/comex/estados";
 import { faltantesParaEstado } from "@/lib/importaciones/validar";
 import type { EstadoImportacion } from "@/lib/importaciones/types";
@@ -15,7 +14,7 @@ import type { EstadoImportacion } from "@/lib/importaciones/types";
 export async function POST(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const b = (await request.json().catch(() => ({}))) as { estado?: string; motivo?: string };
     const hacia = String(b.estado ?? "") as EstadoImportacion;
@@ -46,16 +45,29 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     if (avanza) {
       const faltan = await faltantesParaEstado(ctx.supabase, ctx.auth.empresa_id, imp, hacia);
       if (faltan.length) return NextResponse.json({ ...errorResponse(faltan.join(" ")), faltantes: faltan }, { status: 400 });
-    } else if (hacia !== "anulada" && !motivo) {
-      return NextResponse.json(errorResponse("Para volver un paso atrás, escribí el motivo."), { status: 400 });
+    } else if (hacia !== "anulada") {
+      if (!motivo) return NextResponse.json(errorResponse("Para volver un paso atrás, escribí el motivo."), { status: 400 });
+      // Con mercadería ya recibida no se vuelve antes de Arribado: lo pedido quedaría editable.
+      if (FLUJO_IMPORTACION.indexOf(hacia) < FLUJO_IMPORTACION.indexOf("arribado")) {
+        const { count } = await ctx.supabase
+          .from("importacion_recepciones")
+          .select("id", { count: "exact", head: true })
+          .eq("empresa_id", ctx.auth.empresa_id)
+          .eq("importacion_id", id);
+        if ((count ?? 0) > 0)
+          return NextResponse.json(errorResponse("Ya hay mercadería recibida: no se puede volver a un estado anterior a Arribado."), { status: 400 });
+      }
     }
 
-    const { error } = await ctx.supabase
+    const { data: upd, error } = await ctx.supabase
       .from("importaciones")
       .update({ estado: hacia, updated_at: new Date().toISOString(), ...(hacia === "anulada" ? { anulada_motivo: motivo } : {}) })
       .eq("empresa_id", ctx.auth.empresa_id)
-      .eq("id", id);
+      .eq("id", id)
+      .eq("estado", imp.estado) // si otro lo cambió recién, no se pisa
+      .select("id");
     if (error) throw new Error(error.message);
+    if (!(upd ?? []).length) return NextResponse.json(errorResponse("La importación cambió mientras tanto. Actualizá la página."), { status: 409 });
     await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", id, hacia === "anulada" ? "ANULAR" : "CAMBIAR_ESTADO", {
       antes: imp.estado,
       despues: hacia,

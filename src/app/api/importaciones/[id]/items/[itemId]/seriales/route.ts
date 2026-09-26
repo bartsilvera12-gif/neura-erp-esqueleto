@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, registrarHistorial } from "@/lib/comex/server";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
 export async function GET(request: NextRequest, p: Params) {
   try {
     const { id, itemId } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data, error } = await ctx.supabase
       .from("importacion_seriales")
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest, p: Params) {
 export async function POST(request: NextRequest, p: Params) {
   try {
     const { id, itemId } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const [imp, item, actuales] = await Promise.all([
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest, p: Params) {
 
     const b = (await request.json().catch(() => ({}))) as { seriales?: unknown };
     const lista = (Array.isArray(b.seriales) ? b.seriales : [])
-      .map((s) => String(s ?? "").trim())
+      .map((s) => String(s ?? "").trim().toUpperCase().slice(0, 100))
       .filter(Boolean);
     if (!lista.length) return NextResponse.json(errorResponse("Escribí al menos un serial."), { status: 400 });
 
@@ -62,12 +61,14 @@ export async function POST(request: NextRequest, p: Params) {
       vistos.add(k);
     }
 
-    // Duplicados contra lo ya cargado en cualquier importación de la empresa.
-    const { data: existentes } = await ctx.supabase
+    if (lista.length > 500) return NextResponse.json(errorResponse("Cargá hasta 500 seriales por vez."), { status: 400 });
+    // Duplicados contra lo ya cargado en cualquier importación de la empresa (se guardan en mayúsculas).
+    const { data: existentes, error: exErr } = await ctx.supabase
       .from("importacion_seriales")
       .select("serial, importacion_id, importaciones(numero)")
       .eq("empresa_id", emp)
       .in("serial", lista);
+    if (exErr) throw new Error(exErr.message);
     const enOtras = ((existentes ?? []) as unknown as { serial: string; importaciones: { numero: string } | null }[]).map(
       (e) => `${e.serial} (ya está en ${e.importaciones?.numero ?? "otra importación"})`
     );
@@ -90,10 +91,13 @@ export async function POST(request: NextRequest, p: Params) {
 
     const { error } = await ctx.supabase
       .from("importacion_seriales")
-      .insert(lista.map((serial) => ({ empresa_id: emp, importacion_id: id, item_id: itemId, serial: serial.slice(0, 100) })));
+      .insert(lista.map((serial) => ({ empresa_id: emp, importacion_id: id, item_id: itemId, serial })));
     if (error) {
-      // Carrera con otra carga simultánea: el índice único lo frena igual.
-      if (/duplicate|unique/i.test(error.message)) return NextResponse.json(errorResponse("Algún serial ya estaba cargado. Actualizá y probá de nuevo."), { status: 400 });
+      // Carga simultánea u otro serial igual con distinta mayúscula: el índice único lo frena igual.
+      if (error.code === "23505") {
+        await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", id, "SERIAL_DUPLICADO_RECHAZADO", { producto: it.producto_nombre, detalle: ["algún serial ya estaba cargado"] });
+        return NextResponse.json(errorResponse("Algún serial ya estaba cargado, no se guardó nada. Revisá la lista."), { status: 400 });
+      }
       throw new Error(error.message);
     }
     await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", id, "AGREGAR_SERIALES", { producto: it.producto_nombre, seriales: lista });
@@ -108,7 +112,7 @@ export async function POST(request: NextRequest, p: Params) {
 export async function DELETE(request: NextRequest, p: Params) {
   try {
     const { id, itemId } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const serialId = new URL(request.url).searchParams.get("serialId");
     if (!serialId) return NextResponse.json(errorResponse("Falta el serial."), { status: 400 });
@@ -121,6 +125,7 @@ export async function DELETE(request: NextRequest, p: Params) {
       .from("importacion_seriales")
       .delete()
       .eq("empresa_id", ctx.auth.empresa_id)
+      .eq("importacion_id", id)
       .eq("item_id", itemId)
       .eq("id", serialId)
       .select("serial")

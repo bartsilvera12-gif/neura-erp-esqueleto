@@ -27,11 +27,14 @@ export default function ChecklistTab({ exp, onCambio }: { exp: Exportacion; onCa
     void cargar();
   }, [cargar]);
 
-  async function marcar(item: string, ok: boolean) {
+  async function marcar(item: string, ok: boolean, soloObservacion = false) {
     setGuardando(item);
     setError(null);
     try {
-      await api(`/api/exportaciones/${exp.id}/checklist`, jsonInit("POST", { item, ok, observacion: obs[item] ?? "" }));
+      await api(
+        `/api/exportaciones/${exp.id}/checklist`,
+        jsonInit("POST", { item, ok, observacion: obs[item] ?? "", solo_observacion: soloObservacion })
+      );
       await cargar();
       onCambio();
     } catch (e) {
@@ -77,14 +80,20 @@ export default function ChecklistTab({ exp, onCambio }: { exp: Exportacion; onCa
                   </p>
                 )}
               </div>
-              <input
-                value={obs[c.key] ?? ""}
-                onChange={(e) => setObs({ ...obs, [c.key]: e.target.value })}
-                onBlur={() => editable && (obs[c.key] ?? "") !== (r?.observacion ?? "") && void marcar(c.key, ok)}
-                disabled={!editable}
-                placeholder="Observación (opcional)"
-                className={`${inputClass} max-w-xs text-xs`}
-              />
+              <div className="flex w-full max-w-xs items-center gap-2 sm:w-auto">
+                <input
+                  value={obs[c.key] ?? ""}
+                  onChange={(e) => setObs({ ...obs, [c.key]: e.target.value })}
+                  disabled={!editable}
+                  placeholder="Observación (opcional)"
+                  className={`${inputClass} text-xs`}
+                />
+                {editable && (obs[c.key] ?? "") !== (r?.observacion ?? "") && (
+                  <button onClick={() => void marcar(c.key, ok, true)} disabled={guardando === c.key} className="shrink-0 text-xs font-medium text-emerald-700 hover:underline">
+                    Guardar
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { registrarHistorial } from "@/lib/comex/server";
+import { contenedorDeOperacion, getComexCtx, registrarHistorial } from "@/lib/comex/server";
 
 const COLS =
   "id, importacion_id, producto_id, producto_nombre, sku, cantidad, precio_unitario, moneda, subtotal, cantidad_recibida, observacion, contenedor_id";
@@ -12,7 +11,7 @@ const MONEDAS = new Set(["PYG", "USD", "BOB"]);
 export async function GET(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const [items, seriales] = await Promise.all([
       ctx.supabase
@@ -38,7 +37,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 export async function POST(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const { data: imp } = await ctx.supabase.from("importaciones").select("estado, moneda").eq("empresa_id", emp).eq("id", id).maybeSingle();
@@ -65,6 +64,9 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     if (!(cantidad > 0)) return NextResponse.json(errorResponse("La cantidad tiene que ser mayor a 0."), { status: 400 });
     if (!MONEDAS.has(moneda)) return NextResponse.json(errorResponse("Moneda no soportada."), { status: 400 });
     const precioOk = Number.isFinite(precio) && precio >= 0 ? precio : 0;
+    const contenedorId = b.contenedor_id ? String(b.contenedor_id) : null;
+    if (contenedorId && !(await contenedorDeOperacion(ctx.supabase, emp, "IMPORTACION", id, contenedorId)))
+      return NextResponse.json(errorResponse("Ese contenedor no es de esta importación."), { status: 400 });
 
     const { data, error } = await ctx.supabase
       .from("importacion_items")
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
         precio_unitario: precioOk,
         moneda,
         subtotal: cantidad * precioOk,
-        contenedor_id: b.contenedor_id ? String(b.contenedor_id) : null,
+        contenedor_id: contenedorId,
         observacion: b.observacion ? String(b.observacion).slice(0, 500) : null,
       })
       .select("id")

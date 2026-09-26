@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PackageCheck } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { Importacion, ImportacionItem, ImportacionRecepcion } from "@/lib/importaciones/types";
-import { Aviso, api, btnPrimario, fechaES, fechaHora, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "@/components/comex/ui";
+import { Aviso, api, btnPrimario, hoyPY, fechaES, fechaHora, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "@/components/comex/ui";
 
 const cant = (v: number) => Number(v).toLocaleString("es-PY");
 const PUEDE_RECIBIR = new Set(["arribado", "nacionalizada", "entregada"]);
@@ -23,9 +23,9 @@ export default function RecepcionTab({
   const terminada = recepciones.some((r) => r.final);
   const habilitada = PUEDE_RECIBIR.has(imp.estado) && !terminada;
   const [cantidades, setCantidades] = useState<Record<string, string>>({});
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyPY);
   const [obs, setObs] = useState("");
-  const [final, setFinal] = useState(true);
+  const [final, setFinal] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,8 @@ export default function RecepcionTab({
       const dif = total - Number(i.cantidad);
       return { i, nuevo, total, dif };
     })
-    .filter((x) => x.dif > 0 || (final && x.dif < 0));
+    // Igual que el servidor: el sobrante se avisa solo si lo causa esta carga.
+    .filter((x) => (x.dif > 0 && x.nuevo > 0) || (final && x.dif < 0));
 
   function completarTodo() {
     setCantidades(Object.fromEntries(items.map((i) => [i.id, String(Math.max(0, Number(i.cantidad) - Number(i.cantidad_recibida)))])));
@@ -147,7 +148,7 @@ export default function RecepcionTab({
           <label className="flex items-start gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={final} onChange={(e) => setFinal(e.target.checked)} className="mt-0.5" />
             <span>
-              <strong>Ya llegó todo lo que iba a llegar.</strong> Si falta algo, se crea una incidencia. Si todavía esperan otra parte, destildalo.
+              <strong>Ya llegó todo lo que iba a llegar.</strong> Tildalo solo en la última entrega: cierra la recepción y, si falta algo, crea una incidencia.
             </span>
           </label>
           {error && <Aviso>{error}</Aviso>}

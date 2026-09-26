@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, registrarHistorial } from "@/lib/comex/server";
 
 const CONTENEDOR_COLS =
   "id, numero, tipo_operacion, importacion_id, exportacion_id, estado, naviera, fecha_prevista, fecha_real, observaciones, created_at, updated_at";
@@ -10,7 +9,7 @@ const CONTENEDOR_COLS =
 export async function GET(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data, error } = await ctx.supabase
       .from("comex_contenedores")
@@ -29,7 +28,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 export async function POST(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const { data: imp } = await ctx.supabase.from("importaciones").select("estado, numero").eq("empresa_id", emp).eq("id", id).maybeSingle();

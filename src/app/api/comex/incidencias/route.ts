@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { ORIGENES, nombreUsuario, origenDeEmpresa, registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, esUuid, operacionCerrada, operacionDeOrigen, ORIGENES, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import type { OrigenComex } from "@/lib/comex/types";
 
 const COLS =
@@ -12,7 +11,7 @@ const COLS =
 /** GET ?origen_tipo=&origen_id=&estado=abiertas|todas */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const sp = new URL(request.url).searchParams;
     let q = ctx.supabase.from("comex_incidencias").select(COLS).eq("empresa_id", ctx.auth.empresa_id).order("created_at", { ascending: false }).limit(500);
@@ -33,18 +32,19 @@ export async function GET(request: NextRequest) {
 /** POST: incidencia cargada a mano (QA-03), vinculada a una operación. */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const origenTipo = String(b.origen_tipo ?? "") as OrigenComex;
     const origenId = String(b.origen_id ?? "");
     if (!ORIGENES.has(origenTipo) || !origenId) return NextResponse.json(errorResponse("Falta la operación."), { status: 400 });
-    if (!(await origenDeEmpresa(ctx.supabase, ctx.auth.empresa_id, origenTipo, origenId)))
-      return NextResponse.json(errorResponse("Operación no encontrada."), { status: 404 });
+    const op = await operacionDeOrigen(ctx.supabase, ctx.auth.empresa_id, origenTipo, origenId);
+    if (!op) return NextResponse.json(errorResponse("Operación no encontrada."), { status: 404 });
+    if (operacionCerrada(op.estado)) return NextResponse.json(errorResponse("La operación está cerrada o anulada."), { status: 400 });
     const descripcion = String(b.descripcion ?? "").trim();
     if (!descripcion) return NextResponse.json(errorResponse("Describí la incidencia."), { status: 400 });
     const prioridad = ["baja", "media", "alta"].includes(String(b.prioridad)) ? String(b.prioridad) : "media";
-    const responsableNombre = b.responsable_nombre ? String(b.responsable_nombre).trim() : null;
+    const responsableNombre = b.responsable_nombre ? String(b.responsable_nombre).trim().slice(0, 200) : null;
 
     const { data, error } = await ctx.supabase
       .from("comex_incidencias")
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         descripcion: descripcion.slice(0, 2000),
         prioridad,
         estado: responsableNombre ? "asignado" : "detectado",
-        responsable_id: b.responsable_id ? String(b.responsable_id) : null,
+        responsable_id: esUuid(b.responsable_id) ? b.responsable_id : null,
         responsable_nombre: responsableNombre,
         created_by_nombre: nombreUsuario(ctx.auth),
       })

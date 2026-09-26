@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { diferencias, registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, contenedorDeOperacion, diferencias, registrarHistorial } from "@/lib/comex/server";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
 async function cargar(request: NextRequest, p: Params) {
   const { id, itemId } = await p.params;
-  const ctx = await getTenantSupabaseFromAuthWithRol(request);
+  const ctx = await getComexCtx(request);
   if (!ctx) return { res: NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 }) };
   const emp = ctx.auth.empresa_id;
   const [exp, item] = await Promise.all([
@@ -36,7 +35,10 @@ export async function PATCH(request: NextRequest, p: Params) {
     if (b.contenedor_id !== undefined) {
       if (!["preparacion", "documentacion"].includes(estado))
         return NextResponse.json(errorResponse("El contenedor se asigna antes de aprobar el despacho."), { status: 400 });
-      update.contenedor_id = b.contenedor_id || null;
+      const cid = b.contenedor_id ? String(b.contenedor_id) : null;
+      if (cid && !(await contenedorDeOperacion(ctx.supabase, ctx.auth.empresa_id, "EXPORTACION", id, cid)))
+        return NextResponse.json(errorResponse("Ese contenedor no es de esta exportación."), { status: 400 });
+      update.contenedor_id = cid;
     }
     if (b.producto_id !== undefined || b.cantidad !== undefined) {
       if (estado !== "preparacion")

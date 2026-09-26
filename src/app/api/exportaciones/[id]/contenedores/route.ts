@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, registrarHistorial } from "@/lib/comex/server";
 
 const COLS =
   "id, numero, tipo_operacion, importacion_id, exportacion_id, estado, naviera, fecha_prevista, fecha_real, observaciones, created_at, updated_at";
@@ -10,7 +9,7 @@ const COLS =
 export async function GET(request: NextRequest, p: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data, error } = await ctx.supabase
       .from("comex_contenedores")
@@ -29,14 +28,14 @@ export async function GET(request: NextRequest, p: { params: Promise<{ id: strin
 export async function POST(request: NextRequest, p: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const { data: exp } = await ctx.supabase.from("exportaciones").select("estado, numero").eq("empresa_id", emp).eq("id", id).maybeSingle();
     if (!exp) return NextResponse.json(errorResponse("Exportación no encontrada."), { status: 404 });
     const estado = (exp as { estado: string }).estado;
-    if (estado === "anulada" || estado === "cerrada")
-      return NextResponse.json(errorResponse("La exportación está cerrada o anulada."), { status: 400 });
+    if (estado !== "preparacion" && estado !== "documentacion")
+      return NextResponse.json(errorResponse("Los contenedores se agregan antes de aprobar el despacho."), { status: 400 });
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const numero = String(b.numero ?? "").trim().toUpperCase();
     if (!numero) return NextResponse.json(errorResponse("Escribí el número del contenedor."), { status: 400 });

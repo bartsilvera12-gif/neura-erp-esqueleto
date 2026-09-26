@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { diferencias, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, esUuid, operacionCerrada, operacionDeOrigen, diferencias, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import { ESTADO_INCIDENCIA_LABEL, FLUJO_INCIDENCIA } from "@/lib/comex/estados";
 import type { EstadoIncidencia, OrigenComex } from "@/lib/comex/types";
 
@@ -16,18 +15,20 @@ const COLS = "id, origen_tipo, origen_id, estado, descripcion, prioridad, respon
 export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data } = await ctx.supabase.from("comex_incidencias").select(COLS).eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
     const antes = data as unknown as (Record<string, unknown> & { estado: EstadoIncidencia; origen_tipo: OrigenComex; origen_id: string; accion_correctiva: string | null; descripcion: string }) | null;
     if (!antes) return NextResponse.json(errorResponse("Incidencia no encontrada."), { status: 404 });
     if (antes.estado === "verificado") return NextResponse.json(errorResponse("La incidencia ya está verificada y cerrada."), { status: 400 });
+    const op = await operacionDeOrigen(ctx.supabase, ctx.auth.empresa_id, antes.origen_tipo, antes.origen_id);
+    if (!op || operacionCerrada(op.estado)) return NextResponse.json(errorResponse("La operación está cerrada o anulada."), { status: 400 });
 
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const update: Record<string, unknown> = {};
     if (b.responsable_nombre !== undefined) {
       update.responsable_nombre = b.responsable_nombre ? String(b.responsable_nombre).trim() : null;
-      update.responsable_id = b.responsable_id ? String(b.responsable_id) : null;
+      update.responsable_id = esUuid(b.responsable_id) ? b.responsable_id : null;
     }
     if (b.accion_correctiva !== undefined) update.accion_correctiva = b.accion_correctiva ? String(b.accion_correctiva).slice(0, 2000) : null;
     if (b.prioridad !== undefined && ["baja", "media", "alta"].includes(String(b.prioridad))) update.prioridad = String(b.prioridad);

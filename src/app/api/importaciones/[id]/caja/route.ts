@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, registrarHistorial } from "@/lib/comex/server";
 
 const COLS =
   "id, importacion_id, tipo, concepto, monto, moneda, tipo_cambio, fecha, referencia, observacion, banco_movimiento_id, usuario_nombre, created_at";
@@ -12,7 +11,7 @@ const MONEDAS = new Set(["PYG", "USD", "BOB"]);
 export async function GET(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data, error } = await ctx.supabase
       .from("importacion_caja")
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 export async function POST(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const tipo = String(b.tipo ?? "").trim();
@@ -47,8 +46,9 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     if (!MONEDAS.has(moneda)) return NextResponse.json(errorResponse("Moneda no soportada."), { status: 400 });
     const { data: imp } = await ctx.supabase.from("importaciones").select("estado").eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
     if (!imp) return NextResponse.json(errorResponse("Importación no encontrada."), { status: 404 });
-    if ((imp as { estado: string }).estado === "anulada")
-      return NextResponse.json(errorResponse("La importación está anulada."), { status: 400 });
+    const est = (imp as { estado: string }).estado;
+    if (est === "anulada" || est === "cerrada")
+      return NextResponse.json(errorResponse("La importación está cerrada o anulada."), { status: 400 });
 
     const { data, error } = await ctx.supabase
       .from("importacion_caja")

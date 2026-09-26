@@ -23,6 +23,7 @@ export default function VinculosCard({
 }) {
   const [opciones, setOpciones] = useState<{ facturas: VinculoFactura[]; remisiones: VinculoRemision[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [eligiendo, setEligiendo] = useState<{ factura: string; remision: string }>({ factura: "", remision: "" });
   // Se puede cambiar el vínculo hasta aprobar el despacho (la nota de remisión, hasta despachar).
   const puedeFactura = exp.estado === "preparacion" || exp.estado === "documentacion";
   const puedeRemision = puedeFactura || exp.estado === "aprobada";
@@ -41,6 +42,8 @@ export default function VinculosCard({
       onCambio();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setEligiendo({ factura: "", remision: "" });
     }
   }
 
@@ -75,7 +78,14 @@ export default function VinculosCard({
             </div>
           ) : puedeFactura ? (
             <div className="mt-2 space-y-2">
-              <select defaultValue="" onChange={(e) => e.target.value && void vincular("factura_id", e.target.value)} className={inputClass}>
+              <select
+                value={eligiendo.factura}
+                onChange={(e) => {
+                  setEligiendo({ ...eligiendo, factura: e.target.value });
+                  if (e.target.value) void vincular("factura_id", e.target.value);
+                }}
+                className={inputClass}
+              >
                 <option value="">— Elegir una factura emitida —</option>
                 {opciones?.facturas.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -121,7 +131,14 @@ export default function VinculosCard({
             </div>
           ) : puedeRemision ? (
             <div className="mt-2 space-y-2">
-              <select defaultValue="" onChange={(e) => e.target.value && void vincular("nota_remision_id", e.target.value)} className={inputClass}>
+              <select
+                value={eligiendo.remision}
+                onChange={(e) => {
+                  setEligiendo({ ...eligiendo, remision: e.target.value });
+                  if (e.target.value) void vincular("nota_remision_id", e.target.value);
+                }}
+                className={inputClass}
+              >
                 <option value="">— Elegir una nota de remisión —</option>
                 {opciones?.remisiones.map((n) => (
                   <option key={n.id} value={n.id}>

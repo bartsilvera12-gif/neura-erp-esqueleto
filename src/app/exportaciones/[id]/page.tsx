@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, Circle } from "lucide-react";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import type { EstadoExportacion, Exportacion, ExportacionItem, VinculoFactura, VinculoRemision } from "@/lib/exportaciones/types";
@@ -54,6 +54,7 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
   const [incAbiertas, setIncAbiertas] = useState(0);
   const [tab, setTab] = useState<Tab>("datos");
   const [ficha, setFicha] = useState<ExpFicha | null>(null);
+  const fichaServidor = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -72,7 +73,10 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
         api<{ incidencias: Incidencia[] }>(`/api/comex/incidencias?origen_tipo=EXPORTACION&origen_id=${id}`),
       ]);
       setExp(d.exportacion);
-      setFicha(aFicha(d.exportacion));
+      // Si hay cambios sin guardar en Datos, no se pisan al recargar por otra pestaña.
+      const nueva = aFicha(d.exportacion);
+      setFicha((actual) => (actual === null || JSON.stringify(actual) === fichaServidor.current ? nueva : actual));
+      fichaServidor.current = JSON.stringify(nueva);
       setSiguiente(d.siguiente);
       setFaltantes(d.faltantes);
       setFactura(d.factura);

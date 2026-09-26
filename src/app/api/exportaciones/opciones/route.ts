@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { getComexCtx } from "@/lib/comex/server";
 
 /**
  * GET ?exportacion_id= — facturas de exportación emitidas y notas de remisión
@@ -9,7 +9,7 @@ import { API_ERRORS } from "@/lib/api/errors";
  */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const propia = new URL(request.url).searchParams.get("exportacion_id");
@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
         .limit(300),
       ctx.supabase.from("exportaciones").select("id, factura_id, nota_remision_id").eq("empresa_id", emp),
     ]);
-    if (fac.error) throw new Error(fac.error.message);
+    const err = fac.error ?? nrs.error ?? usadas.error;
+    if (err) throw new Error(err.message);
     const otras = ((usadas.data ?? []) as { id: string; factura_id: string | null; nota_remision_id: string | null }[]).filter((e) => e.id !== propia);
     const facturasUsadas = new Set(otras.map((e) => e.factura_id).filter(Boolean));
     const nrUsadas = new Set(otras.map((e) => e.nota_remision_id).filter(Boolean));

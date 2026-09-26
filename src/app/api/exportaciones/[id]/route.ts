@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
-import { diferencias, registrarHistorial } from "@/lib/comex/server";
-import { siguienteExportacion } from "@/lib/comex/estados";
+import { getComexCtx, esResponsable, esUuid, diferencias, registrarHistorial } from "@/lib/comex/server";
+import { FLUJO_EXPORTACION, siguienteExportacion } from "@/lib/comex/estados";
 import { faltantesExportacion } from "@/lib/exportaciones/validar";
 import { EXPORTACION_COLS, type EstadoExportacion } from "@/lib/exportaciones/types";
 
@@ -14,7 +13,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, p: Params) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const { data, error } = await ctx.supabase.from("exportaciones").select(EXPORTACION_COLS).eq("empresa_id", emp).eq("id", id).maybeSingle();
@@ -50,11 +49,11 @@ export async function GET(request: NextRequest, p: Params) {
 export async function PATCH(request: NextRequest, p: Params) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const prev = await ctx.supabase.from("exportaciones").select(EXPORTACION_COLS).eq("empresa_id", emp).eq("id", id).maybeSingle();
-    const antes = prev.data as unknown as (Record<string, unknown> & { estado: string; requiere_proforma: boolean }) | null;
+    const antes = prev.data as unknown as (Record<string, unknown> & { estado: string; requiere_proforma: boolean; responsable_id: string | null }) | null;
     if (!antes) return NextResponse.json(errorResponse("Exportación no encontrada."), { status: 404 });
     if (antes.estado === "anulada" || antes.estado === "cerrada")
       return NextResponse.json(errorResponse("La exportación está cerrada o anulada; no se puede modificar."), { status: 400 });
@@ -80,10 +79,36 @@ export async function PATCH(request: NextRequest, p: Params) {
       if (k in update && !String(update[k] ?? "").trim())
         return NextResponse.json(errorResponse(`No se puede dejar vacío ${label}.`), { status: 400 });
     }
+    if ("cliente_id" in update && update.cliente_id !== null && !esUuid(update.cliente_id)) update.cliente_id = null;
+    if ("responsable_id" in update && update.responsable_id !== null && !esUuid(update.responsable_id))
+      return NextResponse.json(errorResponse("Responsable inválido."), { status: 400 });
+
+    const armando = antes.estado === "preparacion" || antes.estado === "documentacion";
+    // Las fechas que exigió el estado actual no se pueden borrar.
+    const idxEstado = FLUJO_EXPORTACION.indexOf(antes.estado as EstadoExportacion);
+    for (const [k, desde, label] of [
+      ["fecha_comprometida_embarque", "documentacion", "embarque comprometido"],
+      ["fecha_embarque", "despachada", "embarque"],
+      ["fecha_entrega", "entregada", "entrega"],
+    ] as const) {
+      if (k in update && !update[k] && idxEstado >= FLUJO_EXPORTACION.indexOf(desde))
+        return NextResponse.json(errorResponse(`La fecha de ${label} no se puede borrar en este estado.`), { status: 400 });
+    }
+    const esAdmin = esRolAdminEmpresaOGlobal(ctx.auth.rol);
+    // Cliente, destino y responsable quedan fijos cuando el despacho ya se aprobó.
+    const cambiaDatosEnvio = ["cliente_id", "cliente_nombre", "pais_destino", "responsable_id", "responsable_nombre"].some(
+      (k) => k in update && String(update[k] ?? "") !== String(antes[k] ?? "")
+    );
+    if (cambiaDatosEnvio && !armando)
+      return NextResponse.json(errorResponse("Cliente, destino y responsable no se cambian después de aprobar el despacho."), { status: 400 });
+    // El responsable lo cambia un administrador o el responsable actual.
+    if (String(update.responsable_id ?? antes.responsable_id ?? "") !== String(antes.responsable_id ?? "") && "responsable_id" in update && !esAdmin && !esResponsable(ctx.auth, antes.responsable_id))
+      return NextResponse.json(errorResponse("El responsable lo cambia un administrador o el responsable actual."), { status: 403 });
 
     // Regla de proforma: configurable por operación, solo admin y con motivo.
     if (b.requiere_proforma !== undefined && Boolean(b.requiere_proforma) !== antes.requiere_proforma) {
-      if (!esRolAdminEmpresaOGlobal(ctx.auth.rol))
+      if (!armando) return NextResponse.json(errorResponse("Lo de la proforma se define antes de aprobar el despacho."), { status: 400 });
+      if (!esAdmin)
         return NextResponse.json(errorResponse("Solo un administrador puede cambiar si lleva proforma."), { status: 403 });
       const motivo = String(b.motivo_sin_proforma ?? "").trim();
       if (!b.requiere_proforma && !motivo)
@@ -93,8 +118,10 @@ export async function PATCH(request: NextRequest, p: Params) {
     }
 
     // Factura: de exportación, emitida (o de prueba), y no vinculada a otro envío.
-    if (b.factura_id !== undefined) {
+    if (b.factura_id !== undefined && String(b.factura_id || "") !== String(antes.factura_id ?? "")) {
+      if (!armando) return NextResponse.json(errorResponse("La factura se cambia antes de aprobar el despacho."), { status: 400 });
       const fid = b.factura_id ? String(b.factura_id) : null;
+      if (fid && !esUuid(fid)) return NextResponse.json(errorResponse("Factura inválida."), { status: 400 });
       if (fid) {
         const { data: f } = await ctx.supabase.from("facturas_exportacion").select("tipo, estado, numero_formateado").eq("empresa_id", emp).eq("id", fid).maybeSingle();
         const fac = f as { tipo: string; estado: string; numero_formateado: string | null } | null;
@@ -106,8 +133,11 @@ export async function PATCH(request: NextRequest, p: Params) {
       }
       update.factura_id = fid;
     }
-    if (b.nota_remision_id !== undefined) {
+    if (b.nota_remision_id !== undefined && String(b.nota_remision_id || "") !== String(antes.nota_remision_id ?? "")) {
+      if (!armando && antes.estado !== "aprobada")
+        return NextResponse.json(errorResponse("La nota de remisión se cambia antes de despachar."), { status: 400 });
       const nid = b.nota_remision_id ? String(b.nota_remision_id) : null;
+      if (nid && !esUuid(nid)) return NextResponse.json(errorResponse("Nota de remisión inválida."), { status: 400 });
       if (nid) {
         const { data: n } = await ctx.supabase.from("notas_remision").select("estado").eq("empresa_id", emp).eq("id", nid).maybeSingle();
         const nr = n as { estado: string } | null;
@@ -139,7 +169,7 @@ export async function PATCH(request: NextRequest, p: Params) {
 export async function DELETE(request: NextRequest, p: Params) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const { data } = await ctx.supabase.from("exportaciones").select("estado, factura_id, nota_remision_id").eq("empresa_id", emp).eq("id", id).maybeSingle();

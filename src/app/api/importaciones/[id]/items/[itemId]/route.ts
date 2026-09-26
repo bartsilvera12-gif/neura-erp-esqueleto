@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { diferencias, registrarHistorial } from "@/lib/comex/server";
+import { contenedorDeOperacion, getComexCtx, diferencias, registrarHistorial } from "@/lib/comex/server";
 
 type Params = { params: Promise<{ id: string; itemId: string }> };
 
 async function cargar(request: NextRequest, p: Params) {
   const { id, itemId } = await p.params;
-  const ctx = await getTenantSupabaseFromAuthWithRol(request);
+  const ctx = await getComexCtx(request);
   if (!ctx) return { res: NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 }) };
   const emp = ctx.auth.empresa_id;
   const [imp, item] = await Promise.all([
     ctx.supabase.from("importaciones").select("estado").eq("empresa_id", emp).eq("id", id).maybeSingle(),
     ctx.supabase
       .from("importacion_items")
-      .select("id, producto_id, producto_nombre, sku, cantidad, precio_unitario, contenedor_id, observacion")
+      .select("id, producto_id, producto_nombre, sku, cantidad, precio_unitario, subtotal, contenedor_id, observacion")
       .eq("empresa_id", emp)
       .eq("importacion_id", id)
       .eq("id", itemId)
@@ -38,7 +37,12 @@ export async function PATCH(request: NextRequest, p: Params) {
       return NextResponse.json(errorResponse("La importación está cerrada o anulada."), { status: 400 });
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const update: Record<string, unknown> = {};
-    if (b.contenedor_id !== undefined) update.contenedor_id = b.contenedor_id || null;
+    if (b.contenedor_id !== undefined) {
+      const cid = b.contenedor_id ? String(b.contenedor_id) : null;
+      if (cid && !(await contenedorDeOperacion(ctx.supabase, ctx.auth.empresa_id, "IMPORTACION", id, cid)))
+        return NextResponse.json(errorResponse("Ese contenedor no es de esta importación."), { status: 400 });
+      update.contenedor_id = cid;
+    }
     if (b.observacion !== undefined) update.observacion = b.observacion ? String(b.observacion).slice(0, 500) : null;
 
     const tocaPedido = b.producto_id !== undefined || b.cantidad !== undefined || b.precio_unitario !== undefined;

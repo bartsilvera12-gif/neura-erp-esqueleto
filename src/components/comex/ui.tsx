@@ -30,6 +30,9 @@ export const jsonInit = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
+/** Fecha de hoy en Paraguay (AAAA-MM-DD); toISOString daría mañana a la noche. */
+export const hoyPY = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion" });
+
 export function fechaES(iso?: string | null) {
   if (!iso) return "—";
   const [y, m, d] = iso.slice(0, 10).split("-");

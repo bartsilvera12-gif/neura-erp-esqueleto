@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PaisSelect from "@/components/ui/PaisSelect";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
-import { ResponsableSelect, inputClass, labelClass, noRueda, sinFlechas, useUsuarios } from "@/components/comex/ui";
+import { ResponsableSelect, hoyPY, inputClass, labelClass, noRueda, sinFlechas, useUsuarios } from "@/components/comex/ui";
 
 export interface Ficha {
   proveedor_id: string | null;
@@ -32,7 +32,7 @@ export const fichaVacia = (): Ficha => ({
   moneda: "USD",
   tipo_cambio: "",
   monto_estimado: "",
-  fecha_pedido: new Date().toISOString().slice(0, 10),
+  fecha_pedido: hoyPY(),
   fecha_embarque: "",
   fecha_arribo: "",
   fecha_nacionalizacion: "",
@@ -99,8 +99,9 @@ export default function FichaForm({
       <div>
         <label className={labelClass}>Proveedor *</label>
         <select
-          value={ficha.proveedor_id ?? ""}
+          value={ficha.proveedor_id ?? (ficha.proveedor_nombre ? "__manual__" : "")}
           onChange={(e) => {
+            if (e.target.value === "__manual__") return;
             const p = proveedores.find((x) => x.id === e.target.value);
             onChange({ ...ficha, proveedor_id: p?.id ?? null, proveedor_nombre: p?.nombre ?? "" });
           }}
@@ -108,7 +109,7 @@ export default function FichaForm({
         >
           <option value="">— Elegir —</option>
           {!proveedorConocido && <option value={ficha.proveedor_id ?? ""}>{ficha.proveedor_nombre}</option>}
-          {!ficha.proveedor_id && ficha.proveedor_nombre && <option value="">{ficha.proveedor_nombre} (escrito a mano)</option>}
+          {!ficha.proveedor_id && ficha.proveedor_nombre && <option value="__manual__">{ficha.proveedor_nombre} (cargado a mano)</option>}
           {proveedores.map((p) => (
             <option key={p.id} value={p.id}>
               {p.nombre}

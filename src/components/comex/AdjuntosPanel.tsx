@@ -7,8 +7,18 @@ import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session"
 import type { AdjuntoComex, OrigenComex } from "@/lib/comex/types";
 import { Aviso, api, btnPrimario, fechaHora, inputClass, labelClass } from "./ui";
 
-const CATEGORIAS = [
+const CATEGORIAS_IMPORTACION = [
   "Factura del proveedor",
+  "Proforma",
+  "Packing list",
+  "Conocimiento de embarque",
+  "Despacho aduanero",
+  "Certificado de origen",
+  "Seguro",
+  "Fotos",
+  "Otro",
+];
+const CATEGORIAS_EXPORTACION = [
   "Proforma",
   "Packing list",
   "Conocimiento de embarque",
@@ -22,6 +32,7 @@ const CATEGORIAS = [
 /** Documentos de una operación: subir, abrir y quitar. */
 export default function AdjuntosPanel({ origenTipo, origenId, bloqueado }: { origenTipo: OrigenComex; origenId: string; bloqueado?: boolean }) {
   const [lista, setLista] = useState<AdjuntoComex[]>([]);
+  const CATEGORIAS = origenTipo === "EXPORTACION" ? CATEGORIAS_EXPORTACION : CATEGORIAS_IMPORTACION;
   const [categoria, setCategoria] = useState(CATEGORIAS[0]);
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);

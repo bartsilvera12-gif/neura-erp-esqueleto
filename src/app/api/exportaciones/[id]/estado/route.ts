@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
-import { nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, esResponsable, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import { ESTADO_EXPORTACION_LABEL, FLUJO_EXPORTACION, transicionExportacionValida } from "@/lib/comex/estados";
 import { faltantesExportacion } from "@/lib/exportaciones/validar";
 import { EXPORTACION_COLS, type EstadoExportacion } from "@/lib/exportaciones/types";
@@ -15,7 +14,7 @@ import { EXPORTACION_COLS, type EstadoExportacion } from "@/lib/exportaciones/ty
 export async function POST(request: NextRequest, p: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await p.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const b = (await request.json().catch(() => ({}))) as { estado?: string; motivo?: string };
     const hacia = String(b.estado ?? "") as EstadoExportacion;
@@ -23,7 +22,7 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
 
     const { data } = await ctx.supabase.from("exportaciones").select(EXPORTACION_COLS).eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
     if (!data) return NextResponse.json(errorResponse("Exportación no encontrada."), { status: 404 });
-    const exp = data as unknown as Parameters<typeof faltantesExportacion>[2] & { estado: EstadoExportacion; responsable_id: string | null };
+    const exp = data as unknown as Parameters<typeof faltantesExportacion>[2] & { estado: EstadoExportacion; responsable_id: string | null; numero: string };
 
     if (!transicionExportacionValida(exp.estado, hacia))
       return NextResponse.json(
@@ -37,7 +36,7 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
       if (!motivo) return NextResponse.json(errorResponse("Escribí el motivo de la anulación."), { status: 400 });
     }
     // Aprobar el despacho: el responsable del envío o un administrador.
-    if (hacia === "aprobada" && !esAdmin && exp.responsable_id !== (ctx.auth.usuarioCatalogId ?? null))
+    if (hacia === "aprobada" && FLUJO_EXPORTACION.indexOf(exp.estado) < FLUJO_EXPORTACION.indexOf("aprobada") && !esAdmin && !esResponsable(ctx.auth, exp.responsable_id))
       return NextResponse.json(errorResponse("El despacho lo aprueba el responsable del envío o un administrador."), { status: 403 });
 
     const avanza = FLUJO_EXPORTACION.indexOf(hacia) > FLUJO_EXPORTACION.indexOf(exp.estado);
@@ -49,7 +48,8 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
     }
 
     const extra: Record<string, unknown> = {};
-    if (hacia === "anulada") extra.anulada_motivo = motivo;
+    // Anular libera la factura y la nota de remisión para poder usarlas en otro envío.
+    if (hacia === "anulada") Object.assign(extra, { anulada_motivo: motivo, factura_id: null, nota_remision_id: null });
     if (hacia === "aprobada") {
       extra.aprobada_por_nombre = nombreUsuario(ctx.auth);
       extra.aprobada_at = new Date().toISOString();
@@ -59,16 +59,35 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
       extra.aprobada_por_nombre = null;
       extra.aprobada_at = null;
     }
-    const { error } = await ctx.supabase
+    const { data: upd, error } = await ctx.supabase
       .from("exportaciones")
       .update({ estado: hacia, updated_at: new Date().toISOString(), ...extra })
       .eq("empresa_id", ctx.auth.empresa_id)
-      .eq("id", id);
+      .eq("id", id)
+      .eq("estado", exp.estado) // si otro lo cambió recién, no se pisa
+      .select("id");
     if (error) throw new Error(error.message);
+    if (!(upd ?? []).length) return NextResponse.json(errorResponse("La exportación cambió mientras tanto. Actualizá la página."), { status: 409 });
+
+    // Al volver atrás, los controles hechos dejan de valer: hay que revisar de nuevo.
+    const reset = exp.estado === "aprobada" && hacia === "documentacion" ? ["aprobacion_responsable"] : hacia === "preparacion" ? null : undefined;
+    if (reset !== undefined) {
+      let q = ctx.supabase
+        .from("exportacion_checklist")
+        .update({ ok: false, usuario_id: ctx.auth.usuarioCatalogId ?? null, usuario_nombre: nombreUsuario(ctx.auth), updated_at: new Date().toISOString() })
+        .eq("empresa_id", ctx.auth.empresa_id)
+        .eq("exportacion_id", id)
+        .eq("ok", true);
+      if (reset) q = q.in("item", reset);
+      await q;
+    }
     await registrarHistorial(ctx.supabase, ctx.auth, "EXPORTACION", id, hacia === "anulada" ? "ANULAR" : hacia === "aprobada" ? "APROBAR_DESPACHO" : "CAMBIAR_ESTADO", {
       antes: exp.estado,
       despues: hacia,
       ...(motivo ? { motivo } : {}),
+      ...(hacia === "anulada" && (exp.factura_id || exp.nota_remision_id) ? { detalle: ["Se liberaron la factura y la nota de remisión vinculadas."] } : {}),
+      ...(exp.estado === "aprobada" && hacia === "documentacion" ? { detalle: ["La aprobación del responsable se desmarcó: hay que volver a aprobar."] } : {}),
+      ...(hacia === "preparacion" ? { detalle: ["Los controles de despacho se desmarcaron: hay que revisarlos de nuevo."] } : {}),
     });
     return NextResponse.json(successResponse({ id, estado: hacia }));
   } catch (err) {

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { ORIGENES } from "@/lib/comex/server";
+import { getComexCtx, ORIGENES } from "@/lib/comex/server";
 import type { OrigenComex } from "@/lib/comex/types";
 
 /** GET ?origen_tipo=&origen_id= — historial de una operación, lo más nuevo primero. */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const sp = new URL(request.url).searchParams;
     const ot = sp.get("origen_tipo") as OrigenComex | null;

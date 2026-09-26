@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { Importacion, ImportacionCajaMov } from "@/lib/importaciones/types";
-import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaES, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "@/components/comex/ui";
+import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaES, hoyPY, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "@/components/comex/ui";
 
 const money = (v: number, m: string) => `${m} ${Number(v).toLocaleString("es-PY", { maximumFractionDigits: 2 })}`;
 
@@ -70,7 +70,7 @@ function ModalCaja({ imp, onClose, onSaved }: { imp: Importacion; onClose: () =>
   const [tipo, setTipo] = useState<"entrada" | "salida">("salida");
   const [concepto, setConcepto] = useState("");
   const [monto, setMonto] = useState("");
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyPY);
   const [ref, setRef] = useState("");
   const [obs, setObs] = useState("");
   const [saving, setSaving] = useState(false);

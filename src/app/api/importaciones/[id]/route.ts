@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { diferencias, registrarHistorial } from "@/lib/comex/server";
-import { siguienteImportacion } from "@/lib/comex/estados";
+import { getComexCtx, diferencias, registrarHistorial } from "@/lib/comex/server";
+import { FLUJO_IMPORTACION, siguienteImportacion } from "@/lib/comex/estados";
 import { faltantesParaEstado } from "@/lib/importaciones/validar";
 import type { EstadoImportacion } from "@/lib/importaciones/types";
 
@@ -18,7 +17,7 @@ const MONEDAS = new Set(["PYG", "USD", "BOB"]);
 export async function GET(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { data, error } = await ctx.supabase
       .from("importaciones")
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const prev = await ctx.supabase.from("importaciones").select(COLS).eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
     if (prev.error) throw new Error(prev.error.message);
@@ -78,6 +77,22 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
       if (k in update && !String(update[k] ?? "").trim())
         return NextResponse.json(errorResponse(`No se puede dejar vacío ${label}.`), { status: 400 });
     }
+    // Las fechas que exigió el estado actual no se pueden borrar.
+    const idx = FLUJO_IMPORTACION.indexOf(antes.estado as EstadoImportacion);
+    for (const [k, desde, label] of [
+      ["fecha_embarque", "en_transito", "embarque"],
+      ["fecha_arribo", "arribado", "arribo"],
+      ["fecha_nacionalizacion", "nacionalizada", "nacionalización"],
+    ] as const) {
+      if (k in update && !update[k] && idx >= FLUJO_IMPORTACION.indexOf(desde))
+        return NextResponse.json(errorResponse(`La fecha de ${label} no se puede borrar en este estado.`), { status: 400 });
+    }
+    if (update.moneda !== undefined && update.moneda !== antes.moneda) {
+      const { count } = await ctx.supabase.from("importacion_items").select("id", { count: "exact", head: true }).eq("empresa_id", ctx.auth.empresa_id).eq("importacion_id", id);
+      const cj = await ctx.supabase.from("importacion_caja").select("id", { count: "exact", head: true }).eq("empresa_id", ctx.auth.empresa_id).eq("importacion_id", id);
+      if ((count ?? 0) + (cj.count ?? 0) > 0)
+        return NextResponse.json(errorResponse("La moneda no se puede cambiar cuando ya hay mercadería o movimientos de caja."), { status: 400 });
+    }
     if (update.moneda !== undefined && !MONEDAS.has(String(update.moneda)))
       return NextResponse.json(errorResponse("Moneda no soportada."), { status: 400 });
     for (const k of ["monto_estimado", "tipo_cambio"] as const) {
@@ -111,7 +126,7 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
 export async function DELETE(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
     const { data } = await ctx.supabase.from("importaciones").select("estado").eq("empresa_id", emp).eq("id", id).maybeSingle();

@@ -11,8 +11,6 @@ export interface ProductoLista {
   costo_promedio?: number | null;
 }
 
-let cache: ProductoLista[] | null = null;
-
 /** Buscador de productos del inventario (por nombre o código). */
 export default function ProductoBuscador({
   valor,
@@ -23,18 +21,15 @@ export default function ProductoBuscador({
   onElegir: (p: ProductoLista) => void;
   autoFocus?: boolean;
 }) {
-  const [productos, setProductos] = useState<ProductoLista[]>(cache ?? []);
+  const [productos, setProductos] = useState<ProductoLista[]>([]);
   const [texto, setTexto] = useState(valor?.nombre ?? "");
   const [abierto, setAbierto] = useState(false);
 
+  // Se pide cada vez que se abre, así aparecen los productos recién creados.
   useEffect(() => {
-    if (cache) return;
     fetchWithSupabaseSession("/api/productos", { cache: "no-store" })
       .then((r) => r.json())
-      .then((j) => {
-        cache = (j?.data?.productos ?? []) as ProductoLista[];
-        setProductos(cache);
-      })
+      .then((j) => setProductos((j?.data?.productos ?? []) as ProductoLista[]))
       .catch(() => undefined);
   }, []);
 
