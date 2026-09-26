@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
+import { supabase } from "@/lib/supabase";
 
 export const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50 disabled:text-slate-500";
@@ -16,9 +17,16 @@ export const btnSecundario =
 export const sinFlechas = "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 export const noRueda = (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur();
 
-/** fetch a la API propia; devuelve `data` o tira el error en castellano que manda el servidor. */
+/**
+ * fetch a la API propia; devuelve `data` o tira el error en castellano que manda el servidor.
+ * Si la sesión venció justo en ese momento (401), la renueva y reintenta una vez.
+ */
 export async function api<T = unknown>(url: string, init?: RequestInit): Promise<T> {
-  const r = await fetchWithSupabaseSession(url, { cache: "no-store", ...init });
+  let r = await fetchWithSupabaseSession(url, { cache: "no-store", ...init });
+  if (r.status === 401) {
+    await supabase.auth.refreshSession().catch(() => undefined);
+    r = await fetchWithSupabaseSession(url, { cache: "no-store", ...init });
+  }
   const j = await r.json().catch(() => ({}));
   if (!r.ok || j?.success === false) throw new Error(j?.error ?? `Error ${r.status}`);
   return j.data as T;
