@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 
 const COLS =
   "id, numero, proveedor_id, proveedor_nombre, pais_origen, incoterm, moneda, monto_estimado, tipo_cambio, " +
   "fecha_pedido, fecha_embarque, fecha_arribo, fecha_nacionalizacion, ubicacion_exterior_id, ubicacion_destino_py_id, " +
-  "estado, observaciones, created_at, updated_at";
+  "estado, observaciones, responsable_id, responsable_nombre, anulada_motivo, created_by_nombre, created_at, updated_at";
 
 const MONEDAS = new Set(["PYG", "USD", "BOB"]);
 const ESTADOS = new Set([
@@ -32,6 +33,12 @@ export async function GET(request: NextRequest) {
       .limit(500);
     const estado = sp.get("estado");
     if (estado && ESTADOS.has(estado)) q = q.eq("estado", estado);
+    const responsable = sp.get("responsable");
+    if (responsable) q = q.eq("responsable_id", responsable);
+    const pais = sp.get("pais");
+    if (pais) q = q.eq("pais_origen", pais);
+    const busca = (sp.get("q") ?? "").trim().replace(/[,()%]/g, " ");
+    if (busca) q = q.or(`numero.ilike.%${busca}%,proveedor_nombre.ilike.%${busca}%`);
     const { data, error } = await q;
     if (error) throw new Error(error.message);
     return NextResponse.json(successResponse({ importaciones: data ?? [] }));
@@ -62,6 +69,17 @@ export async function POST(request: NextRequest) {
     const moneda = String(b.moneda ?? "USD").toUpperCase();
     if (!MONEDAS.has(moneda)) return NextResponse.json(errorResponse("Moneda no soportada."), { status: 400 });
 
+    // Campos obligatorios (IMP-02): no se guarda sin ellos.
+    const proveedorNombre = String(b.proveedor_nombre ?? "").trim();
+    const pais = String(b.pais_origen ?? "").trim();
+    const responsableNombre = String(b.responsable_nombre ?? "").trim();
+    const faltan = [
+      !proveedorNombre && "proveedor",
+      !pais && "país de origen",
+      !responsableNombre && "responsable",
+    ].filter(Boolean);
+    if (faltan.length) return NextResponse.json(errorResponse(`Completá: ${faltan.join(", ")}.`), { status: 400 });
+
     const numero = b.numero ? String(b.numero).trim() : await nextNumero(ctx.supabase, ctx.auth.empresa_id);
 
     const { data, error } = await ctx.supabase
@@ -70,8 +88,8 @@ export async function POST(request: NextRequest) {
         empresa_id: ctx.auth.empresa_id,
         numero,
         proveedor_id: b.proveedor_id ? String(b.proveedor_id) : null,
-        proveedor_nombre: b.proveedor_nombre ? String(b.proveedor_nombre).trim().slice(0, 200) : null,
-        pais_origen: b.pais_origen ? String(b.pais_origen).trim().slice(0, 20) : "BOL",
+        proveedor_nombre: proveedorNombre.slice(0, 200),
+        pais_origen: pais.slice(0, 40),
         incoterm: b.incoterm ? String(b.incoterm).trim().slice(0, 10) : null,
         moneda,
         monto_estimado: Number(b.monto_estimado) || 0,
@@ -84,12 +102,22 @@ export async function POST(request: NextRequest) {
         ubicacion_destino_py_id: b.ubicacion_destino_py_id ? String(b.ubicacion_destino_py_id) : null,
         estado: "borrador",
         observaciones: b.observaciones ? String(b.observaciones).slice(0, 2000) : null,
+        responsable_id: b.responsable_id ? String(b.responsable_id) : null,
+        responsable_nombre: responsableNombre.slice(0, 200),
         created_by_user_id: ctx.auth.usuarioCatalogId ?? null,
+        created_by_nombre: nombreUsuario(ctx.auth),
       })
       .select("id, numero")
       .single();
     if (error) throw new Error(error.message);
-    return NextResponse.json(successResponse(data));
+    const creada = data as { id: string; numero: string };
+    await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", creada.id, "CREAR", {
+      numero: creada.numero,
+      proveedor: proveedorNombre,
+      pais,
+      responsable: responsableNombre,
+    });
+    return NextResponse.json(successResponse(creada));
   } catch (err) {
     console.error("[/api/importaciones POST]", err);
     return NextResponse.json(

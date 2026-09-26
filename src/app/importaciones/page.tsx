@@ -2,19 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { Container, Plus } from "lucide-react";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { EstadoImportacion, Importacion } from "@/lib/importaciones/types";
-
-const ESTADO_LABEL: Record<EstadoImportacion, string> = {
-  borrador: "Borrador",
-  en_transito: "En tránsito",
-  arribado: "Arribado",
-  nacionalizada: "Nacionalizada",
-  entregada: "Entregada",
-  cerrada: "Cerrada",
-  anulada: "Anulada",
-};
+import { ESTADO_IMPORTACION_LABEL } from "@/lib/comex/estados";
+import { Aviso, api, fechaES, inputClass, labelClass, nombreDe, useUsuarios } from "@/components/comex/ui";
 
 const ESTADO_BADGE: Record<EstadoImportacion, string> = {
   borrador: "bg-slate-100 text-slate-700",
@@ -27,40 +19,53 @@ const ESTADO_BADGE: Record<EstadoImportacion, string> = {
 };
 
 export default function ImportacionesPage() {
+  const usuarios = useUsuarios();
   const [rows, setRows] = useState<Importacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filtros, setFiltros] = useState({ estado: "", responsable: "", q: "" });
+  const [borrar, setBorrar] = useState<Importacion | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetchWithSupabaseSession("/api/importaciones", { cache: "no-store" });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j?.error ?? `Error ${r.status}`);
-      setRows((j.data?.importaciones ?? []) as Importacion[]);
+      const qs = new URLSearchParams(Object.entries(filtros).filter(([, v]) => v));
+      const d = await api<{ importaciones: Importacion[] }>(`/api/importaciones?${qs}`);
+      setRows(d.importaciones);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error de red");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filtros]);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(() => void load(), 250);
+    return () => clearTimeout(t);
   }, [load]);
+
+  async function confirmarBorrar() {
+    if (!borrar) return;
+    try {
+      await api(`/api/importaciones/${borrar.id}`, { method: "DELETE" });
+      void load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo borrar.");
+    }
+    setBorrar(null);
+  }
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Zentra · Operaciones</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Zentra · Comercio exterior</p>
           <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
             <Container className="h-6 w-6 text-slate-500" /> Importaciones
           </h1>
           <p className="text-sm text-slate-600">
-            Expediente por operación: proveedor, mercadería esperada, caja en moneda de origen y trazabilidad
-            entre almacén exterior y almacén Paraguay.
+            Cada importación desde que se pide hasta que se recibe: mercadería, contenedores, recepción, incidencias y documentos.
           </p>
         </div>
         <Link
@@ -71,35 +76,63 @@ export default function ImportacionesPage() {
         </Link>
       </header>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-      )}
+      <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3">
+        <div>
+          <label className={labelClass}>Estado</label>
+          <select value={filtros.estado} onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })} className={inputClass}>
+            <option value="">Todos</option>
+            {Object.entries(ESTADO_IMPORTACION_LABEL).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Responsable</label>
+          <select value={filtros.responsable} onChange={(e) => setFiltros({ ...filtros, responsable: e.target.value })} className={inputClass}>
+            <option value="">Todos</option>
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>
+                {nombreDe(u)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Buscar</label>
+          <input value={filtros.q} onChange={(e) => setFiltros({ ...filtros, q: e.target.value })} className={inputClass} placeholder="Número o proveedor" />
+        </div>
+      </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
+      {error && <Aviso>{error}</Aviso>}
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">Número</th>
               <th className="px-4 py-3">Proveedor</th>
               <th className="px-4 py-3">Origen</th>
+              <th className="px-4 py-3">Responsable</th>
               <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3 text-right">Monto</th>
+              <th className="px-4 py-3 text-right">Monto estimado</th>
               <th className="px-4 py-3">Fechas</th>
-              <th className="px-4 py-3 text-right">Acciones</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
-            {loading && (
+            {loading && rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                   Cargando…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                  No hay importaciones. Creá una para arrancar.
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                  No hay importaciones{filtros.estado || filtros.responsable || filtros.q ? " con esos filtros" : ". Creá una para arrancar"}.
                 </td>
               </tr>
             )}
@@ -112,44 +145,29 @@ export default function ImportacionesPage() {
                 </td>
                 <td className="px-4 py-3 text-slate-800">{imp.proveedor_nombre ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">{imp.pais_origen}</td>
+                <td className="px-4 py-3 text-slate-600">{imp.responsable_nombre ?? <span className="text-rose-600">Sin asignar</span>}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ESTADO_BADGE[imp.estado]}`}>
-                    {ESTADO_LABEL[imp.estado]}
+                    {ESTADO_IMPORTACION_LABEL[imp.estado]}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                  {imp.moneda} {Math.round(imp.monto_estimado).toLocaleString("es-PY")}
+                  {imp.moneda} {Number(imp.monto_estimado).toLocaleString("es-PY", { maximumFractionDigits: 2 })}
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">
-                  <div>Pedido: {imp.fecha_pedido ?? "—"}</div>
-                  <div>Arribo: {imp.fecha_arribo ?? "—"}</div>
+                  <div>Pedido: {fechaES(imp.fecha_pedido)}</div>
+                  <div>Arribo: {fechaES(imp.fecha_arribo)}</div>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="inline-flex items-center gap-3">
-                    <Link
-                      href={`/importaciones/${imp.id}`}
-                      className="text-xs font-medium text-sky-700 hover:underline"
-                    >
-                      Editar
+                    <Link href={`/importaciones/${imp.id}`} className="text-xs font-medium text-sky-700 hover:underline">
+                      Abrir
                     </Link>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!window.confirm(`¿Eliminar la importación ${imp.numero}? Se borran también sus ítems y movimientos de caja.`)) return;
-                        const r = await fetchWithSupabaseSession(`/api/importaciones/${imp.id}`, {
-                          method: "DELETE",
-                        });
-                        const j = await r.json().catch(() => ({}));
-                        if (r.ok && (j as { success?: boolean })?.success !== false) {
-                          load();
-                        } else {
-                          window.alert((j as { error?: string })?.error ?? "No se pudo eliminar.");
-                        }
-                      }}
-                      className="text-xs font-medium text-rose-600 hover:underline"
-                    >
-                      Eliminar
-                    </button>
+                    {imp.estado === "borrador" && (
+                      <button type="button" onClick={() => setBorrar(imp)} className="text-xs font-medium text-rose-600 hover:underline">
+                        Borrar
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -157,6 +175,16 @@ export default function ImportacionesPage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal
+        open={!!borrar}
+        title="Borrar importación"
+        message={`¿Borrar ${borrar?.numero}? Solo se puede si está vacía; si ya tiene datos, se anula desde adentro.`}
+        confirmLabel="Borrar"
+        tone="danger"
+        onConfirm={() => void confirmarBorrar()}
+        onCancel={() => setBorrar(null)}
+      />
     </div>
   );
 }

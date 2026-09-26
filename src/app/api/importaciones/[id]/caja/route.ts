@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { registrarHistorial } from "@/lib/comex/server";
 
 const COLS =
   "id, importacion_id, tipo, concepto, monto, moneda, tipo_cambio, fecha, referencia, observacion, banco_movimiento_id, usuario_nombre, created_at";
@@ -44,6 +45,10 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     if (!concepto) return NextResponse.json(errorResponse("Concepto requerido."), { status: 400 });
     if (!(monto > 0)) return NextResponse.json(errorResponse("Monto inválido."), { status: 400 });
     if (!MONEDAS.has(moneda)) return NextResponse.json(errorResponse("Moneda no soportada."), { status: 400 });
+    const { data: imp } = await ctx.supabase.from("importaciones").select("estado").eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
+    if (!imp) return NextResponse.json(errorResponse("Importación no encontrada."), { status: 404 });
+    if ((imp as { estado: string }).estado === "anulada")
+      return NextResponse.json(errorResponse("La importación está anulada."), { status: 400 });
 
     const { data, error } = await ctx.supabase
       .from("importacion_caja")
@@ -65,6 +70,7 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+    await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", id, "MOVIMIENTO_CAJA", { tipo, concepto, monto, moneda });
     return NextResponse.json(successResponse({ id: (data as { id: string }).id }));
   } catch (err) {
     console.error("[/api/importaciones/:id/caja POST]", err);

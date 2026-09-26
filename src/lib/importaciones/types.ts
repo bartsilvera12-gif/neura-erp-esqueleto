@@ -25,6 +25,10 @@ export interface Importacion {
   ubicacion_destino_py_id: string | null;
   estado: EstadoImportacion;
   observaciones: string | null;
+  responsable_id: string | null;
+  responsable_nombre: string | null;
+  anulada_motivo: string | null;
+  created_by_nombre: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +45,19 @@ export interface ImportacionItem {
   subtotal: number;
   cantidad_recibida: number;
   observacion: string | null;
+  contenedor_id: string | null;
+  seriales_count?: number;
+}
+
+export interface ImportacionRecepcion {
+  id: string;
+  fecha: string;
+  ubicacion_id: string | null;
+  final: boolean;
+  observacion: string | null;
+  usuario_nombre: string | null;
+  created_at: string;
+  items: { item_id: string; cantidad: number }[];
 }
 
 export interface ImportacionCajaMov {
