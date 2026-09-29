@@ -127,6 +127,10 @@ const MENU_STRUCTURE: MenuItem[] = [
   { key: "importaciones", slug: "importaciones", label: "Comercio exterior", href: "/importaciones", icon: Container, children: [
     { label: "Importaciones", href: "/importaciones" },
     { label: "Exportaciones", href: "/exportaciones" },
+    { label: "Inventario físico", href: "/comex/inventario-fisico" },
+    { label: "Compromisos de proveedores", href: "/comex/compromisos" },
+    { label: "Incidencias", href: "/comex/incidencias" },
+    { label: "Reportes", href: "/comex/reportes" },
   ]},
   { key: "recibos", slug: "recibos", label: "Recibos", href: "/recibos", icon: Receipt },
   { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown, children: [

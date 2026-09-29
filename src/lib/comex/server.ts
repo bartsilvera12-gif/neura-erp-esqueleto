@@ -40,13 +40,15 @@ export const textoBusqueda = (v: string | null) => (v ?? "").trim().replace(/[,(
 /** Fecha de hoy en Paraguay (AAAA-MM-DD), no en UTC. */
 export const hoyPY = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion" });
 
-export const ORIGENES = new Set<OrigenComex>(["IMPORTACION", "EXPORTACION", "CONTENEDOR", "COMPRA"]);
+export const ORIGENES = new Set<OrigenComex>(["IMPORTACION", "EXPORTACION", "CONTENEDOR", "COMPRA", "CONTEO", "COMPROMISO"]);
 
 const TABLA_ORIGEN: Record<OrigenComex, string> = {
   IMPORTACION: "importaciones",
   EXPORTACION: "exportaciones",
   CONTENEDOR: "comex_contenedores",
   COMPRA: "libro_compras",
+  CONTEO: "inventario_conteos",
+  COMPROMISO: "proveedor_compromisos",
 };
 
 export const nombreUsuario = (auth: UsuarioConEmpresaYRol) => auth.nombre ?? auth.user?.email ?? null;
@@ -55,7 +57,7 @@ export const nombreUsuario = (auth: UsuarioConEmpresaYRol) => auth.nombre ?? aut
 export async function estadoOperacion(
   sb: AppSupabaseClient,
   empresaId: string,
-  tipo: "IMPORTACION" | "EXPORTACION" | "COMPRA",
+  tipo: Exclude<OrigenComex, "CONTENEDOR">,
   id: string
 ): Promise<string | null> {
   const { data } = await sb.from(TABLA_ORIGEN[tipo]).select("estado").eq("empresa_id", empresaId).eq("id", id).maybeSingle();
@@ -71,7 +73,7 @@ export async function operacionDeOrigen(
   empresaId: string,
   tipo: OrigenComex,
   id: string
-): Promise<{ tipo: "IMPORTACION" | "EXPORTACION" | "COMPRA"; id: string; estado: string } | null> {
+): Promise<{ tipo: Exclude<OrigenComex, "CONTENEDOR">; id: string; estado: string } | null> {
   if (tipo !== "CONTENEDOR") {
     const estado = await estadoOperacion(sb, empresaId, tipo, id);
     return estado ? { tipo, id, estado } : null;
@@ -85,7 +87,7 @@ export async function operacionDeOrigen(
   return estado ? { tipo: op, id: opId, estado } : null;
 }
 
-export const operacionCerrada = (estado: string) => estado === "cerrada" || estado === "anulada";
+export const operacionCerrada = (estado: string) => ["cerrada", "anulada", "ajustado", "anulado", "cancelado"].includes(estado);
 
 /** El contenedor existe, es de la empresa y de esta operación. */
 export async function contenedorDeOperacion(

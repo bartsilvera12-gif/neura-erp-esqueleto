@@ -5,7 +5,7 @@ import { getComexCtx, esUuid, operacionCerrada, operacionDeOrigen, diferencias, 
 import { ESTADO_INCIDENCIA_LABEL, FLUJO_INCIDENCIA } from "@/lib/comex/estados";
 import type { EstadoIncidencia, OrigenComex } from "@/lib/comex/types";
 
-const COLS = "id, origen_tipo, origen_id, estado, descripcion, prioridad, responsable_id, responsable_nombre, accion_correctiva";
+const COLS = "id, origen_tipo, origen_id, estado, descripcion, prioridad, responsable_id, responsable_nombre, accion_correctiva, fecha_limite";
 
 /**
  * PATCH { estado?, responsable_id?, responsable_nombre?, accion_correctiva?, prioridad? }
@@ -32,6 +32,7 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
     }
     if (b.accion_correctiva !== undefined) update.accion_correctiva = b.accion_correctiva ? String(b.accion_correctiva).slice(0, 2000) : null;
     if (b.prioridad !== undefined && ["baja", "media", "alta"].includes(String(b.prioridad))) update.prioridad = String(b.prioridad);
+    if (b.fecha_limite !== undefined) update.fecha_limite = /^\d{4}-\d{2}-\d{2}$/.test(String(b.fecha_limite ?? "")) ? b.fecha_limite : null;
 
     if (b.estado !== undefined && b.estado !== antes.estado) {
       const hacia = String(b.estado) as EstadoIncidencia;

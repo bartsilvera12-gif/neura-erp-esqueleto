@@ -6,7 +6,15 @@ import type { OrigenComex } from "@/lib/comex/types";
 
 const COLS =
   "id, origen_tipo, origen_id, tipo, descripcion, prioridad, estado, responsable_id, responsable_nombre, accion_correctiva, " +
-  "resuelto_at, verificado_at, verificado_por_nombre, created_by_nombre, created_at, updated_at";
+  "resuelto_at, verificado_at, verificado_por_nombre, created_by_nombre, created_at, updated_at, fecha_limite";
+
+// Para el registro general: número de la operación de cada incidencia.
+const REF: Record<string, { tabla: string; col: string; ruta: string }> = {
+  IMPORTACION: { tabla: "importaciones", col: "numero", ruta: "/importaciones/" },
+  EXPORTACION: { tabla: "exportaciones", col: "numero", ruta: "/exportaciones/" },
+  CONTEO: { tabla: "inventario_conteos", col: "numero", ruta: "/comex/inventario-fisico/" },
+  COMPROMISO: { tabla: "proveedor_compromisos", col: "proveedor_nombre", ruta: "/comex/compromisos?id=" },
+};
 
 /** GET ?origen_tipo=&origen_id=&estado=abiertas|todas */
 export async function GET(request: NextRequest) {
@@ -22,7 +30,21 @@ export async function GET(request: NextRequest) {
     if (sp.get("estado") === "abiertas") q = q.not("estado", "in", "(resuelto,verificado)");
     const { data, error } = await q;
     if (error) throw new Error(error.message);
-    return NextResponse.json(successResponse({ incidencias: data ?? [] }));
+    const lista = (data ?? []) as unknown as { origen_tipo: string; origen_id: string }[];
+    if (!oid) {
+      for (const [tipo, r] of Object.entries(REF)) {
+        const ids = [...new Set(lista.filter((i) => i.origen_tipo === tipo).map((i) => i.origen_id))];
+        if (!ids.length) continue;
+        const { data: ops } = await ctx.supabase.from(r.tabla).select(`id, ${r.col}`).eq("empresa_id", ctx.auth.empresa_id).in("id", ids);
+        const nom = new Map(((ops ?? []) as unknown as Record<string, string>[]).map((o) => [o.id, o[r.col]]));
+        for (const i of lista as (typeof lista[number] & { referencia?: string; ruta?: string })[])
+          if (i.origen_tipo === tipo) {
+            i.referencia = nom.get(i.origen_id) ?? "—";
+            i.ruta = `${r.ruta}${i.origen_id}`;
+          }
+      }
+    }
+    return NextResponse.json(successResponse({ incidencias: lista }));
   } catch (err) {
     console.error("[/api/comex/incidencias GET]", err);
     return NextResponse.json(errorResponse("No se pudieron cargar las incidencias."), { status: 500 });
@@ -58,6 +80,7 @@ export async function POST(request: NextRequest) {
         estado: responsableNombre ? "asignado" : "detectado",
         responsable_id: esUuid(b.responsable_id) ? b.responsable_id : null,
         responsable_nombre: responsableNombre,
+        fecha_limite: /^\d{4}-\d{2}-\d{2}$/.test(String(b.fecha_limite ?? "")) ? b.fecha_limite : null,
         created_by_nombre: nombreUsuario(ctx.auth),
       })
       .select(COLS)

@@ -16,7 +16,9 @@ import {
   api,
   btnPrimario,
   btnSecundario,
+  fechaES,
   fechaHora,
+  hoyPY,
   inputClass,
   jsonInit,
   labelClass,
@@ -100,6 +102,11 @@ export default function IncidenciasPanel({
                 <span className={`rounded-full px-2.5 py-1 font-semibold ${BADGE_ESTADO[i.estado]}`}>{ESTADO_INCIDENCIA_LABEL[i.estado]}</span>
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">{TIPO_INCIDENCIA_LABEL[i.tipo] ?? i.tipo}</span>
                 <span className={`font-semibold uppercase ${BADGE_PRIORIDAD[i.prioridad]}`}>Prioridad {i.prioridad}</span>
+                {i.fecha_limite && incidenciaAbierta(i.estado) && (
+                  <span className={`rounded-full px-2.5 py-1 font-semibold ${i.fecha_limite < hoyPY() ? "bg-rose-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                    {i.fecha_limite < hoyPY() ? `Vencida el ${fechaES(i.fecha_limite)}` : `Plazo ${fechaES(i.fecha_limite)}`}
+                  </span>
+                )}
               </div>
               {i.estado !== "verificado" && !bloqueado && (
                 <button onClick={() => setEditando(i)} className={btnSecundario}>
@@ -164,6 +171,7 @@ function ModalNueva({
   const [desc, setDesc] = useState("");
   const [prioridad, setPrioridad] = useState("media");
   const [resp, setResp] = useState<{ id: string | null; nombre: string | null }>({ id: null, nombre: null });
+  const [plazo, setPlazo] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -180,6 +188,7 @@ function ModalNueva({
         prioridad,
         responsable_id: resp.id,
         responsable_nombre: resp.nombre,
+        fecha_limite: plazo || null,
       }));
       onSaved();
       onClose();
@@ -216,9 +225,15 @@ function ModalNueva({
           <label className={labelClass}>Qué pasó *</label>
           <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className={inputClass} />
         </div>
-        <div>
-          <label className={labelClass}>Responsable</label>
-          <ResponsableSelect usuarios={usuarios} id={resp.id} nombre={resp.nombre} onChange={(id, nombre) => setResp({ id, nombre })} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Responsable</label>
+            <ResponsableSelect usuarios={usuarios} id={resp.id} nombre={resp.nombre} onChange={(id, nombre) => setResp({ id, nombre })} />
+          </div>
+          <div>
+            <label className={labelClass}>Resolver antes del</label>
+            <input type="date" value={plazo} onChange={(e) => setPlazo(e.target.value)} className={inputClass} />
+          </div>
         </div>
         {error && <Aviso>{error}</Aviso>}
         <div className="flex justify-end gap-2">
@@ -247,6 +262,7 @@ function ModalGestionar({
 }) {
   const [resp, setResp] = useState<{ id: string | null; nombre: string | null }>({ id: inc.responsable_id, nombre: inc.responsable_nombre });
   const [accion, setAccion] = useState(inc.accion_correctiva ?? "");
+  const [plazo, setPlazo] = useState(inc.fecha_limite ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const idx = FLUJO_INCIDENCIA.indexOf(inc.estado);
@@ -266,6 +282,7 @@ function ModalGestionar({
         responsable_id: resp.id,
         responsable_nombre: resp.nombre,
         accion_correctiva: accion,
+        fecha_limite: plazo || null,
         ...(estado ? { estado } : {}),
       }));
       onSaved();
@@ -286,6 +303,10 @@ function ModalGestionar({
         <div>
           <label className={labelClass}>Responsable</label>
           <ResponsableSelect usuarios={usuarios} id={resp.id} nombre={resp.nombre} onChange={(id, nombre) => setResp({ id, nombre })} />
+        </div>
+        <div>
+          <label className={labelClass}>Resolver antes del</label>
+          <input type="date" value={plazo} onChange={(e) => setPlazo(e.target.value)} className={inputClass} />
         </div>
         <div>
           <label className={labelClass}>Acción correctiva (qué se hizo)</label>

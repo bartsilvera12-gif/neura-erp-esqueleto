@@ -31,6 +31,11 @@ const ACCION: Record<string, string> = {
   CHECKLIST_OK: "Marcó un control como hecho",
   CHECKLIST_PENDIENTE: "Desmarcó un control",
   CHECKLIST_OBSERVACION: "Anotó una observación en un control",
+  CERRAR: "Cerró el conteo",
+  REABRIR: "Reabrió el conteo",
+  AJUSTAR_STOCK: "Ajustó el stock a lo contado",
+  PAGO: "Registró un pago",
+  ANULAR_PAGO: "Anuló un pago",
   COPIAR_PRODUCTOS_FACTURA: "Copió los productos de la factura",
 };
 
@@ -120,6 +125,9 @@ function lineas(h: HistorialComex): string[] {
   if (Array.isArray(d.detalle)) out.push(...(d.detalle as string[]));
   if (Array.isArray(d.archivos)) out.push(`${d.archivos.join(", ")}${d.categoria ? ` (${d.categoria})` : ""}`);
   if (d.archivo) out.push(String(d.archivo));
+  if (d.deposito) out.push(`Depósito ${d.deposito}${d.productos !== undefined ? ` · ${d.productos} productos` : ""}`);
+  if (d.con_diferencia !== undefined) out.push(`${d.productos} productos, ${d.con_diferencia} con diferencia`);
+  if (h.accion === "PAGO" || h.accion === "ANULAR_PAGO") out.push(`${d.medio ?? ""} ${Number(d.monto).toLocaleString("es-PY")}${d.cuota ? ` · cuota ${d.cuota}` : ""}${d.referencia ? ` · ${d.referencia}` : ""}`.trim());
   if (d.control) out.push(`${d.control}${d.observacion ? ` · ${d.observacion}` : ""}`);
   if (Array.isArray(d.copiados)) out.push(...(d.copiados as string[]));
   if (Array.isArray(d.recibido))
