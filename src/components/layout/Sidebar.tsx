@@ -117,6 +117,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     icon: ShoppingCart,
     children: [
       { label: "Compras", href: "/compras", exactMatch: true },
+      { label: "Libro de compras", href: "/libro-compras" },
       { label: "Órdenes de compra", href: "/compras/ordenes" },
       { label: "Proveedores", href: "/proveedores" },
     ],
@@ -148,7 +149,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Estado de cuenta", href: "/reportes/estado-cuenta" },
     { label: "Cuentas por cobrar", href: "/reportes/cuentas-por-cobrar" },
     { label: "Cuentas por pagar", href: "/reportes/cuentas-por-pagar" },
-    { label: "Libro de compras", href: "/reportes/libro-compras" },
+    { label: "Libro de compras (mercadería)", href: "/reportes/libro-compras" },
     { label: "Libro de ventas", href: "/reportes/libro-ventas" },
     { label: "Suscripciones", href: "/reportes/suscripciones" },
   ]},

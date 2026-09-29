@@ -58,6 +58,20 @@ const CAMPO: Record<string, string> = {
   contenedor_id: "Contenedor",
   accion_correctiva: "Acción correctiva",
   prioridad: "Prioridad",
+  es_electronica: "Electrónica",
+  cdc: "CDC",
+  cuotas: "Cuotas",
+  impacta: "Impacta",
+  proveedor_ruc: "RUC",
+  fecha: "Fecha",
+  total: "Total",
+  retencion_renta: "Retención renta",
+  retencion_iva: "Retención IVA",
+  explicacion: "Explicación",
+  cotizacion: "Cotización",
+  timbrado: "Timbrado",
+  tipo_nombre: "Tipo",
+  nro_comprobante: "N° comprobante",
   cliente_nombre: "Cliente",
   pais_destino: "País de destino",
   productor: "Proveedor / productor",
@@ -69,7 +83,7 @@ const CAMPO: Record<string, string> = {
   requiere_proforma: "Lleva proforma",
   motivo_sin_proforma: "Motivo sin proforma",
 };
-const OCULTOS = new Set(["cliente_id", "proveedor_id", "responsable_id", "ubicacion_exterior_id", "ubicacion_destino_py_id", "subtotal", "producto_id", "sku", "resuelto_at", "verificado_at", "verificado_por_nombre"]);
+const OCULTOS = new Set(["tipo_id", "tipo_codigo", "condicion", "total_exentas", "total_gravado10", "total_gravado5", "iva10", "iva5", "updated_by_nombre", "cliente_id", "proveedor_id", "responsable_id", "ubicacion_exterior_id", "ubicacion_destino_py_id", "subtotal", "producto_id", "sku", "resuelto_at", "verificado_at", "verificado_por_nombre"]);
 
 const ESTADOS: Record<string, string> = { ...ESTADO_EXPORTACION_LABEL, ...ESTADO_IMPORTACION_LABEL, ...ESTADO_CONTENEDOR_LABEL, ...ESTADO_INCIDENCIA_LABEL };
 const valor = (v: unknown) => {
@@ -86,7 +100,14 @@ function lineas(h: HistorialComex): string[] {
   const out: string[] = [];
   if (d.antes !== undefined && d.despues !== undefined) out.push(`${valor(d.antes)} → ${valor(d.despues)}`);
   if (h.accion === "CREAR") {
-    const partes = [d.numero, d.proveedor ?? d.cliente, d.pais, d.responsable && `responsable ${d.responsable}`].filter(Boolean);
+    const partes = [
+      d.numero,
+      d.comprobante,
+      d.proveedor ?? d.cliente,
+      d.pais,
+      d.responsable && `responsable ${d.responsable}`,
+      d.total !== undefined && `total ${d.moneda ?? ""} ${Number(d.total).toLocaleString("es-PY")}`,
+    ].filter(Boolean);
     if (partes.length) out.push(partes.join(" · "));
   }
   if (d.motivo) out.push(`Motivo: ${d.motivo}`);

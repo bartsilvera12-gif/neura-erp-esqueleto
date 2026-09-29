@@ -44,7 +44,8 @@ export default function AdjuntosPanel({
   sinQuitar?: boolean;
 }) {
   const [lista, setLista] = useState<AdjuntoComex[]>([]);
-  const CATEGORIAS = origenTipo === "EXPORTACION" ? CATEGORIAS_EXPORTACION : CATEGORIAS_IMPORTACION;
+  const CATEGORIAS =
+    origenTipo === "EXPORTACION" ? CATEGORIAS_EXPORTACION : origenTipo === "COMPRA" ? ["Factura / comprobante", "Recibo", "Otro"] : CATEGORIAS_IMPORTACION;
   const [categoria, setCategoria] = useState(CATEGORIAS[0]);
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);

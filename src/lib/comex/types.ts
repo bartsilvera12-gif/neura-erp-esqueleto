@@ -1,6 +1,6 @@
 /** Tipos compartidos de Comercio Exterior (importaciones, exportaciones, contenedores). */
 
-export type OrigenComex = "IMPORTACION" | "EXPORTACION" | "CONTENEDOR";
+export type OrigenComex = "IMPORTACION" | "EXPORTACION" | "CONTENEDOR" | "COMPRA";
 
 export type EstadoContenedor =
   | "en_preparacion"
