@@ -62,7 +62,7 @@ export async function POST(request: NextRequest, p: Params) {
 /** DELETE ?pagoId=&motivo= — anula un pago de cuota (solo admin). */
 export async function DELETE(request: NextRequest, p: Params) {
   try {
-    await p.params;
+    const { id } = await p.params;
     const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     if (!esRolAdminEmpresaOGlobal(ctx.auth.rol)) return NextResponse.json(errorResponse("Solo un administrador puede anular pagos."), { status: 403 });
@@ -71,7 +71,7 @@ export async function DELETE(request: NextRequest, p: Params) {
     const motivo = (sp.get("motivo") ?? "").trim();
     if (!esUuid(pagoId)) return NextResponse.json(errorResponse("Falta el pago."), { status: 400 });
     if (!motivo) return NextResponse.json(errorResponse("Escribí el motivo."), { status: 400 });
-    await anularPago(ctx.supabase, ctx.auth, pagoId, motivo);
+    await anularPago(ctx.supabase, ctx.auth, pagoId, motivo, id);
     return NextResponse.json(successResponse({ id: pagoId }));
   } catch (err) {
     if (err instanceof ErrorTesoreria) return NextResponse.json(errorResponse(err.message), { status: 400 });

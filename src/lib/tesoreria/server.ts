@@ -4,7 +4,7 @@
  */
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import type { UsuarioConEmpresaYRol } from "@/lib/middleware/auth";
-import { nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { nombreUsuario, registrarHistorial, traerTodo } from "@/lib/comex/server";
 
 export class ErrorTesoreria extends Error {}
 
@@ -41,23 +41,24 @@ export interface CajaChica {
 
 export async function saldosBancos(sb: AppSupabaseClient, emp: string): Promise<Map<string, number>> {
   const [ents, movs] = await Promise.all([
-    sb.from("entidades_bancarias").select("id, saldo_inicial").eq("empresa_id", emp),
-    sb.from("banco_movimientos").select("entidad_bancaria_id, tipo, monto").eq("empresa_id", emp),
+    traerTodo<{ id: string; saldo_inicial: number | null }>((a, b) => sb.from("entidades_bancarias").select("id, saldo_inicial").eq("empresa_id", emp).order("id").range(a, b)),
+    traerTodo<{ entidad_bancaria_id: string; tipo: string; monto: number }>((a, b) =>
+      sb.from("banco_movimientos").select("entidad_bancaria_id, tipo, monto").eq("empresa_id", emp).order("id").range(a, b)
+    ),
   ]);
-  if (ents.error) throw new Error(ents.error.message);
-  if (movs.error) throw new Error(movs.error.message);
   const m = new Map<string, number>();
-  for (const e of (ents.data ?? []) as { id: string; saldo_inicial: number | null }[]) m.set(e.id, Number(e.saldo_inicial) || 0);
-  for (const x of (movs.data ?? []) as { entidad_bancaria_id: string; tipo: string; monto: number }[])
+  for (const e of ents) m.set(e.id, Number(e.saldo_inicial) || 0);
+  for (const x of movs)
     m.set(x.entidad_bancaria_id, (m.get(x.entidad_bancaria_id) ?? 0) + signoBanco(x.tipo, Number(x.monto)));
   return m;
 }
 
 export async function saldosCajas(sb: AppSupabaseClient, emp: string): Promise<Map<string, number>> {
-  const { data, error } = await sb.from("caja_chica_movimientos").select("caja_chica_id, tipo, monto").eq("empresa_id", emp);
-  if (error) throw new Error(error.message);
+  const movs = await traerTodo<{ caja_chica_id: string; tipo: string; monto: number }>((a, b) =>
+    sb.from("caja_chica_movimientos").select("caja_chica_id, tipo, monto").eq("empresa_id", emp).order("id").range(a, b)
+  );
   const m = new Map<string, number>();
-  for (const x of (data ?? []) as { caja_chica_id: string; tipo: string; monto: number }[])
+  for (const x of movs)
     m.set(x.caja_chica_id, (m.get(x.caja_chica_id) ?? 0) + signoCaja(x.tipo, Number(x.monto)));
   return m;
 }
@@ -70,6 +71,44 @@ export interface PagoInput {
   medio: "BANCO" | "CAJA_CHICA";
   cuentaId: string;
   referencia: string | null;
+  /** Nota de crédito: la plata ENTRA a la cuenta (devolución del proveedor). */
+  ingreso?: boolean;
+}
+
+/**
+ * Valida que se pueda mover plata en esa cuenta: existe, activa, misma moneda,
+ * tope y saldo de la caja chica (para egresos). `devuelve` suma al saldo lo que
+ * vuelve a la caja por un pago anterior que se va a reemplazar.
+ * Devuelve un aviso (banco en negativo) o tira ErrorTesoreria.
+ */
+export async function validarMovimiento(
+  sb: AppSupabaseClient,
+  emp: string,
+  medio: "BANCO" | "CAJA_CHICA",
+  cuentaId: string,
+  moneda: string,
+  monto: number,
+  opts: { ingreso?: boolean; devuelve?: number } = {}
+): Promise<{ nombre: string; aviso: string | null }> {
+  if (medio === "BANCO") {
+    const { data: e } = await sb.from("entidades_bancarias").select("id, nombre, moneda, activo, tipo").eq("empresa_id", emp).eq("id", cuentaId).maybeSingle();
+    const cta = e as { id: string; nombre: string; moneda: string | null; activo: boolean; tipo: string } | null;
+    if (!cta || cta.activo === false || cta.tipo !== "banco") throw new ErrorTesoreria("Esa cuenta bancaria no existe o está inactiva.");
+    if ((cta.moneda ?? "PYG") !== moneda) throw new ErrorTesoreria(`La cuenta ${cta.nombre} es en ${cta.moneda ?? "PYG"} y el comprobante en ${moneda}.`);
+    if (opts.ingreso) return { nombre: cta.nombre, aviso: null };
+    const saldo = ((await saldosBancos(sb, emp)).get(cta.id) ?? 0) + (opts.devuelve ?? 0);
+    return { nombre: cta.nombre, aviso: saldo - monto < 0 ? `La cuenta ${cta.nombre} queda en negativo (${(saldo - monto).toLocaleString("es-PY")}).` : null };
+  }
+  const { data: k } = await sb.from("cajas_chicas").select("id, nombre, moneda, activa, tope_gasto").eq("empresa_id", emp).eq("id", cuentaId).maybeSingle();
+  const caja = k as { id: string; nombre: string; moneda: string; activa: boolean; tope_gasto: number | null } | null;
+  if (!caja || caja.activa === false) throw new ErrorTesoreria("Esa caja chica no existe o está inactiva.");
+  if (caja.moneda !== moneda) throw new ErrorTesoreria(`La caja ${caja.nombre} es en ${caja.moneda} y el comprobante en ${moneda}.`);
+  if (opts.ingreso) return { nombre: caja.nombre, aviso: null };
+  if (caja.tope_gasto && monto > Number(caja.tope_gasto))
+    throw new ErrorTesoreria(`La caja ${caja.nombre} permite gastos de hasta ${Number(caja.tope_gasto).toLocaleString("es-PY")}.`);
+  const saldo = ((await saldosCajas(sb, emp)).get(caja.id) ?? 0) + (opts.devuelve ?? 0);
+  if (saldo < monto) throw new ErrorTesoreria(`La caja ${caja.nombre} tiene ${saldo.toLocaleString("es-PY")}: no alcanza para ${monto.toLocaleString("es-PY")}. Reponela primero.`);
+  return { nombre: caja.nombre, aviso: null };
 }
 
 /**
@@ -95,59 +134,43 @@ export async function registrarPago(
   if (!compra) throw new ErrorTesoreria("El comprobante no existe.");
   if (compra.estado === "anulada") throw new ErrorTesoreria("El comprobante está anulado.");
   const concepto = `${compra.tipo_nombre} ${compra.proveedor_nombre} ${compra.nro_comprobante}`.slice(0, 200);
-  let aviso: string | null = null;
 
+  const { aviso } = await validarMovimiento(sb, emp, p.medio, p.cuentaId, compra.moneda, p.monto, { ingreso: p.ingreso });
+  const quien = { created_by_user_id: auth.usuarioCatalogId ?? null, usuario_nombre: nombreUsuario(auth) };
   let bancoMovId: string | null = null;
   let cajaMovId: string | null = null;
   if (p.medio === "BANCO") {
-    const { data: e } = await sb.from("entidades_bancarias").select("id, nombre, moneda, activo").eq("empresa_id", emp).eq("id", p.cuentaId).maybeSingle();
-    const cta = e as { id: string; nombre: string; moneda: string | null; activo: boolean } | null;
-    if (!cta || cta.activo === false) throw new ErrorTesoreria("Esa cuenta bancaria no existe o está inactiva.");
-    if ((cta.moneda ?? "PYG") !== compra.moneda) throw new ErrorTesoreria(`La cuenta ${cta.nombre} es en ${cta.moneda ?? "PYG"} y la compra en ${compra.moneda}.`);
-    const saldo = (await saldosBancos(sb, emp)).get(cta.id) ?? 0;
-    if (saldo - p.monto < 0) aviso = `La cuenta ${cta.nombre} queda en negativo (${(saldo - p.monto).toLocaleString("es-PY")}).`;
     const { data, error } = await sb
       .from("banco_movimientos")
       .insert({
         empresa_id: emp,
-        entidad_bancaria_id: cta.id,
-        tipo: "retiro",
+        entidad_bancaria_id: p.cuentaId,
+        tipo: p.ingreso ? "deposito" : "retiro",
         monto: p.monto,
         moneda: compra.moneda,
         fecha: p.fecha,
         referencia: p.referencia,
-        observacion: `Pago ${concepto}`,
+        observacion: `${p.ingreso ? "Devolución" : "Pago"} ${concepto}`,
         compra_id: compra.id,
-        created_by_user_id: auth.usuarioCatalogId ?? null,
-        usuario_nombre: nombreUsuario(auth),
+        ...quien,
       })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
     bancoMovId = (data as { id: string }).id;
   } else {
-    const { data: k } = await sb.from("cajas_chicas").select("id, nombre, moneda, activa, tope_gasto").eq("empresa_id", emp).eq("id", p.cuentaId).maybeSingle();
-    const caja = k as { id: string; nombre: string; moneda: string; activa: boolean; tope_gasto: number | null } | null;
-    if (!caja || caja.activa === false) throw new ErrorTesoreria("Esa caja chica no existe o está inactiva.");
-    if (caja.moneda !== compra.moneda) throw new ErrorTesoreria(`La caja ${caja.nombre} es en ${caja.moneda} y la compra en ${compra.moneda}.`);
-    if (caja.tope_gasto && p.monto > Number(caja.tope_gasto))
-      throw new ErrorTesoreria(`La caja ${caja.nombre} permite gastos de hasta ${Number(caja.tope_gasto).toLocaleString("es-PY")}.`);
-    const saldo = (await saldosCajas(sb, emp)).get(caja.id) ?? 0;
-    if (saldo < p.monto)
-      throw new ErrorTesoreria(`La caja ${caja.nombre} tiene ${saldo.toLocaleString("es-PY")}: no alcanza para ${p.monto.toLocaleString("es-PY")}. Reponela primero.`);
     const { data, error } = await sb
       .from("caja_chica_movimientos")
       .insert({
         empresa_id: emp,
-        caja_chica_id: caja.id,
-        tipo: "gasto",
+        caja_chica_id: p.cuentaId,
+        tipo: p.ingreso ? "aporte" : "gasto",
         monto: p.monto,
         fecha: p.fecha,
         referencia: p.referencia ?? compra.nro_comprobante,
-        observacion: concepto,
+        observacion: `${p.ingreso ? "Devolución " : ""}${concepto}`,
         compra_id: compra.id,
-        created_by_user_id: auth.usuarioCatalogId ?? null,
-        usuario_nombre: nombreUsuario(auth),
+        ...quien,
       })
       .select("id")
       .single();
@@ -179,6 +202,20 @@ export async function registrarPago(
     throw new Error(pErr.message);
   }
   const pagoId = (pago as { id: string }).id;
+  if (p.cuotaNro) {
+    // Dos pagos a la vez de la misma cuota: si entre los dos se pasan del monto, este se deshace.
+    const [{ data: q }, { data: ps }] = await Promise.all([
+      sb.from("libro_compras_cuotas").select("monto").eq("empresa_id", emp).eq("compra_id", compra.id).eq("nro", p.cuotaNro).maybeSingle(),
+      sb.from("libro_compras_pagos").select("monto").eq("empresa_id", emp).eq("compra_id", compra.id).eq("cuota_nro", p.cuotaNro).eq("estado", "vigente"),
+    ]);
+    const pagado = ((ps ?? []) as { monto: number }[]).reduce((s2, x) => s2 + Number(x.monto), 0);
+    if (!q || pagado > Number((q as { monto: number }).monto) + 0.001) {
+      await sb.from("libro_compras_pagos").delete().eq("empresa_id", emp).eq("id", pagoId);
+      if (bancoMovId) await sb.from("banco_movimientos").delete().eq("id", bancoMovId);
+      if (cajaMovId) await sb.from("caja_chica_movimientos").delete().eq("id", cajaMovId);
+      throw new ErrorTesoreria(`La cuota ${p.cuotaNro} ya se pagó mientras tanto. Actualizá la pantalla.`);
+    }
+  }
   if (bancoMovId) await sb.from("banco_movimientos").update({ compra_pago_id: pagoId }).eq("id", bancoMovId);
   if (cajaMovId) await sb.from("caja_chica_movimientos").update({ compra_pago_id: pagoId }).eq("id", cajaMovId);
   if (p.cuotaNro) await recalcularCuota(sb, emp, compra.id, p.cuotaNro);
@@ -192,7 +229,7 @@ export async function registrarPago(
 }
 
 /** Anula un pago: saca el movimiento del banco / caja y descuenta lo pagado de la cuota. */
-export async function anularPago(sb: AppSupabaseClient, auth: UsuarioConEmpresaYRol, pagoId: string, motivo: string): Promise<void> {
+export async function anularPago(sb: AppSupabaseClient, auth: UsuarioConEmpresaYRol, pagoId: string, motivo: string, compraId?: string): Promise<void> {
   const emp = auth.empresa_id;
   const { data } = await sb
     .from("libro_compras_pagos")
@@ -201,7 +238,7 @@ export async function anularPago(sb: AppSupabaseClient, auth: UsuarioConEmpresaY
     .eq("id", pagoId)
     .maybeSingle();
   const p = data as { id: string; compra_id: string; cuota_nro: number | null; monto: number; estado: string; banco_movimiento_id: string | null; caja_chica_movimiento_id: string | null } | null;
-  if (!p) throw new ErrorTesoreria("El pago no existe.");
+  if (!p || (compraId && p.compra_id !== compraId)) throw new ErrorTesoreria("El pago no existe.");
   if (p.estado === "anulado") return;
   if (p.banco_movimiento_id) await sb.from("banco_movimientos").delete().eq("empresa_id", emp).eq("id", p.banco_movimiento_id);
   if (p.caja_chica_movimiento_id) await sb.from("caja_chica_movimientos").delete().eq("empresa_id", emp).eq("id", p.caja_chica_movimiento_id);
@@ -213,7 +250,8 @@ export async function anularPago(sb: AppSupabaseClient, auth: UsuarioConEmpresaY
 
 /** Lo pagado de una cuota = suma de sus pagos vigentes. */
 export async function recalcularCuota(sb: AppSupabaseClient, emp: string, compraId: string, nro: number): Promise<void> {
-  const { data } = await sb.from("libro_compras_pagos").select("monto").eq("empresa_id", emp).eq("compra_id", compraId).eq("cuota_nro", nro).eq("estado", "vigente");
+  const { data, error } = await sb.from("libro_compras_pagos").select("monto").eq("empresa_id", emp).eq("compra_id", compraId).eq("cuota_nro", nro).eq("estado", "vigente");
+  if (error) throw new Error(error.message);
   const pagado = ((data ?? []) as { monto: number }[]).reduce((s, x) => s + Number(x.monto), 0);
   await sb.from("libro_compras_cuotas").update({ pagado }).eq("empresa_id", emp).eq("compra_id", compraId).eq("nro", nro);
 }

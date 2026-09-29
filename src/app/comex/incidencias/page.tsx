@@ -18,6 +18,12 @@ function Registro() {
   const [f, setF] = useState({ estado: "abiertas", modulo: "", responsable: params.get("mias") ? "yo" : "", vencidas: params.get("vencidas") === "1" });
   const [yo, setYo] = useState<string | null>(null);
   const hoy = hoyPY();
+  // Si se llega desde la campanita estando ya en esta pantalla, se aplican los filtros del enlace.
+  const pMias = params.get("mias");
+  const pVencidas = params.get("vencidas");
+  useEffect(() => {
+    setF((x) => ({ ...x, responsable: pMias ? "yo" : x.responsable, vencidas: pVencidas === "1" }));
+  }, [pMias, pVencidas]);
 
   useEffect(() => {
     api<{ usuario_id: string | null }>("/api/comex/yo")

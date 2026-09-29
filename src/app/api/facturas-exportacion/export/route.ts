@@ -1,3 +1,4 @@
+import { traerTodo } from "@/lib/comex/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { errorResponse } from "@/lib/api/response";
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       .neq("estado", "BORRADOR")
       .order("fecha")
       .order("numero")
-      .limit(20000);
+      .order("id");
     const desde = sp.get("desde");
     const hasta = sp.get("hasta");
     const estado = sp.get("estado");
@@ -47,9 +48,8 @@ export async function GET(request: NextRequest) {
       const t = q.replace(/[,()*%\\]/g, " ").trim();
       if (t) query = query.or(`cliente_nombre.ilike.*${t}*,numero_formateado.ilike.*${t}*`);
     }
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    const filas = (data ?? []) as unknown as F[];
+    // De a 1000 filas (el servidor no devuelve más por pedido).
+    const filas = await traerTodo<F>((a, z) => query.range(a, z));
     const vig = filas.filter((f) => f.estado === "EMITIDA" && !f.prueba);
     const totalGs = vig.reduce((s, f) => s + (f.moneda === "PYG" ? n(f.total) : n(f.total_pyg)), 0);
     const pie: F = { tipo: null, numero_formateado: "TOTAL en Gs. (emitidas reales)", total_pyg: totalGs };

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { getComexCtx, hoyPY } from "@/lib/comex/server";
+import { getComexCtx, hoyPY, traerTodo } from "@/lib/comex/server";
 
 const dias = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
 const contar = <T,>(xs: T[], k: (x: T) => string) => {
@@ -23,15 +23,17 @@ export async function GET(request: NextRequest) {
     const hoy = hoyPY();
     const desde = /^\d{4}-\d{2}-\d{2}$/.test(sp.get("desde") ?? "") ? (sp.get("desde") as string) : `${hoy.slice(0, 4)}-01-01`;
     const hasta = /^\d{4}-\d{2}-\d{2}$/.test(sp.get("hasta") ?? "") ? (sp.get("hasta") as string) : hoy;
-    const hastaTs = `${hasta}T23:59:59`;
+    // Fechas en hora de Paraguay (UTC-3).
+    const desdeTs = `${desde}T00:00:00-03:00`;
+    const hastaTs = `${hasta}T23:59:59.999-03:00`;
 
     const [imps, exps, conts, conteos, compr, incs] = await Promise.all([
-      ctx.supabase.from("importaciones").select("id, numero, estado, proveedor_nombre, created_at").eq("empresa_id", emp).gte("created_at", desde).lte("created_at", hastaTs),
-      ctx.supabase.from("exportaciones").select("id, numero, estado, cliente_nombre, fecha_comprometida_embarque, fecha_embarque, created_at").eq("empresa_id", emp).gte("created_at", desde).lte("created_at", hastaTs),
+      ctx.supabase.from("importaciones").select("id, numero, estado, proveedor_nombre, created_at").eq("empresa_id", emp).gte("created_at", desdeTs).lte("created_at", hastaTs),
+      ctx.supabase.from("exportaciones").select("id, numero, estado, cliente_nombre, fecha_comprometida_embarque, fecha_embarque, created_at").eq("empresa_id", emp).gte("created_at", desdeTs).lte("created_at", hastaTs),
       ctx.supabase.from("comex_contenedores").select("estado, tipo_operacion").eq("empresa_id", emp),
-      ctx.supabase.from("inventario_conteos").select("id, numero, estado, ubicacion_nombre, created_at").eq("empresa_id", emp).gte("created_at", desde).lte("created_at", hastaTs),
+      ctx.supabase.from("inventario_conteos").select("id, numero, estado, ubicacion_nombre, created_at").eq("empresa_id", emp).gte("created_at", desdeTs).lte("created_at", hastaTs),
       ctx.supabase.from("proveedor_compromisos").select("proveedor_nombre, fecha_comprometida, fecha_real, estado, documentacion_completa").eq("empresa_id", emp).gte("fecha_comprometida", desde).lte("fecha_comprometida", hasta),
-      ctx.supabase.from("comex_incidencias").select("id, origen_tipo, origen_id, tipo, estado, prioridad, created_at, resuelto_at, fecha_limite").eq("empresa_id", emp).gte("created_at", desde).lte("created_at", hastaTs),
+      ctx.supabase.from("comex_incidencias").select("id, origen_tipo, origen_id, tipo, estado, prioridad, created_at, resuelto_at, fecha_limite").eq("empresa_id", emp).gte("created_at", desdeTs).lte("created_at", hastaTs),
     ]);
     const err = imps.error ?? exps.error ?? conts.error ?? conteos.error ?? compr.error ?? incs.error;
     if (err) throw new Error(err.message);
@@ -61,7 +63,9 @@ export async function GET(request: NextRequest) {
     const C = (conteos.data ?? []) as { id: string; numero: string; estado: string; ubicacion_nombre: string | null }[];
     let inventario = { conteos: C.length, ajustados: C.filter((c) => c.estado === "ajustado").length, productos_contados: 0, con_diferencia: 0, faltante: 0, sobrante: 0, mayor_variacion: [] as { producto: string; diferencia: number; conteo: string }[] };
     if (C.length) {
-      const { data: it } = await ctx.supabase.from("inventario_conteo_items").select("conteo_id, producto_nombre, stock_sistema, cantidad_fisica").eq("empresa_id", emp).in("conteo_id", C.map((c) => c.id));
+      const it = await traerTodo<unknown>((a, z) =>
+        ctx.supabase.from("inventario_conteo_items").select("conteo_id, producto_nombre, stock_sistema, cantidad_fisica").eq("empresa_id", emp).in("conteo_id", C.map((c) => c.id)).order("id").range(a, z)
+      );
       const num = new Map(C.map((c) => [c.id, c.numero]));
       const contados = ((it ?? []) as { conteo_id: string; producto_nombre: string; stock_sistema: number; cantidad_fisica: number | null }[]).filter((x) => x.cantidad_fisica !== null);
       const difs = contados.map((x) => ({ producto: x.producto_nombre, diferencia: Number(x.cantidad_fisica) - Number(x.stock_sistema), conteo: num.get(x.conteo_id) ?? "" })).filter((x) => x.diferencia !== 0);

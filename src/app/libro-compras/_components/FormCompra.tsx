@@ -120,7 +120,10 @@ export default function FormCompra({ id }: { id?: string }) {
 
   const tiposCompra = tipos.filter((t) => t.uso === "COMPRA" && (t.activo || t.id === tipoId));
   const tipo = tipos.find((t) => t.id === tipoId) ?? null;
-  const credito = tipo?.condicion === "CREDITO";
+  const esNC = tipo?.es_nota_credito === true;
+  // Una nota de crédito a crédito solo baja la deuda con el proveedor: no tiene cuotas.
+  const credito = tipo?.condicion === "CREDITO" && !esNC;
+  const conPagos = cuotas.some((c) => Number(c.pagado) > 0);
   const bloqueado = estado === "anulada";
   const lineaVacia = (): Linea => ({
     cuenta_codigo: "",
@@ -196,7 +199,8 @@ export default function FormCompra({ id }: { id?: string }) {
           }))
         );
         setCuotas(qs.map((q) => ({ vencimiento: s(q.vencimiento), monto: s(q.monto), pagare: s(q.pagare), pagado: Number(q.pagado) ? s(q.pagado) : "" })));
-        void cargarPagos().then((ps) => {
+        // Hasta tener los pagos no se muestra el formulario: si no, guardar borraría el pago de contado.
+        return cargarPagos().then((ps) => {
           const contado = (ps as (PagoReg & { entidad_bancaria_id?: string | null; caja_chica_id?: string | null })[]).find((x) => x.cuota_nro === null);
           if (contado) {
             setPagoMedio(contado.medio);
@@ -322,7 +326,7 @@ export default function FormCompra({ id }: { id?: string }) {
         formulario: l.iva_porcentaje ? "Form120-R6-a" : null,
       })),
       cuotas_detalle: credito ? cuotas.map((c) => ({ vencimiento: c.vencimiento, monto: Number(c.monto) || 0, pagare: c.pagare, pagado: Number(c.pagado) || 0 })) : [],
-      pago: !credito && pagoMedio && pagoCuenta ? { medio: pagoMedio, cuenta_id: pagoCuenta, referencia: pagoRef } : null,
+      pago: tipo?.condicion === "CONTADO" && pagoMedio && pagoCuenta ? { medio: pagoMedio, cuenta_id: pagoCuenta, referencia: pagoRef } : null,
     };
   }
 
@@ -483,7 +487,16 @@ export default function FormCompra({ id }: { id?: string }) {
           </div>
           <div>
             <label className={labelClass}>Moneda</label>
-            <select value={moneda} onChange={(e) => setMoneda(e.target.value)} className={inputClass}>
+            <select
+              value={moneda}
+              onChange={(e) => {
+                setMoneda(e.target.value);
+                // Las cuentas son de una sola moneda: hay que volver a elegir.
+                setPagoMedio("");
+                setPagoCuenta("");
+              }}
+              className={inputClass}
+            >
               <option value="PYG">Guaraníes</option>
               <option value="USD">Dólares</option>
               <option value="BOB">Bolivianos</option>
@@ -608,9 +621,9 @@ export default function FormCompra({ id }: { id?: string }) {
         </section>
 
         {/* De dónde sale el dinero (contado) */}
-        {tipo && !credito && (
+        {tipo && tipo.condicion === "CONTADO" && (
           <section className="space-y-3 rounded-xl border border-emerald-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-800">¿De dónde sale el dinero?</h2>
+            <h2 className="text-sm font-semibold text-slate-800">{esNC ? "¿A dónde vuelve el dinero?" : "¿De dónde sale el dinero?"}</h2>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="sm:col-span-2">
                 <OrigenDinero moneda={moneda} medio={pagoMedio} cuentaId={pagoCuenta} permitirNinguno onChange={(m, c) => { setPagoMedio(m); setPagoCuenta(c); }} />
@@ -619,8 +632,12 @@ export default function FormCompra({ id }: { id?: string }) {
             </div>
             <p className="text-xs text-slate-500">
               {pagoCuenta
-                ? `Al guardar se descuentan ${fmt(aPagar, moneda)} de esa cuenta.`
-                : "Si no elegís una cuenta, el comprobante queda registrado pero el pago no se descuenta de ningún lado."}
+                ? esNC
+                  ? `Al guardar se suman ${fmt(aPagar, moneda)} a esa cuenta (devolución del proveedor).`
+                  : `Al guardar se descuentan ${fmt(aPagar, moneda)} de esa cuenta.`
+                : esNC
+                  ? "Si no elegís una cuenta, la nota queda registrada pero la devolución no se suma a ningún lado."
+                  : "Si no elegís una cuenta, el comprobante queda registrado pero el pago no se descuenta de ningún lado."}
             </p>
           </section>
         )}
@@ -650,7 +667,9 @@ export default function FormCompra({ id }: { id?: string }) {
           <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-800">Vencimientos</h2>
             {!credito ? (
-              <p className="text-sm text-slate-500">Al contado no tiene cuotas.</p>
+              <p className="text-sm text-slate-500">
+                {esNC && tipo?.condicion === "CREDITO" ? "Nota de crédito a crédito: baja la deuda con el proveedor, no tiene cuotas." : "Al contado no tiene cuotas."}
+              </p>
             ) : (
               <>
                 <div className="flex flex-wrap items-end gap-2">
@@ -670,7 +689,13 @@ export default function FormCompra({ id }: { id?: string }) {
                       <option value="30">30 días</option>
                     </select>
                   </div>
-                  <button type="button" onClick={generarCuotas} disabled={!(aPagar > 0)} className={btnSecundario}>
+                  <button
+                    type="button"
+                    onClick={generarCuotas}
+                    disabled={!(aPagar > 0) || conPagos}
+                    title={conPagos ? "Ya hay cuotas con pagos: cambiá los montos a mano o anulá los pagos." : undefined}
+                    className={btnSecundario}
+                  >
                     Generar
                   </button>
                 </div>

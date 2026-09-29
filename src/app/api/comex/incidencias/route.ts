@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const origenTipo = String(b.origen_tipo ?? "") as OrigenComex;
     const origenId = String(b.origen_id ?? "");
-    if (!ORIGENES.has(origenTipo) || !origenId) return NextResponse.json(errorResponse("Falta la operación."), { status: 400 });
+    if (!ORIGENES.has(origenTipo) || origenTipo === "COMPRA" || !origenId) return NextResponse.json(errorResponse("Falta la operación."), { status: 400 });
     const op = await operacionDeOrigen(ctx.supabase, ctx.auth.empresa_id, origenTipo, origenId);
     if (!op) return NextResponse.json(errorResponse("Operación no encontrada."), { status: 404 });
     if (operacionCerrada(op.estado)) return NextResponse.json(errorResponse("La operación está cerrada o anulada."), { status: 400 });

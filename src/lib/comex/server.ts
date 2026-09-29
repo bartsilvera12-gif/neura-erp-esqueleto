@@ -212,3 +212,20 @@ export async function insertarConNumero(
   }
   throw new Error("No se pudo asignar un número. Probá de nuevo.");
 }
+
+/**
+ * Trae todas las filas de una consulta de a 1000 (PostgREST corta en 1000 por
+ * pedido). `consulta(desde, hasta)` tiene que devolver la consulta con .range().
+ */
+export async function traerTodo<T>(
+  consulta: (desde: number, hasta: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error } = await consulta(desde, desde + 999);
+    if (error) throw new Error(error.message);
+    const filas = (data ?? []) as T[];
+    out.push(...filas);
+    if (filas.length < 1000) return out;
+  }
+}

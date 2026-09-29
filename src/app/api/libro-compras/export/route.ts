@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { esUuid, getComexCtx, textoBusqueda } from "@/lib/comex/server";
+import { esUuid, getComexCtx, textoBusqueda, traerTodo } from "@/lib/comex/server";
 import { buildXlsxBuffer, nowStamp, xlsxResponseHeaders } from "@/lib/excel/export";
 import { COMPRA_COLS } from "@/lib/compras-libro/server";
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const sp = new URL(request.url).searchParams;
-    let q = ctx.supabase.from("libro_compras").select(COMPRA_COLS).eq("empresa_id", ctx.auth.empresa_id).order("fecha").order("created_at").limit(10000);
+    let q = ctx.supabase.from("libro_compras").select(COMPRA_COLS).eq("empresa_id", ctx.auth.empresa_id).order("fecha").order("created_at").order("id");
     const desde = sp.get("desde");
     const hasta = sp.get("hasta");
     if (desde && /^\d{4}-\d{2}-\d{2}$/.test(desde)) q = q.gte("fecha", desde);
@@ -31,9 +31,7 @@ export async function GET(request: NextRequest) {
     if (estado === "registrada" || estado === "anulada") q = q.eq("estado", estado);
     const busca = textoBusqueda(sp.get("q"));
     if (busca) q = q.or(`proveedor_nombre.ilike.%${busca}%,nro_comprobante.ilike.%${busca}%,numero_control.ilike.%${busca}%,proveedor_ruc.ilike.%${busca}%`);
-    const { data, error } = await q;
-    if (error) throw new Error(error.message);
-    const filas = (data ?? []) as unknown as Fila[];
+    const filas = await traerTodo<Fila>((a, z) => q.range(a, z));
     const vigentes = filas.filter((f) => f.estado !== "anulada");
     const tot = (k: string) => vigentes.reduce((s, f) => s + n(f[k]), 0);
     const totalFila: Fila = {

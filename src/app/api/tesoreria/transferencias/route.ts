@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
     const o = b.origen as Punta | undefined;
     const d = b.destino as Punta | undefined;
     const monto = Number(b.monto);
-    if (!o || !d || !esUuid(o.id) || !esUuid(d.id)) return NextResponse.json(errorResponse("Elegí de dónde sale y a dónde va."), { status: 400 });
+    const tipoOk = (x: Punta | undefined) => x?.tipo === "BANCO" || x?.tipo === "CAJA";
+    if (!o || !d || !tipoOk(o) || !tipoOk(d) || !esUuid(o.id) || !esUuid(d.id)) return NextResponse.json(errorResponse("Elegí de dónde sale y a dónde va."), { status: 400 });
     if (o.tipo === d.tipo && o.id === d.id) return NextResponse.json(errorResponse("El origen y el destino son la misma cuenta."), { status: 400 });
     if (o.tipo === "CAJA" && d.tipo === "CAJA") return NextResponse.json(errorResponse("Entre cajas chicas no se transfiere: pasá por el banco."), { status: 400 });
     if (!(monto > 0)) return NextResponse.json(errorResponse("El monto tiene que ser mayor a 0."), { status: 400 });
@@ -29,14 +30,16 @@ export async function POST(request: NextRequest) {
 
     const info = async (x: Punta) => {
       if (x.tipo === "BANCO") {
-        const { data } = await ctx.supabase.from("entidades_bancarias").select("nombre, moneda").eq("empresa_id", emp).eq("id", x.id).maybeSingle();
-        return data as { nombre: string; moneda: string | null } | null;
+        const { data } = await ctx.supabase.from("entidades_bancarias").select("nombre, moneda, activo, tipo").eq("empresa_id", emp).eq("id", x.id).maybeSingle();
+        const e = data as { nombre: string; moneda: string | null; activo: boolean; tipo: string } | null;
+        return e && e.activo !== false && e.tipo === "banco" ? e : null;
       }
-      const { data } = await ctx.supabase.from("cajas_chicas").select("nombre, moneda").eq("empresa_id", emp).eq("id", x.id).maybeSingle();
-      return data as { nombre: string; moneda: string } | null;
+      const { data } = await ctx.supabase.from("cajas_chicas").select("nombre, moneda, activa").eq("empresa_id", emp).eq("id", x.id).maybeSingle();
+      const k = data as { nombre: string; moneda: string; activa: boolean } | null;
+      return k && k.activa !== false ? k : null;
     };
     const [io, id] = await Promise.all([info(o), info(d)]);
-    if (!io || !id) return NextResponse.json(errorResponse("Alguna de las cuentas no existe."), { status: 404 });
+    if (!io || !id) return NextResponse.json(errorResponse("Alguna de las cuentas no existe o está inactiva."), { status: 404 });
     const moneda = io.moneda ?? "PYG";
     if (moneda !== (id.moneda ?? "PYG")) return NextResponse.json(errorResponse("Las dos cuentas tienen que ser de la misma moneda."), { status: 400 });
     if (o.tipo === "CAJA") {

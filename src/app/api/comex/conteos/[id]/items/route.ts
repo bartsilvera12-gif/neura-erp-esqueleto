@@ -1,3 +1,4 @@
+import { filasStockDeposito, stockEnDeposito } from "@/lib/comex/stock-deposito";
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
@@ -58,12 +59,15 @@ export async function POST(request: NextRequest, p: Params) {
     if ((await abierto(ctx, id)) !== "en_curso") return NextResponse.json(errorResponse("El conteo no está en curso."), { status: 400 });
     const b = (await request.json().catch(() => ({}))) as { producto_id?: string };
     if (!esUuid(b.producto_id)) return NextResponse.json(errorResponse("Elegí el producto."), { status: 400 });
-    const { data: prod } = await ctx.supabase.from("productos").select("id, nombre, sku, stock_actual").eq("empresa_id", ctx.auth.empresa_id).eq("id", b.producto_id).maybeSingle();
-    const pr = prod as { id: string; nombre: string; sku: string | null; stock_actual: number } | null;
+    const { data: prod } = await ctx.supabase.from("productos").select("id, nombre, sku, stock_actual, ubicacion_principal_id").eq("empresa_id", ctx.auth.empresa_id).eq("id", b.producto_id).maybeSingle();
+    const pr = prod as { id: string; nombre: string; sku: string | null; stock_actual: number; ubicacion_principal_id: string | null } | null;
     if (!pr) return NextResponse.json(errorResponse("Ese producto no existe."), { status: 400 });
+    const { data: cab } = await ctx.supabase.from("inventario_conteos").select("ubicacion_id").eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
+    const ub = (cab as { ubicacion_id: string | null } | null)?.ubicacion_id ?? null;
+    const stock = ub ? (stockEnDeposito([pr], await filasStockDeposito(ctx.supabase, ctx.auth.empresa_id, [pr.id]), ub).get(pr.id) ?? 0) : Number(pr.stock_actual) || 0;
     const { error } = await ctx.supabase
       .from("inventario_conteo_items")
-      .insert({ empresa_id: ctx.auth.empresa_id, conteo_id: id, producto_id: pr.id, producto_nombre: pr.nombre, sku: pr.sku, stock_sistema: Number(pr.stock_actual) || 0 });
+      .insert({ empresa_id: ctx.auth.empresa_id, conteo_id: id, producto_id: pr.id, producto_nombre: pr.nombre, sku: pr.sku, stock_sistema: stock });
     if (error) {
       if (error.code === "23505") return NextResponse.json(errorResponse("Ese producto ya está en el conteo."), { status: 400 });
       throw new Error(error.message);

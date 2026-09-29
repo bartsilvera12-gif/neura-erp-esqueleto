@@ -51,8 +51,10 @@ export async function POST(request: NextRequest, p: Params) {
     if (!tipo) return NextResponse.json(errorResponse("Elegí si es ingreso o egreso."), { status: 400 });
     if (!(monto > 0)) return NextResponse.json(errorResponse("El monto tiene que ser mayor a 0."), { status: 400 });
     if (!concepto) return NextResponse.json(errorResponse("Escribí el concepto."), { status: 400 });
-    const { data: cta } = await ctx.supabase.from("entidades_bancarias").select("moneda").eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
-    if (!cta) return NextResponse.json(errorResponse("La cuenta no existe."), { status: 404 });
+    const { data: cta } = await ctx.supabase.from("entidades_bancarias").select("moneda, tipo, activo").eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
+    const c0 = cta as { moneda: string | null; tipo: string; activo: boolean } | null;
+    if (!c0 || c0.tipo !== "banco") return NextResponse.json(errorResponse("La cuenta no existe."), { status: 404 });
+    if (c0.activo === false) return NextResponse.json(errorResponse("La cuenta está inactiva."), { status: 400 });
     const { error } = await ctx.supabase.from("banco_movimientos").insert({
       empresa_id: ctx.auth.empresa_id,
       entidad_bancaria_id: id,

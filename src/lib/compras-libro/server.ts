@@ -6,7 +6,7 @@ import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import type { UsuarioConEmpresaYRol } from "@/lib/middleware/auth";
 import { diferencias, esUuid, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import { leerCdc, totales, type LineaCalc } from "./calculo";
-import { anularPago, ErrorTesoreria, pagosVigentes, registrarPago, saldosCajas } from "@/lib/tesoreria/server";
+import { anularPago, ErrorTesoreria, pagosVigentes, registrarPago, validarMovimiento } from "@/lib/tesoreria/server";
 
 export const COMPRA_COLS =
   "id, numero_control, fecha, tipo_id, tipo_codigo, tipo_nombre, condicion, nro_comprobante, proveedor_id, proveedor_nombre, proveedor_ruc, " +
@@ -43,13 +43,17 @@ export async function guardarCompra(
   if (!esUuid(tipoId)) throw new ErrorValidacion("Elegí el tipo de comprobante.");
   const { data: tipoData } = await sb
     .from("compra_tipos_comprobante")
-    .select("id, codigo, nombre, uso, condicion, activo")
+    .select("id, codigo, nombre, uso, condicion, activo, es_nota_credito")
     .eq("empresa_id", emp)
     .eq("id", tipoId)
     .maybeSingle();
-  const tipo = tipoData as { id: string; codigo: number; nombre: string; uso: string; condicion: "CONTADO" | "CREDITO"; activo: boolean } | null;
+  const tipo = tipoData as { id: string; codigo: number; nombre: string; uso: string; condicion: "CONTADO" | "CREDITO"; activo: boolean; es_nota_credito: boolean } | null;
   if (!tipo || !tipo.activo) throw new ErrorValidacion("Ese tipo de comprobante no existe o está desactivado.");
   if (tipo.uso !== "COMPRA") throw new ErrorValidacion("Ese tipo de comprobante es de ventas, no de compras.");
+  // Nota de crédito: al contado la plata vuelve a la cuenta; a crédito solo baja
+  // la deuda con el proveedor (no tiene cuotas ni pagos).
+  const esNC = tipo.es_nota_credito === true;
+  const conCuotas = tipo.condicion === "CREDITO" && !esNC;
 
   const fecha = String(body.fecha ?? "").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new ErrorValidacion("Falta la fecha.");
@@ -100,7 +104,7 @@ export async function guardarCompra(
   if (retIva + retRenta > t.total) throw new ErrorValidacion("Las retenciones no pueden superar el total.");
 
   // Cuotas: solo a crédito; tienen que sumar el total (menos retenciones).
-  const cuotasRaw = tipo.condicion === "CREDITO" && Array.isArray(body.cuotas_detalle) ? (body.cuotas_detalle as Record<string, unknown>[]) : [];
+  const cuotasRaw = conCuotas && Array.isArray(body.cuotas_detalle) ? (body.cuotas_detalle as Record<string, unknown>[]) : [];
   const cuotas = cuotasRaw.map((c, i) => ({
     nro: i + 1,
     pagare: txt(c.pagare, 40),
@@ -108,7 +112,7 @@ export async function guardarCompra(
     monto: num(c.monto),
     pagado: num(c.pagado),
   }));
-  if (tipo.condicion === "CREDITO") {
+  if (conCuotas) {
     if (!cuotas.length) throw new ErrorValidacion("Una compra a crédito necesita al menos una cuota.");
     if (cuotas.some((c) => !/^\d{4}-\d{2}-\d{2}$/.test(c.vencimiento))) throw new ErrorValidacion("Todas las cuotas necesitan fecha de vencimiento.");
     if (cuotas.some((c) => c.monto <= 0)) throw new ErrorValidacion("Revisá los montos de las cuotas.");
@@ -118,23 +122,52 @@ export async function guardarCompra(
       throw new ErrorValidacion(`Las cuotas suman ${suma.toLocaleString("es-PY")} y deberían sumar ${esperado.toLocaleString("es-PY")}.`);
   }
 
-  // Pago al contado: de qué cuenta bancaria o caja chica sale el dinero.
+  // Pago al contado: de qué cuenta bancaria o caja chica sale (o vuelve, si es NC) el dinero.
   const pagoRaw = (body.pago ?? null) as { medio?: string; cuenta_id?: string; referencia?: string } | null;
   const pago =
     tipo.condicion === "CONTADO" && pagoRaw && (pagoRaw.medio === "BANCO" || pagoRaw.medio === "CAJA_CHICA") && esUuid(pagoRaw.cuenta_id)
       ? { medio: pagoRaw.medio as "BANCO" | "CAJA_CHICA", cuentaId: pagoRaw.cuenta_id, referencia: txt(pagoRaw.referencia, 60) }
       : null;
   const montoPago = t.total - retIva - retRenta;
-  const previos = id ? (await pagosVigentes(sb, emp, id)).filter((x) => x.cuota_nro === null) : [];
-  if (pago?.medio === "CAJA_CHICA") {
-    // Se valida antes de guardar nada, para no dejar el comprobante sin su pago.
-    const { data: k } = await sb.from("cajas_chicas").select("nombre, moneda").eq("empresa_id", emp).eq("id", pago.cuentaId).maybeSingle();
-    const caja = k as { nombre: string; moneda: string } | null;
-    if (!caja) throw new ErrorValidacion("Esa caja chica no existe.");
-    if (caja.moneda !== moneda) throw new ErrorValidacion(`La caja ${caja.nombre} es en ${caja.moneda} y el comprobante en ${moneda}.`);
-    const devuelve = previos.filter((x) => x.caja_chica_id === pago.cuentaId).reduce((s2, x) => s2 + Number(x.monto), 0);
-    const saldo = ((await saldosCajas(sb, emp)).get(pago.cuentaId) ?? 0) + devuelve;
-    if (saldo < montoPago) throw new ErrorValidacion(`La caja ${caja.nombre} tiene ${saldo.toLocaleString("es-PY")}: no alcanza. Reponela primero.`);
+
+  // Todo lo que puede fallar se revisa ANTES de escribir, para no dejar el comprobante a medias.
+  let antes: Record<string, unknown> | null = null;
+  const vigentes = id ? await pagosVigentes(sb, emp, id) : [];
+  const previos = vigentes.filter((x) => x.cuota_nro === null);
+  const pagadoPor = new Map<number, number>();
+  for (const x of vigentes) if (x.cuota_nro !== null) pagadoPor.set(x.cuota_nro, (pagadoPor.get(x.cuota_nro) ?? 0) + Number(x.monto));
+  if (id) {
+    const prev = await sb.from("libro_compras").select(COMPRA_COLS).eq("empresa_id", emp).eq("id", id).maybeSingle();
+    antes = prev.data as unknown as Record<string, unknown> | null;
+    if (!antes) throw new ErrorValidacion("El comprobante no existe.");
+    if (antes.estado === "anulada") throw new ErrorValidacion("El comprobante está anulado; no se puede modificar.");
+    if (vigentes.length && antes.moneda !== moneda)
+      throw new ErrorValidacion(`Ya tiene pagos en ${String(antes.moneda)}: anulalos antes de cambiar la moneda.`);
+    for (const [nroCuota, pagado] of pagadoPor) {
+      const c = cuotas.find((q) => q.nro === nroCuota);
+      if (!c) throw new ErrorValidacion(`La cuota ${nroCuota} tiene pagos registrados: anulalos antes de quitarla o cambiar a contado.`);
+      if (c.monto < pagado) throw new ErrorValidacion(`La cuota ${nroCuota} ya tiene pagado ${pagado.toLocaleString("es-PY")}: no puede quedar en menos.`);
+    }
+  }
+  const igual =
+    pago &&
+    previos.length === 1 &&
+    previos[0].medio === pago.medio &&
+    (previos[0].entidad_bancaria_id ?? previos[0].caja_chica_id) === pago.cuentaId &&
+    Number(previos[0].monto) === montoPago &&
+    previos[0].fecha === fecha &&
+    (previos[0].referencia ?? null) === pago.referencia;
+  if (pago && !igual && montoPago > 0) {
+    // Si reemplaza un pago anterior de la misma cuenta, esa plata vuelve antes de descontar.
+    const devuelve = previos
+      .filter((x) => (x.entidad_bancaria_id ?? x.caja_chica_id) === pago.cuentaId)
+      .reduce((s2, x) => s2 + (esNC ? -1 : 1) * Number(x.monto), 0);
+    try {
+      await validarMovimiento(sb, emp, pago.medio, pago.cuentaId, moneda, montoPago, { ingreso: esNC, devuelve });
+    } catch (e) {
+      if (e instanceof ErrorTesoreria) throw new ErrorValidacion(e.message);
+      throw e;
+    }
   }
 
   const datos = {
@@ -169,12 +202,7 @@ export async function guardarCompra(
 
   let compraId = id ?? "";
   let numeroControl = "";
-  let antes: Record<string, unknown> | null = null;
-  if (id) {
-    const prev = await sb.from("libro_compras").select(COMPRA_COLS).eq("empresa_id", emp).eq("id", id).maybeSingle();
-    antes = prev.data as unknown as Record<string, unknown> | null;
-    if (!antes) throw new ErrorValidacion("El comprobante no existe.");
-    if (antes.estado === "anulada") throw new ErrorValidacion("El comprobante está anulado; no se puede modificar.");
+  if (id && antes) {
     const { error } = await sb.from("libro_compras").update(datos).eq("empresa_id", emp).eq("id", id);
     if (error) throw traducir(error);
     numeroControl = String(antes.numero_control);
@@ -211,14 +239,6 @@ export async function guardarCompra(
     .insert(lineas.map((l, i) => ({ ...l, empresa_id: emp, compra_id: compraId, orden: i })));
   if (insL.error) throw new Error(insL.error.message);
   // Lo pagado de cada cuota sale de sus pagos (no de lo que mande la pantalla).
-  const pagosCuotas = id ? (await pagosVigentes(sb, emp, compraId)).filter((x) => x.cuota_nro !== null) : [];
-  const pagadoPor = new Map<number, number>();
-  for (const x of pagosCuotas) pagadoPor.set(x.cuota_nro as number, (pagadoPor.get(x.cuota_nro as number) ?? 0) + Number(x.monto));
-  for (const [nroCuota, pagado] of pagadoPor) {
-    const c = cuotas.find((q) => q.nro === nroCuota);
-    if (!c) throw new ErrorValidacion(`La cuota ${nroCuota} tiene pagos registrados: anulalos antes de quitarla.`);
-    if (c.monto < pagado) throw new ErrorValidacion(`La cuota ${nroCuota} ya tiene pagado ${pagado.toLocaleString("es-PY")}: no puede quedar en menos.`);
-  }
   await sb.from("libro_compras_cuotas").delete().eq("empresa_id", emp).eq("compra_id", compraId);
   if (cuotas.length) {
     const insC = await sb
@@ -228,20 +248,12 @@ export async function guardarCompra(
   }
 
   // Sincroniza el pago al contado (y saca los pagos de contado si pasó a crédito o se quitó).
-  const igual =
-    pago &&
-    previos.length === 1 &&
-    previos[0].medio === pago.medio &&
-    (previos[0].entidad_bancaria_id ?? previos[0].caja_chica_id) === pago.cuentaId &&
-    Number(previos[0].monto) === montoPago &&
-    previos[0].fecha === fecha &&
-    (previos[0].referencia ?? null) === pago.referencia;
   let avisoPago: string | null = null;
   if (!igual) {
     for (const x of previos) await anularPago(sb, auth, x.id, "Se modificó el comprobante");
     if (pago && montoPago > 0) {
       try {
-        const r = await registrarPago(sb, auth, { compraId, cuotaNro: null, fecha, monto: montoPago, medio: pago.medio, cuentaId: pago.cuentaId, referencia: pago.referencia });
+        const r = await registrarPago(sb, auth, { compraId, cuotaNro: null, fecha, monto: montoPago, medio: pago.medio, cuentaId: pago.cuentaId, referencia: pago.referencia, ingreso: esNC });
         avisoPago = r.aviso;
       } catch (e) {
         if (e instanceof ErrorTesoreria) throw new ErrorValidacion(`El comprobante se guardó, pero el pago no: ${e.message}`);

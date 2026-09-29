@@ -15,6 +15,10 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
     const b = (await request.json().catch(() => ({}))) as { motivo?: string };
     const motivo = String(b.motivo ?? "").trim();
     if (!motivo) return NextResponse.json(errorResponse("Escribí el motivo de la anulación."), { status: 400 });
+    const { data: actual } = await ctx.supabase.from("libro_compras").select("estado").eq("empresa_id", ctx.auth.empresa_id).eq("id", id).maybeSingle();
+    if ((actual as { estado: string } | null)?.estado !== "registrada") return NextResponse.json(errorResponse("El comprobante ya está anulado o no existe."), { status: 400 });
+    // Primero se anulan los pagos (la plata vuelve al banco / caja chica); si algo falla, el comprobante sigue vigente y se puede reintentar.
+    for (const pg of await pagosVigentes(ctx.supabase, ctx.auth.empresa_id, id)) await anularPago(ctx.supabase, ctx.auth, pg.id, `Comprobante anulado: ${motivo}`, id);
     const { data, error } = await ctx.supabase
       .from("libro_compras")
       .update({ estado: "anulada", anulada_motivo: motivo.slice(0, 500), updated_at: new Date().toISOString() })
@@ -24,8 +28,6 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
       .select("id");
     if (error) throw new Error(error.message);
     if (!(data ?? []).length) return NextResponse.json(errorResponse("El comprobante ya está anulado o no existe."), { status: 400 });
-    // Los pagos del comprobante se anulan: la plata vuelve al banco / caja chica.
-    for (const pg of await pagosVigentes(ctx.supabase, ctx.auth.empresa_id, id)) await anularPago(ctx.supabase, ctx.auth, pg.id, `Comprobante anulado: ${motivo}`);
     await registrarHistorial(ctx.supabase, ctx.auth, "COMPRA", id, "ANULAR", { motivo });
     return NextResponse.json(successResponse({ id }));
   } catch (err) {
