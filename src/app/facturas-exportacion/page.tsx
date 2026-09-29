@@ -192,6 +192,14 @@ export default function FacturasExportacionPage() {
               Regularización
             </Link>
           )}
+          <a
+            href={`/api/facturas-exportacion/export?${new URLSearchParams(
+              Object.entries({ desde, hasta, estado, punto, tipo, q, modo }).filter(([, v]) => v) as [string, string][]
+            )}`}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            Exportar Excel
+          </a>
           <Link
             href="/facturas-exportacion/nueva"
             className="rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3F8E91]"
