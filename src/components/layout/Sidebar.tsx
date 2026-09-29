@@ -117,7 +117,8 @@ const MENU_STRUCTURE: MenuItem[] = [
     icon: ShoppingCart,
     children: [
       { label: "Compras", href: "/compras", exactMatch: true },
-      { label: "Libro de compras", href: "/libro-compras" },
+      { label: "Libro de compras", href: "/libro-compras", exactMatch: true },
+      { label: "Cuentas por pagar", href: "/libro-compras/por-pagar" },
       { label: "Órdenes de compra", href: "/compras/ordenes" },
       { label: "Proveedores", href: "/proveedores" },
     ],
@@ -130,11 +131,11 @@ const MENU_STRUCTURE: MenuItem[] = [
   { key: "recibos", slug: "recibos", label: "Recibos", href: "/recibos", icon: Receipt },
   { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown, children: [
     { label: "Gastos", href: "/gastos", exactMatch: true },
-    { label: "Cajas chicas por local", href: "/cajas-chicas" },
+    { label: "Cajas chicas", href: "/tesoreria" },
   ]},
   { key: "cobros", slug: "cobros", label: "Cobros / Pagos", href: "/pagos", icon: CreditCard, children: [
     { label: "Cobros y pagos", href: "/pagos", exactMatch: true },
-    { label: "Movimientos bancarios", href: "/bancos/movimientos" },
+    { label: "Bancos y cajas chicas", href: "/tesoreria" },
     { label: "Tipos de cambio", href: "/tipos-cambio" },
   ]},
   { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },

@@ -171,6 +171,7 @@ export function pathRequiresModuleSlug(pathname: string): string | null {
   if (p.startsWith("/importaciones")) return "importaciones";
   if (p.startsWith("/exportaciones")) return "importaciones"; // Comercio exterior: mismo módulo
   if (p.startsWith("/libro-compras")) return "compras";
+  if (p.startsWith("/tesoreria")) return "cobros"; // bancos y cajas chicas
   if (p.startsWith("/integraciones")) return "integraciones";
   if (p.startsWith("/cajas-chicas")) return "gastos"; // caja chica es capa de gastos
   if (p.startsWith("/fichar")) return null; // kiosco publico con token

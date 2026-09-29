@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Plus, ScanLine, Trash2 } from "lucide-react";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { preAsiento, totales, type LineaCalc } from "@/lib/compras-libro/calculo";
 import AdjuntosPanel from "@/components/comex/AdjuntosPanel";
 import HistorialPanel from "@/components/comex/HistorialPanel";
+import { ModalPagoCuota, OrigenDinero } from "./ModalPago";
 import {
   Aviso,
   ModalShell,
@@ -74,6 +75,8 @@ const sumarMeses = (iso: string, m: number) => {
 /** Registro de un comprobante de compra (alta y edición). */
 export default function FormCompra({ id }: { id?: string }) {
   const router = useRouter();
+  const params = useSearchParams();
+  const cajaParam = id ? null : params.get("caja");
   const { isAdmin } = useIsAdmin();
   const [tipos, setTipos] = useState<TipoComprobante[]>([]);
   const [config, setConfig] = useState<ConfigCompras | null>(null);
@@ -106,6 +109,14 @@ export default function FormCompra({ id }: { id?: string }) {
   const [guardando, setGuardando] = useState(false);
   const [anular, setAnular] = useState(false);
   const [recargaHist, setRecargaHist] = useState(0);
+  // De dónde sale el dinero (contado): cuenta bancaria o caja chica.
+  const [pagoMedio, setPagoMedio] = useState(cajaParam ? "CAJA_CHICA" : "");
+  const [pagoCuenta, setPagoCuenta] = useState(cajaParam ?? "");
+  const [pagoRef, setPagoRef] = useState("");
+  type PagoReg = { id: string; cuota_nro: number | null; fecha: string; monto: number; medio: string; referencia: string | null; usuario_nombre: string | null };
+  const [pagos, setPagos] = useState<PagoReg[]>([]);
+  const [pagarCuota, setPagarCuota] = useState<{ nro: number; saldo: number } | null>(null);
+  const [anularPago, setAnularPago] = useState<PagoReg | null>(null);
 
   const tiposCompra = tipos.filter((t) => t.uso === "COMPRA" && (t.activo || t.id === tipoId));
   const tipo = tipos.find((t) => t.id === tipoId) ?? null;
@@ -126,6 +137,10 @@ export default function FormCompra({ id }: { id?: string }) {
       .then((d) => {
         setTipos(d.tipos);
         setConfig(d.config);
+        if (cajaParam) {
+          const cc = d.tipos.find((x) => x.codigo === 5 && x.activo);
+          if (cc) setTipoId(cc.id);
+        }
         if (!id) setLineas([{ cuenta_codigo: "", centro_costo: d.config.centro_costo_defecto, programa: d.config.programa_defecto, explicacion: "", exentas: "", gravadas: "", iva_porcentaje: 10 }]);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Error"));
@@ -137,7 +152,16 @@ export default function FormCompra({ id }: { id?: string }) {
       .then((r) => r.json())
       .then((j) => setCuentas((j.data?.cuentas ?? []) as Cuenta[]))
       .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const cargarPagos = () =>
+    id
+      ? api<{ pagos: PagoReg[] }>(`/api/libro-compras/${id}/pagos`).then((d) => {
+          setPagos(d.pagos);
+          return d.pagos;
+        })
+      : Promise.resolve([] as PagoReg[]);
 
   // Edición: carga el comprobante.
   useEffect(() => {
@@ -172,6 +196,14 @@ export default function FormCompra({ id }: { id?: string }) {
           }))
         );
         setCuotas(qs.map((q) => ({ vencimiento: s(q.vencimiento), monto: s(q.monto), pagare: s(q.pagare), pagado: Number(q.pagado) ? s(q.pagado) : "" })));
+        void cargarPagos().then((ps) => {
+          const contado = (ps as (PagoReg & { entidad_bancaria_id?: string | null; caja_chica_id?: string | null })[]).find((x) => x.cuota_nro === null);
+          if (contado) {
+            setPagoMedio(contado.medio);
+            setPagoCuenta((contado.entidad_bancaria_id ?? contado.caja_chica_id) || "");
+            setPagoRef(contado.referencia ?? "");
+          }
+        });
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Error"))
       .finally(() => setCargando(false));
@@ -290,6 +322,7 @@ export default function FormCompra({ id }: { id?: string }) {
         formulario: l.iva_porcentaje ? "Form120-R6-a" : null,
       })),
       cuotas_detalle: credito ? cuotas.map((c) => ({ vencimiento: c.vencimiento, monto: Number(c.monto) || 0, pagare: c.pagare, pagado: Number(c.pagado) || 0 })) : [],
+      pago: !credito && pagoMedio && pagoCuenta ? { medio: pagoMedio, cuenta_id: pagoCuenta, referencia: pagoRef } : null,
     };
   }
 
@@ -299,8 +332,8 @@ export default function FormCompra({ id }: { id?: string }) {
     setAviso(null);
     try {
       const d = id
-        ? await api<{ id: string; numero_control: string }>(`/api/libro-compras/${id}`, jsonInit("PUT", payload()))
-        : await api<{ id: string; numero_control: string }>("/api/libro-compras", jsonInit("POST", payload()));
+        ? await api<{ id: string; numero_control: string; aviso: string | null }>(`/api/libro-compras/${id}`, jsonInit("PUT", payload()))
+        : await api<{ id: string; numero_control: string; aviso: string | null }>("/api/libro-compras", jsonInit("POST", payload()));
       if (yNuevo) {
         // Se queda en la pantalla para cargar el siguiente (conserva tipo, fecha y moneda).
         setCdc("");
@@ -314,12 +347,13 @@ export default function FormCompra({ id }: { id?: string }) {
         setRetIva("");
         setRetRenta("");
         setCuotas([]);
-        setAviso(`Se guardó ${d.numero_control}. Podés cargar el siguiente.`);
+        setAviso(`Se guardó ${d.numero_control}. Podés cargar el siguiente.${d.aviso ? ` Ojo: ${d.aviso}` : ""}`);
         window.scrollTo({ top: 0, behavior: "smooth" });
-      } else if (!id) router.push(`/libro-compras/${d.id}`);
+      } else if (!id) router.push(cajaParam ? `/tesoreria/caja/${cajaParam}` : `/libro-compras/${d.id}`);
       else {
-        setAviso("Cambios guardados.");
+        setAviso(`Cambios guardados.${d.aviso ? ` Ojo: ${d.aviso}` : ""}`);
         setRecargaHist((n) => n + 1);
+        void cargarPagos();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -573,6 +607,24 @@ export default function FormCompra({ id }: { id?: string }) {
           </div>
         </section>
 
+        {/* De dónde sale el dinero (contado) */}
+        {tipo && !credito && (
+          <section className="space-y-3 rounded-xl border border-emerald-200 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-800">¿De dónde sale el dinero?</h2>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="sm:col-span-2">
+                <OrigenDinero moneda={moneda} medio={pagoMedio} cuentaId={pagoCuenta} permitirNinguno onChange={(m, c) => { setPagoMedio(m); setPagoCuenta(c); }} />
+              </div>
+              <input value={pagoRef} onChange={(e) => setPagoRef(e.target.value)} placeholder="N° de cheque o transferencia" className={inputClass} />
+            </div>
+            <p className="text-xs text-slate-500">
+              {pagoCuenta
+                ? `Al guardar se descuentan ${fmt(aPagar, moneda)} de esa cuenta.`
+                : "Si no elegís una cuenta, el comprobante queda registrado pero el pago no se descuenta de ningún lado."}
+            </p>
+          </section>
+        )}
+
         <div className="grid gap-5 lg:grid-cols-2">
           {/* Retenciones */}
           <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -643,8 +695,17 @@ export default function FormCompra({ id }: { id?: string }) {
                           <td className="py-1 pr-2">
                             <input type="number" min={0} step="any" value={c.monto} onWheel={noRueda} onChange={(e) => setCuotas((cs) => cs.map((x, j) => (j === i ? { ...x, monto: e.target.value } : x)))} className={`${num} w-28`} />
                           </td>
-                          <td className="py-1 pr-2">
-                            <input type="number" min={0} step="any" value={c.pagado} onWheel={noRueda} onChange={(e) => setCuotas((cs) => cs.map((x, j) => (j === i ? { ...x, pagado: e.target.value } : x)))} placeholder="0" className={`${num} w-28`} />
+                          <td className="py-1 pr-2 text-right whitespace-nowrap">
+                            {fmt(Number(c.pagado) || 0, moneda)}
+                            {id && !bloqueado && (Number(c.monto) || 0) - (Number(c.pagado) || 0) > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setPagarCuota({ nro: i + 1, saldo: (Number(c.monto) || 0) - (Number(c.pagado) || 0) })}
+                                className="ml-2 rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                              >
+                                Pagar
+                              </button>
+                            )}
                           </td>
                           <td className="py-1">
                             <input value={c.pagare} onChange={(e) => setCuotas((cs) => cs.map((x, j) => (j === i ? { ...x, pagare: e.target.value } : x)))} className={`${inputClass} w-24`} />
@@ -736,6 +797,59 @@ export default function FormCompra({ id }: { id?: string }) {
         </div>
       )}
 
+      {id && pagos.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-800">Pagos registrados</h2>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            {pagos.map((pg) => (
+              <div key={pg.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-2.5 text-sm first:border-t-0">
+                <span>
+                  {pg.fecha.split("-").reverse().join("/")} · {pg.cuota_nro ? `Cuota ${pg.cuota_nro}` : "Contado"} · {pg.medio === "BANCO" ? "Banco" : "Caja chica"}
+                  {pg.referencia ? ` · ${pg.referencia}` : ""}
+                  <span className="ml-2 text-xs text-slate-400">{pg.usuario_nombre ?? ""}</span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <strong>{fmt(Number(pg.monto), moneda)}</strong>
+                  {isAdmin && !bloqueado && pg.cuota_nro !== null && (
+                    <button onClick={() => setAnularPago(pg)} className="text-xs text-rose-600 hover:underline">
+                      Anular
+                    </button>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {pagarCuota && id && (
+        <ModalPagoCuota
+          compraId={id}
+          cuotaNro={pagarCuota.nro}
+          saldo={pagarCuota.saldo}
+          moneda={moneda}
+          titulo={`Pagar cuota ${pagarCuota.nro}`}
+          onClose={() => setPagarCuota(null)}
+          onDone={(a) => {
+            setPagarCuota(null);
+            setAviso(a ? `Pago registrado. Ojo: ${a}` : "Pago registrado.");
+            void cargarPagos();
+            api<{ cuotas: Record<string, unknown>[] }>(`/api/libro-compras/${id}`).then((d) =>
+              setCuotas(d.cuotas.map((q) => ({ vencimiento: String(q.vencimiento), monto: String(q.monto), pagare: String(q.pagare ?? ""), pagado: String(q.pagado ?? "") })))
+            );
+            setRecargaHist((n) => n + 1);
+          }}
+        />
+      )}
+      {anularPago && id && (
+        <ModalAnularPago
+          compraId={id}
+          pagoId={anularPago.id}
+          onClose={() => setAnularPago(null)}
+          onDone={() => window.location.reload()}
+        />
+      )}
+
       {id && (
         <div className="grid gap-5 lg:grid-cols-2">
           <section className="space-y-2">
@@ -793,6 +907,43 @@ function ModalAnular({ id, onClose, onDone }: { id: string; onClose: () => void;
             className="inline-flex items-center rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700 disabled:opacity-50"
           >
             Anular
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ModalAnularPago({ compraId, pagoId, onClose, onDone }: { compraId: string; pagoId: string; onClose: () => void; onDone: () => void }) {
+  const [motivo, setMotivo] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <ModalShell title="Anular pago" onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600">La plata vuelve a la cuenta de donde salió y la cuota queda otra vez pendiente.</p>
+        <div>
+          <label className={labelClass}>Motivo *</label>
+          <input value={motivo} onChange={(e) => setMotivo(e.target.value)} className={inputClass} autoFocus />
+        </div>
+        {error && <Aviso>{error}</Aviso>}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className={btnSecundario}>Cancelar</button>
+          <button
+            disabled={saving || !motivo.trim()}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await api(`/api/libro-compras/${compraId}/pagos?pagoId=${pagoId}&motivo=${encodeURIComponent(motivo)}`, { method: "DELETE" });
+                onDone();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "Error");
+                setSaving(false);
+              }
+            }}
+            className="inline-flex items-center rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+          >
+            Anular pago
           </button>
         </div>
       </div>

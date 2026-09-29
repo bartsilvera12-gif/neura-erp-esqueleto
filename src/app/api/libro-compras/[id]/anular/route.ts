@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
 import { getComexCtx, registrarHistorial } from "@/lib/comex/server";
+import { anularPago, pagosVigentes } from "@/lib/tesoreria/server";
 
 /** POST { motivo } — anula el comprobante (queda registrado, no se borra). Solo admin. */
 export async function POST(request: NextRequest, p: { params: Promise<{ id: string }> }) {
@@ -23,6 +24,8 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
       .select("id");
     if (error) throw new Error(error.message);
     if (!(data ?? []).length) return NextResponse.json(errorResponse("El comprobante ya está anulado o no existe."), { status: 400 });
+    // Los pagos del comprobante se anulan: la plata vuelve al banco / caja chica.
+    for (const pg of await pagosVigentes(ctx.supabase, ctx.auth.empresa_id, id)) await anularPago(ctx.supabase, ctx.auth, pg.id, `Comprobante anulado: ${motivo}`);
     await registrarHistorial(ctx.supabase, ctx.auth, "COMPRA", id, "ANULAR", { motivo });
     return NextResponse.json(successResponse({ id }));
   } catch (err) {
