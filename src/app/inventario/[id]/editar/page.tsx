@@ -654,9 +654,9 @@ export default function EditarProductoPage() {
                   </Link>
                 </div>
               </div>
-              {/* Ubicación principal — oculta en instancia Esqueleto ERP (no aplica para gastronomía). */}
-              <div className="hidden md:col-span-4 min-w-0">
-                <label className={labelClass}>Ubicación principal</label>
+              {/* Depósito principal: define de dónde sale el stock en remisiones, conteos y transferencias. */}
+              <div className="md:col-span-4 min-w-0">
+                <label className={labelClass}>Depósito / Ubicación</label>
                 <SelectFromList
                   value={ubicacionId}
                   onChange={setUbicacionId}
@@ -665,7 +665,7 @@ export default function EditarProductoPage() {
                 />
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <span className="text-xs text-gray-400 truncate">
-                    {ubicaciones.length === 0 ? "Todavía no cargaste ubicaciones." : `${ubicaciones.length} disponibles`}
+                    {ubicaciones.length === 0 ? "Todavía no cargaste ubicaciones." : "El stock del producto cuenta en este depósito."}
                   </span>
                   <Link
                     href="/inventario/ubicaciones"
