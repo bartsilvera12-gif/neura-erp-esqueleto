@@ -129,11 +129,11 @@ export default function ExpFichaForm({
         <input value={ficha.productor} onChange={(e) => set("productor", e.target.value)} className={inputClass} />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:col-span-2 lg:grid-cols-4">
-        <div>
+        <div className="flex flex-col justify-end">
           <label className={labelClass}>Embarque comprometido</label>
           <input type="date" value={ficha.fecha_comprometida_embarque} onChange={(e) => set("fecha_comprometida_embarque", e.target.value)} className={inputClass} />
         </div>
-        <div>
+        <div className="flex flex-col justify-end">
           <label className={labelClass}>Entrega comprometida</label>
           <input type="date" value={ficha.fecha_comprometida_entrega} onChange={(e) => set("fecha_comprometida_entrega", e.target.value)} className={inputClass} />
         </div>

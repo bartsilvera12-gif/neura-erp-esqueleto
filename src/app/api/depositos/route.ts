@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
+import { traerTodo } from "@/lib/comex/server";
+import { filasStockDeposito, stockEnDeposito, type ProdStock } from "@/lib/comex/stock-deposito";
 
 /**
  * GET /api/depositos — lista ubicaciones con total de stock y productos con stock.
@@ -20,18 +23,21 @@ export async function GET(request: NextRequest) {
       .order("nombre");
     if (ubQ.error) return NextResponse.json(errorResponse(ubQ.error.message), { status: 400 });
 
-    const stockQ = await supabase
-      .from("productos_stock_ubicacion")
-      .select("ubicacion_id, stock")
-      .eq("empresa_id", auth.empresa_id);
-    if (stockQ.error) return NextResponse.json(errorResponse(stockQ.error.message), { status: 400 });
-
+    // Stock por depósito: el mismo que usan transferencias, compras, importaciones y remisiones.
+    const sb = supabase as unknown as AppSupabaseClient;
+    const [filas, prods] = await Promise.all([
+      filasStockDeposito(sb, auth.empresa_id),
+      traerTodo<ProdStock>((a, z) => supabase.from("productos").select("id, stock_actual, ubicacion_principal_id").eq("empresa_id", auth.empresa_id).eq("activo", true).order("id").range(a, z)),
+    ]);
     const totales = new Map<string, { total: number; productos_con_stock: number }>();
-    for (const row of (stockQ.data ?? []) as Array<{ ubicacion_id: string; stock: number }>) {
-      const cur = totales.get(row.ubicacion_id) ?? { total: 0, productos_con_stock: 0 };
-      cur.total += Number(row.stock) || 0;
-      if (Number(row.stock) > 0) cur.productos_con_stock += 1;
-      totales.set(row.ubicacion_id, cur);
+    for (const u of (ubQ.data ?? []) as Array<{ id: string }>) {
+      let total = 0;
+      let con = 0;
+      for (const v of stockEnDeposito(prods, filas, u.id).values()) {
+        total += v;
+        if (v > 0) con += 1;
+      }
+      totales.set(u.id, { total, productos_con_stock: con });
     }
 
     const depositos = ((ubQ.data ?? []) as Array<{ id: string; nombre: string; codigo: string; tipo: string; activo: boolean }>).map((u) => {

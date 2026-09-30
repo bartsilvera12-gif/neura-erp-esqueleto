@@ -3,10 +3,13 @@ import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
+import { asegurarStockPorDeposito, filasStockDeposito, stockEnDeposito, sumarStockDeposito, type ProdStock } from "@/lib/comex/stock-deposito";
 
 /**
- * Ajusta stock por ubicación de forma atómica-best-effort.
- * Devuelve `null` si va todo bien, mensaje si algo falla.
+ * Ajusta el stock de un producto en un depósito (la misma tabla que usan las
+ * transferencias, compras e importaciones). Devuelve `null` si va todo bien,
+ * mensaje si algo falla.
  */
 async function ajustarStock(
   supabase: SupabaseClient,
@@ -15,28 +18,16 @@ async function ajustarStock(
   productoId: string,
   delta: number
 ): Promise<string | null> {
-  const q = await supabase
-    .from("productos_stock_ubicacion")
-    .select("id, stock")
-    .eq("empresa_id", empresaId)
-    .eq("ubicacion_id", ubicacionId)
-    .eq("producto_id", productoId)
-    .maybeSingle();
-  if (q.error) return q.error.message;
-  if (q.data) {
-    const nuevo = Number((q.data as { stock: number }).stock) + delta;
-    if (nuevo < 0) return `Stock final negativo (${nuevo}) para producto ${productoId}`;
-    const up = await supabase
-      .from("productos_stock_ubicacion")
-      .update({ stock: nuevo, updated_at: new Date().toISOString() })
-      .eq("id", (q.data as { id: string }).id);
-    return up.error ? up.error.message : null;
-  } else {
-    if (delta < 0) return `No hay fila de stock existente y el delta es negativo para producto ${productoId}`;
-    const ins = await supabase
-      .from("productos_stock_ubicacion")
-      .insert({ empresa_id: empresaId, ubicacion_id: ubicacionId, producto_id: productoId, stock: delta });
-    return ins.error ? ins.error.message : null;
+  try {
+    const sb = supabase as unknown as AppSupabaseClient;
+    await asegurarStockPorDeposito(sb, empresaId, productoId);
+    const fila = (await filasStockDeposito(sb, empresaId, [productoId])).find((f) => f.ubicacion_id === ubicacionId);
+    const actual = Number(fila?.stock_actual) || 0;
+    if (actual + delta < 0) return `Stock final negativo (${actual + delta}) para producto ${productoId}`;
+    await sumarStockDeposito(sb, empresaId, productoId, ubicacionId, delta);
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : "Error al ajustar el stock";
   }
 }
 
@@ -85,18 +76,19 @@ export async function POST(
     const items = (itemsQ.data ?? []) as Array<{ producto_id: string; cantidad: number }>;
     if (items.length === 0) return NextResponse.json(errorResponse("NR sin items."), { status: 400 });
 
-    // Validar stock disponible antes de descontar
-    const stockOrigenQ = await supabase
-      .from("productos_stock_ubicacion")
-      .select("producto_id, stock")
+    // Validar stock disponible antes de descontar (stock del depósito de origen).
+    const sbApp = supabase as unknown as AppSupabaseClient;
+    const pStock = await supabase
+      .from("productos")
+      .select("id, stock_actual, ubicacion_principal_id")
       .eq("empresa_id", auth.empresa_id)
-      .eq("ubicacion_id", nr.ubicacion_origen_id)
-      .in("producto_id", items.map((i) => i.producto_id));
-    if (stockOrigenQ.error) throw new Error(stockOrigenQ.error.message);
-    const stockOrig = new Map<string, number>();
-    for (const s of (stockOrigenQ.data ?? []) as Array<{ producto_id: string; stock: number }>) {
-      stockOrig.set(s.producto_id, Number(s.stock));
-    }
+      .in("id", items.map((i) => i.producto_id));
+    if (pStock.error) throw new Error(pStock.error.message);
+    const stockOrig = stockEnDeposito(
+      (pStock.data ?? []) as unknown as ProdStock[],
+      await filasStockDeposito(sbApp, auth.empresa_id, items.map((i) => i.producto_id)),
+      nr.ubicacion_origen_id
+    );
 
     // Info producto (nombre, sku) para movimientos
     const prodQ = await supabase

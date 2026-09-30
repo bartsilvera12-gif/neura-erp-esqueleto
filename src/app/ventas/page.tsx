@@ -6,6 +6,8 @@ import EdgeScrollArea from "@/components/ui/EdgeScrollArea";
 import { FancySelect } from "@/components/ui/FancySelect";
 import { getVentas } from "@/lib/ventas/storage";
 import CajaControlPanel from "@/components/caja/CajaControlPanel";
+import { EditarVentaModal } from "./_components/EditarVentaModal";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { Venta, TipoVenta, TipoIvaVenta } from "@/lib/ventas/types";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -147,6 +149,20 @@ function ivaResumen(v: Venta): string {
 export default function VentasPage() {
   const [todas,      setTodas]      = useState<Venta[]>([]);
   const [busqueda,   setBusqueda]   = useState("");
+  const [editarId,   setEditarId]   = useState<string | null>(null);
+  const [eliminar,   setEliminar]   = useState<{ id: string; numero: string } | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
+
+  async function confirmarEliminar() {
+    if (!eliminar || eliminando) return;
+    setEliminando(true);
+    const r = await fetch(`/api/ventas/${eliminar.id}`, { method: "DELETE", credentials: "include" });
+    const j = await r.json().catch(() => ({}));
+    setEliminando(false);
+    if (r.ok && (j as { success?: boolean })?.success !== false) window.location.reload();
+    else setErrorEliminar((j as { error?: string })?.error ?? "No se pudo eliminar.");
+  }
   const [filtroTipo, setFiltroTipo] = useState<TipoVenta | "">("");
   const [filtroIva,  setFiltroIva]  = useState<TipoIvaVenta | "">("");
 
@@ -193,6 +209,22 @@ export default function VentasPage() {
 
   return (
     <div className="space-y-8">
+      <ConfirmModal
+        open={!!eliminar}
+        title={`Eliminar la venta ${eliminar?.numero ?? ""}`}
+        message={
+          <div className="space-y-2">
+            <p>Se anula la venta y se repone el stock de sus productos. No se puede deshacer.</p>
+            {errorEliminar && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{errorEliminar}</p>}
+          </div>
+        }
+        confirmLabel="Eliminar"
+        tone="danger"
+        loading={eliminando}
+        onConfirm={confirmarEliminar}
+        onCancel={() => setEliminar(null)}
+      />
+      {editarId && <EditarVentaModal ventaId={editarId} onClose={() => setEditarId(null)} onDone={() => window.location.reload()} />}
 
       <div>
         <div className="flex items-center gap-2">
@@ -393,16 +425,15 @@ export default function VentasPage() {
                           </a>
                           <button
                             type="button"
-                            onClick={async () => {
-                              if (!window.confirm(`¿Eliminar la venta ${v.numero_control}? Se anulará y se repondrá el stock.`)) return;
-                              const r = await fetch(`/api/ventas/${v.id}`, { method: "DELETE", credentials: "include" });
-                              const j = await r.json().catch(() => ({}));
-                              if (r.ok && (j as { success?: boolean })?.success !== false) {
-                                window.location.reload();
-                              } else {
-                                window.alert((j as { error?: string })?.error ?? "No se pudo eliminar.");
-                              }
-                            }}
+                            onClick={() => setEditarId(v.id)}
+                            className="zx-surface zx-surface-interactive inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            title="Corregir cómo se cobró y las observaciones"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setErrorEliminar(null); setEliminar({ id: v.id, numero: v.numero_control }); }}
                             className="inline-flex items-center justify-center rounded-md px-2 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
                             title="Eliminar venta (repone stock)"
                           >

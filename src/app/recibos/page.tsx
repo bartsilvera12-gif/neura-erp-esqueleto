@@ -1,17 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Receipt, Plus, Printer, Ban, Search, Loader2, X } from "lucide-react";
+import { Receipt, Plus, Printer, Ban, Search, Loader2, X, Pencil, Trash2 } from "lucide-react";
 import {
   fetchRecibos,
   crearReciboManual,
   anularRecibo,
   abrirReciboPdf,
+  editarRecibo,
+  borrarRecibo,
   type Recibo,
   type ReciboOrigen,
 } from "@/lib/recibos/client";
 import { FancySelect } from "@/components/ui/FancySelect";
 import MontoInput from "@/components/ui/MontoInput";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { useIsAdmin } from "@/lib/auth/use-is-admin";
 
 const ORIGEN_LABEL: Record<ReciboOrigen, string> = {
   venta_contado: "Venta contado",
@@ -56,6 +60,12 @@ export default function RecibosPage() {
   const [incluirAnulados, setIncluirAnulados] = useState(false);
 
   const [modalAbierto, setModalAbierto] = useState(false);
+  const { isAdmin } = useIsAdmin();
+  const [editando, setEditando] = useState<Recibo | null>(null);
+  const [anulando, setAnulando] = useState<Recibo | null>(null);
+  const [motivoAnular, setMotivoAnular] = useState("");
+  const [borrando, setBorrando] = useState<Recibo | null>(null);
+  const [ocupado, setOcupado] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -85,14 +95,24 @@ export default function RecibosPage() {
     };
   }, [recibos]);
 
-  async function handleAnular(r: Recibo) {
-    const motivo = window.prompt(`Anular el recibo ${r.numero_recibo}. Motivo (opcional):`);
-    if (motivo === null) return;
-    const res = await anularRecibo(r.id, motivo);
-    if (!res.ok) {
-      alert(res.error);
-      return;
-    }
+  async function confirmarAnular() {
+    if (!anulando || ocupado) return;
+    setOcupado(true);
+    const res = await anularRecibo(anulando.id, motivoAnular);
+    setOcupado(false);
+    setAnulando(null);
+    setMotivoAnular("");
+    if (!res.ok) return setError(res.error);
+    void cargar();
+  }
+
+  async function confirmarBorrar() {
+    if (!borrando || ocupado) return;
+    setOcupado(true);
+    const res = await borrarRecibo(borrando.id);
+    setOcupado(false);
+    setBorrando(null);
+    if (!res.ok) return setError(res.error);
     void cargar();
   }
 
@@ -255,10 +275,30 @@ export default function RecibosPage() {
                         >
                           <Printer className="h-4 w-4" />
                         </button>
+                        {isAdmin && !r.anulado && (
+                          <button
+                            type="button"
+                            onClick={() => setEditando(r)}
+                            title="Editar recibo"
+                            className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition-colors hover:border-[#4FAEB2] hover:text-[#3F8E91]"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => setBorrando(r)}
+                            title="Borrar recibo"
+                            className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition-colors hover:border-red-300 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                         {!r.anulado && (
                           <button
                             type="button"
-                            onClick={() => handleAnular(r)}
+                            onClick={() => setAnulando(r)}
                             title="Anular recibo"
                             className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition-colors hover:border-red-300 hover:text-red-600"
                           >
@@ -275,6 +315,42 @@ export default function RecibosPage() {
         )}
       </div>
 
+      {editando && (
+        <ModalEditarRecibo
+          recibo={editando}
+          onClose={() => setEditando(null)}
+          onGuardado={() => {
+            setEditando(null);
+            void cargar();
+          }}
+        />
+      )}
+      <ConfirmModal
+        open={!!anulando}
+        title={`Anular el recibo ${anulando?.numero_recibo ?? ""}`}
+        message={
+          <div className="space-y-2">
+            <p>El recibo queda en la lista marcado como anulado. No cambia la venta ni el cobro.</p>
+            <input value={motivoAnular} onChange={(e) => setMotivoAnular(e.target.value)} placeholder="Motivo (opcional)" className={inputCls} />
+          </div>
+        }
+        confirmLabel="Anular"
+        tone="danger"
+        loading={ocupado}
+        onConfirm={confirmarAnular}
+        onCancel={() => { setAnulando(null); setMotivoAnular(""); }}
+      />
+      <ConfirmModal
+        open={!!borrando}
+        title={`Borrar el recibo ${borrando?.numero_recibo ?? ""}`}
+        message="Se borra del todo y no se puede recuperar. No cambia la venta ni el cobro. Si solo querés dejarlo sin efecto pero que quede registrado, usá Anular."
+        confirmLabel="Borrar"
+        tone="danger"
+        loading={ocupado}
+        onConfirm={confirmarBorrar}
+        onCancel={() => setBorrando(null)}
+      />
+
       {modalAbierto && (
         <ModalReciboManual
           onClose={() => setModalAbierto(false)}
@@ -285,6 +361,113 @@ export default function RecibosPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** Corrección de un recibo ya emitido. El monto solo se cambia en los recibos manuales. */
+function ModalEditarRecibo({ recibo, onClose, onGuardado }: { recibo: Recibo; onClose: () => void; onGuardado: () => void }) {
+  const manual = recibo.origen === "manual";
+  const [f, setF] = useState({
+    cliente_nombre: recibo.cliente_nombre ?? "",
+    cliente_documento: recibo.cliente_documento ?? "",
+    concepto: recibo.concepto ?? "",
+    metodo_pago: recibo.metodo_pago ?? "efectivo",
+    referencia: recibo.referencia ?? "",
+    observaciones: recibo.observaciones ?? "",
+    monto: Number(recibo.monto) || 0,
+    moneda: recibo.moneda === "USD" ? "USD" : "PYG",
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function guardar() {
+    if (!f.cliente_nombre.trim()) return setErr("Falta el nombre del cliente.");
+    if (manual && !(Number(f.monto) > 0)) return setErr("Ingresá un monto mayor a 0.");
+    setBusy(true);
+    setErr(null);
+    const r = await editarRecibo(recibo.id, {
+      cliente_nombre: f.cliente_nombre,
+      cliente_documento: f.cliente_documento,
+      concepto: f.concepto,
+      metodo_pago: f.metodo_pago,
+      referencia: f.referencia,
+      observaciones: f.observaciones,
+      ...(manual ? { monto: Number(f.monto), moneda: f.moneda } : {}),
+    });
+    setBusy(false);
+    if (!r.ok) return setErr(r.error);
+    onGuardado();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white shadow-lg">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+          <h2 className="text-base font-semibold text-slate-900">Editar recibo {recibo.numero_recibo}</h2>
+          <button type="button" onClick={onClose} className="rounded p-1 hover:bg-slate-100" aria-label="Cerrar">
+            <X className="h-4 w-4 text-slate-500" />
+          </button>
+        </div>
+        <div className="space-y-3 p-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={labelCls}>Cliente *</label>
+              <input value={f.cliente_nombre} onChange={(e) => setF({ ...f, cliente_nombre: e.target.value })} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>RUC / C.I.</label>
+              <input value={f.cliente_documento} onChange={(e) => setF({ ...f, cliente_documento: e.target.value })} className={inputCls} />
+            </div>
+            {manual ? (
+              <>
+                <div>
+                  <label className={labelCls}>Monto *</label>
+                  <MontoInput value={f.monto} onChange={(n) => setF({ ...f, monto: Number(n) || 0 })} className={inputCls} decimals={f.moneda === "USD"} />
+                </div>
+                <div>
+                  <label className={labelCls}>Moneda</label>
+                  <select value={f.moneda} onChange={(e) => setF({ ...f, moneda: e.target.value })} className={inputCls}>
+                    <option value="PYG">Guaraníes</option>
+                    <option value="USD">Dólares</option>
+                  </select>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-slate-500 sm:col-span-2">
+                El monto ({fmtMonto(recibo.monto, recibo.moneda)}) viene de la venta o del cobro y no se cambia desde acá.
+              </p>
+            )}
+            <div>
+              <label className={labelCls}>Método de pago</label>
+              <select value={f.metodo_pago} onChange={(e) => setF({ ...f, metodo_pago: e.target.value })} className={inputCls}>
+                {METODOS.map((m) => (
+                  <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Referencia</label>
+              <input value={f.referencia} onChange={(e) => setF({ ...f, referencia: e.target.value })} className={inputCls} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Concepto</label>
+              <input value={f.concepto} onChange={(e) => setF({ ...f, concepto: e.target.value })} className={inputCls} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Observaciones</label>
+              <input value={f.observaciones} onChange={(e) => setF({ ...f, observaciones: e.target.value })} className={inputCls} />
+            </div>
+          </div>
+          {err && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
+            <button type="button" onClick={guardar} disabled={busy} className="rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:opacity-50">
+              {busy ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

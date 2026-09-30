@@ -6,6 +6,7 @@ import ExportExcelButton from "@/components/ui/ExportExcelButton";
 import ImportExcelButton from "@/components/ui/ImportExcelButton";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import { Select } from "@/components/ui/Select";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 interface Categoria {
   id: string;
@@ -27,6 +28,41 @@ export default function CategoriasProductosPage() {
   const [codigo, setCodigo] = useState("");
   const [parentId, setParentId] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Edición en la misma fila y borrado
+  const [edit, setEdit] = useState<{ id: string; nombre: string; codigo: string; parent_id: string } | null>(null);
+  const [borrar, setBorrar] = useState<Categoria | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+
+  async function guardarEdicion() {
+    if (!edit || !edit.nombre.trim() || ocupado) return;
+    setOcupado(true);
+    setError(null);
+    const r = await fetch(`/api/inventario/categorias/${edit.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ nombre: edit.nombre.trim(), codigo: edit.codigo.trim() || null, parent_id: edit.parent_id || null }),
+    });
+    const j = await r.json().catch(() => null);
+    setOcupado(false);
+    if (r.ok && j?.success) {
+      setEdit(null);
+      void load();
+    } else setError(j?.error ?? "No se pudo guardar.");
+  }
+
+  async function confirmarBorrar() {
+    if (!borrar || ocupado) return;
+    setOcupado(true);
+    setError(null);
+    const r = await fetch(`/api/inventario/categorias/${borrar.id}`, { method: "DELETE", credentials: "include" });
+    const j = await r.json().catch(() => null);
+    setOcupado(false);
+    setBorrar(null);
+    if (r.ok && j?.success) void load();
+    else setError(j?.error ?? "No se pudo borrar.");
+  }
 
   async function load() {
     setLoading(true);
@@ -88,6 +124,16 @@ export default function CategoriasProductosPage() {
 
   return (
     <div className="space-y-8">
+      <ConfirmModal
+        open={!!borrar}
+        title={`Borrar la categoría ${borrar?.nombre ?? ""}`}
+        message="Se borra del todo. Si tiene productos o categorías adentro, no se va a poder: en ese caso se puede desactivar."
+        confirmLabel="Borrar"
+        tone="danger"
+        loading={ocupado}
+        onConfirm={confirmarBorrar}
+        onCancel={() => setBorrar(null)}
+      />
       <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Categorías de productos</h1>
@@ -188,9 +234,30 @@ export default function CategoriasProductosPage() {
                 const parent = items.find((i) => i.id === c.parent_id);
                 return (
                   <tr key={c.id} className="border-t border-slate-100">
-                    <td className="px-4 py-2 font-medium">{c.nombre}</td>
-                    <td className="px-4 py-2 text-gray-500">{c.codigo ?? "—"}</td>
-                    <td className="px-4 py-2 text-gray-500">{parent?.nombre ?? "—"}</td>
+                    {edit?.id === c.id ? (
+                      <>
+                        <td className="px-4 py-2">
+                          <input value={edit.nombre} onChange={(e) => setEdit({ ...edit, nombre: e.target.value })} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" aria-label="Nombre" autoFocus />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input value={edit.codigo} onChange={(e) => setEdit({ ...edit, codigo: e.target.value })} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" aria-label="Código" />
+                        </td>
+                        <td className="px-4 py-2">
+                          <select value={edit.parent_id} onChange={(e) => setEdit({ ...edit, parent_id: e.target.value })} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm" aria-label="Categoría padre">
+                            <option value="">— ninguna —</option>
+                            {items.filter((i) => i.id !== c.id && i.parent_id !== c.id).map((i) => (
+                              <option key={i.id} value={i.id}>{i.nombre}</option>
+                            ))}
+                          </select>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-2 font-medium">{c.nombre}</td>
+                        <td className="px-4 py-2 text-gray-500">{c.codigo ?? "—"}</td>
+                        <td className="px-4 py-2 text-gray-500">{parent?.nombre ?? "—"}</td>
+                      </>
+                    )}
                     <td className="px-4 py-2">
                       {c.activo ? (
                         <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Activo</span>
@@ -198,13 +265,29 @@ export default function CategoriasProductosPage() {
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">Inactivo</span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-right">
-                      <button
-                        onClick={() => toggleActivo(c)}
-                        className="text-xs text-sky-700 hover:text-sky-900 underline"
-                      >
-                        {c.activo ? "Desactivar" : "Activar"}
-                      </button>
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                      {edit?.id === c.id ? (
+                        <>
+                          <button onClick={guardarEdicion} disabled={ocupado || !edit.nombre.trim()} className="text-xs font-semibold text-emerald-700 hover:underline disabled:opacity-50">
+                            Guardar
+                          </button>
+                          <button onClick={() => setEdit(null)} className="ml-3 text-xs text-gray-500 hover:underline">
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => setEdit({ id: c.id, nombre: c.nombre, codigo: c.codigo ?? "", parent_id: c.parent_id ?? "" })} className="text-xs text-sky-700 hover:text-sky-900 underline">
+                            Editar
+                          </button>
+                          <button onClick={() => toggleActivo(c)} className="ml-3 text-xs text-sky-700 hover:text-sky-900 underline">
+                            {c.activo ? "Desactivar" : "Activar"}
+                          </button>
+                          <button onClick={() => setBorrar(c)} className="ml-3 text-xs text-rose-600 hover:text-rose-800 underline">
+                            Borrar
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 );

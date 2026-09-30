@@ -124,3 +124,22 @@ export async function generarYAbrirRecibo(input: GenerarReciboInput): Promise<{ 
     return { ok: false, error: "Error de red al generar el recibo." };
   }
 }
+
+/** Corrige un recibo (solo admin). Monto y moneda solo aplican a los manuales. */
+export async function editarRecibo(
+  id: string,
+  datos: Partial<Pick<Recibo, "cliente_nombre" | "cliente_documento" | "concepto" | "referencia" | "observaciones" | "metodo_pago" | "monto" | "moneda">>
+): Promise<Result<{ id: string }>> {
+  return unwrap(
+    await fetchWithSupabaseSession(`/api/recibos-dinero/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    })
+  );
+}
+
+/** Borra un recibo hecho por error (solo admin). No toca la venta ni el cobro. */
+export async function borrarRecibo(id: string): Promise<Result<{ id: string }>> {
+  return unwrap(await fetchWithSupabaseSession(`/api/recibos-dinero/${id}`, { method: "DELETE" }));
+}

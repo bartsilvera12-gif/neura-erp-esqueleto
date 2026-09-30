@@ -300,7 +300,9 @@ export default function FormFactura() {
   }
 
   function updateItem(i: number, campo: keyof Item, valor: string) {
-    setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [campo]: valor } : it)));
+    // En los montos se sacan los ceros de adelante ("025000" → "25000"; "0.5" queda igual).
+    const v = campo === "cantidad" || campo === "precio_unitario" || campo === "descuento" ? valor.replace(/^0+(?=\d)/, "") : valor;
+    setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [campo]: v } : it)));
   }
 
   function productosQueCoinciden(texto: string) {

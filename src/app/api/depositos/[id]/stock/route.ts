@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
+import { traerTodo } from "@/lib/comex/server";
+import { filasStockDeposito, stockEnDeposito } from "@/lib/comex/stock-deposito";
 
 /**
  * GET /api/depositos/[id]/stock — stock por producto en un depósito específico.
@@ -29,40 +32,19 @@ export async function GET(
     if (ubQ.error) throw new Error(ubQ.error.message);
     if (!ubQ.data) return NextResponse.json(errorResponse("Depósito no encontrado."), { status: 404 });
 
-    // Traer todos los productos activos + su stock en la ubicación (LEFT JOIN manual)
-    const prodQ = await supabase
-      .from("productos")
-      .select("id, nombre, sku, unidad_medida, controla_stock, activo")
-      .eq("empresa_id", auth.empresa_id)
-      .eq("activo", true)
-      .order("nombre");
-    if (prodQ.error) throw new Error(prodQ.error.message);
-    const productos = (prodQ.data ?? []) as Array<{ id: string; nombre: string; sku: string | null; unidad_medida: string | null; controla_stock: boolean | null }>;
-
-    // La tabla correcta en esqueleto es `inventario_stock_ubicacion` y la columna `stock_actual`.
-    // Fallback: si el schema no tiene stock por ubicación, usar stock_actual del producto.
-    let stockMap = new Map<string, number>();
-    const stockQ = await supabase
-      .from("inventario_stock_ubicacion")
-      .select("producto_id, stock_actual")
-      .eq("empresa_id", auth.empresa_id)
-      .eq("ubicacion_id", ubicacionId);
-    if (!stockQ.error) {
-      for (const r of (stockQ.data ?? []) as Array<{ producto_id: string; stock_actual: number }>) {
-        stockMap.set(r.producto_id, Number(r.stock_actual) || 0);
-      }
-    } else {
-      // Fallback al stock global del producto.
-      const stockAll = await supabase
+    // Productos activos con su stock EN ESTE depósito. Si un producto todavía no lleva
+    // stock por depósito, todo su stock cuenta en su depósito principal.
+    const productos = await traerTodo<{ id: string; nombre: string; sku: string | null; unidad_medida: string | null; stock_actual: number; ubicacion_principal_id: string | null }>((a, z) =>
+      supabase
         .from("productos")
-        .select("id, stock_actual")
-        .eq("empresa_id", auth.empresa_id);
-      if (!stockAll.error) {
-        stockMap = new Map(
-          ((stockAll.data ?? []) as Array<{ id: string; stock_actual: number }>).map((r) => [r.id, Number(r.stock_actual) || 0]),
-        );
-      }
-    }
+        .select("id, nombre, sku, unidad_medida, stock_actual, ubicacion_principal_id")
+        .eq("empresa_id", auth.empresa_id)
+        .eq("activo", true)
+        .order("nombre")
+        .order("id")
+        .range(a, z)
+    );
+    const stockMap = stockEnDeposito(productos, await filasStockDeposito(supabase as unknown as AppSupabaseClient, auth.empresa_id), ubicacionId);
 
     let items = productos.map((p) => ({
       producto_id: p.id,

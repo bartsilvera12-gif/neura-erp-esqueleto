@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
-import { membreteTicket } from "@/lib/documentos/membrete";
+import { EMPRESA_DOC, membreteTicket } from "@/lib/documentos/membrete";
 
 /**
  * GET /api/ventas/[id]/ticket?w=58|80&mode=comandas&auto=1
@@ -18,7 +18,7 @@ import { membreteTicket } from "@/lib/documentos/membrete";
  * No toca SIFEN, no genera XML, no usa timbrado.
  */
 
-const NEGOCIO = "DEMO ERP";
+const NEGOCIO = EMPRESA_DOC.nombre;
 
 // ── Clasificación PIZZERÍA / PLANCHA ───────────────────────────────────────
 // Primary: categoría hija del producto. Fallback: prefijo de SKU.
@@ -103,6 +103,12 @@ function metodoPagoLabel(m: string | null | undefined): string {
   if (m === "tarjeta") return "Tarjeta";
   if (m === "transferencia") return "Transferencia";
   if (m === "efectivo") return "Efectivo";
+  if (m === "qr") return "QR";
+  if (m === "billetera") return "Billetera";
+  if (m === "cheque") return "Cheque";
+  if (m === "saldo_favor") return "Saldo a favor";
+  if (m === "mixto") return "Mixto";
+  if (m === "otro") return "Otro";
   return "—";
 }
 
@@ -117,6 +123,8 @@ interface VentaRow {
   total: number | string;
   observaciones: string | null;
   metodo_pago: string | null;
+  /** Cada forma de pago con su monto (cobro mixto). Vacío = un solo método. */
+  pagos?: { metodo_pago: string; monto: number; entidad: string | null }[];
 }
 
 interface ItemRow {
@@ -205,7 +213,13 @@ function renderCopia(opts: {
            <tr><td class="lbl">Subtotal</td><td class="val">${formatGs(subtotal)}</td></tr>
            ${ivaTotal > 0 ? `<tr><td class="lbl">IVA</td><td class="val">${formatGs(ivaTotal)}</td></tr>` : ""}
            <tr class="total-row"><td class="lbl">TOTAL</td><td class="val">${formatGs(total)}</td></tr>
-           <tr><td class="lbl">Pago</td><td class="val">${metodoPagoLabel(venta.metodo_pago)}</td></tr>
+           ${
+             (venta.pagos ?? []).length > 1
+               ? (venta.pagos ?? [])
+                   .map((p) => `<tr><td class="lbl">${metodoPagoLabel(p.metodo_pago)}${p.entidad ? ` (${escapeHtml(p.entidad)})` : ""}</td><td class="val">${formatGs(p.monto)}</td></tr>`)
+                   .join("")
+               : `<tr><td class="lbl">Pago</td><td class="val">${metodoPagoLabel((venta.pagos ?? [])[0]?.metodo_pago ?? venta.metodo_pago)}</td></tr>`
+           }
          </tbody>
        </table>`
     : "";
@@ -258,6 +272,18 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
   if (vQ.error) return new NextResponse(`Error: ${vQ.error.message}`, { status: 500 });
   if (!vQ.data) return new NextResponse("Venta no encontrada", { status: 404 });
   const venta = vQ.data as unknown as VentaRow;
+  // Formas de pago reales de la venta (en un cobro mixto hay una fila por cada una).
+  const pgQ = await ctx.supabase
+    .from("ventas_pagos_detalle")
+    .select("metodo_pago, monto, entidad_nombre_snapshot")
+    .eq("empresa_id", empresaId)
+    .eq("venta_id", id)
+    .order("created_at", { ascending: true });
+  venta.pagos = ((pgQ.data ?? []) as unknown as { metodo_pago: string; monto: number; entidad_nombre_snapshot: string | null }[]).map((p) => ({
+    metodo_pago: p.metodo_pago,
+    monto: Number(p.monto) || 0,
+    entidad: p.entidad_nombre_snapshot,
+  }));
 
   // Items
   const iQ = await ctx.supabase

@@ -63,23 +63,25 @@ export default function ChecklistTab({ exp, onCambio }: { exp: Exportacion; onCa
           const ok = !!r?.ok;
           return (
             <div key={c.key} className="flex flex-wrap items-start gap-3 border-t border-slate-100 px-4 py-3 first:border-t-0">
+              {/* Se tilda tocando el círculo o cualquier parte del texto. */}
               <button
+                type="button"
                 onClick={() => editable && void marcar(c.key, !ok)}
                 disabled={!editable || guardando === c.key}
-                className="mt-0.5 disabled:cursor-default"
-                aria-label={ok ? "Desmarcar" : "Marcar como hecho"}
+                className={`-m-1 flex min-w-[200px] flex-1 items-start gap-3 rounded-lg p-1 text-left disabled:cursor-default ${editable ? "hover:bg-slate-50" : ""}`}
+                aria-label={ok ? `Desmarcar: ${c.label}` : `Marcar como hecho: ${c.label}`}
               >
-                {ok ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Circle className="h-5 w-5 text-slate-300" />}
+                <span className="mt-0.5 shrink-0">{ok ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Circle className="h-5 w-5 text-slate-300" />}</span>
+                <span className="block">
+                  <span className={`block text-sm font-medium ${ok ? "text-slate-900" : "text-slate-700"}`}>{c.label}</span>
+                  <span className="block text-xs text-slate-500">{c.ayuda}</span>
+                  {r?.usuario_nombre && (
+                    <span className="mt-0.5 block text-[11px] text-slate-400">
+                      {ok ? "Hecho" : "Desmarcado"} por {r.usuario_nombre} el {fechaHora(r.updated_at)}
+                    </span>
+                  )}
+                </span>
               </button>
-              <div className="min-w-[200px] flex-1">
-                <p className={`text-sm font-medium ${ok ? "text-slate-900" : "text-slate-700"}`}>{c.label}</p>
-                <p className="text-xs text-slate-500">{c.ayuda}</p>
-                {r?.usuario_nombre && (
-                  <p className="mt-0.5 text-[11px] text-slate-400">
-                    {ok ? "Hecho" : "Desmarcado"} por {r.usuario_nombre} el {fechaHora(r.updated_at)}
-                  </p>
-                )}
-              </div>
               <div className="flex w-full max-w-xs items-center gap-2 sm:w-auto">
                 <input
                   value={obs[c.key] ?? ""}
