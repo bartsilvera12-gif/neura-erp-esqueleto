@@ -22,6 +22,7 @@ const vacio = {
   fecha_original: "",
   timbrado_original: "17943433",
   punto_original: "",
+  tipo: "EXPORTACION" as "LOCAL" | "EXPORTACION",
   cliente_nombre: "",
   cliente_pais: "",
   moneda: "USD",
@@ -31,9 +32,11 @@ const vacio = {
 };
 
 const fechaES = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
-/** Tipo de la factura nueva: en guaraníes y en Paraguay es local; el resto, exportación. */
+/** Tipo de la factura: el elegido; si es un registro viejo sin tipo, en guaraníes y en Paraguay es local y el resto exportación. */
 const tipoReemision = (r: FacturaRegularizacion) =>
-  r.moneda === "PYG" && (r.cliente_pais ?? "PARAGUAY").trim().toUpperCase() === "PARAGUAY" ? "LOCAL" : "EXPORTACION";
+  r.tipo === "LOCAL" || r.tipo === "EXPORTACION"
+    ? r.tipo
+    : r.moneda === "PYG" && (r.cliente_pais ?? "PARAGUAY").trim().toUpperCase() === "PARAGUAY" ? "LOCAL" : "EXPORTACION";
 const fmt = (n: number, m: string) =>
   `${m === "PYG" ? "Gs." : m} ${Number(n || 0).toLocaleString("es-PY", {
     minimumFractionDigits: m === "PYG" ? 0 : 2,
@@ -118,6 +121,23 @@ export default function RegularizacionPage() {
     void cargar();
   }
 
+  /** Cambia el tipo de una factura ya anotada; si la moneda era la del otro tipo, la acomoda. */
+  async function cambiarTipo(r: FacturaRegularizacion, tipo: "LOCAL" | "EXPORTACION") {
+    if (tipo === tipoReemision(r) && r.tipo) return;
+    const body: Record<string, string> = { tipo };
+    if (tipo === "EXPORTACION" && r.moneda === "PYG") body.moneda = "USD";
+    if (tipo === "LOCAL" && r.moneda === "USD") body.moneda = "PYG";
+    if (tipo === "LOCAL" && !r.cliente_pais) body.cliente_pais = "PARAGUAY";
+    const j = await fetch(`/api/facturas-regularizacion/${r.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    }).then((res) => res.json());
+    if (!j?.success) setError(j?.error ?? "No se pudo cambiar el tipo.");
+    void cargar();
+  }
+
   if (loaded && !isAdmin) {
     return <div className="zx-surface p-6 text-sm text-slate-600">Solo un administrador puede ver la regularización.</div>;
   }
@@ -134,7 +154,8 @@ export default function RegularizacionPage() {
             <br />
             Para <strong>cargar los productos e imprimir</strong> la factura correcta, tocá <strong>Reemitir</strong>: se
             abre una factura nueva con los datos del cliente, se agregan los productos, se emite y se imprime. Las dos
-            quedan vinculadas.
+            quedan vinculadas. Sirve para facturas <strong>locales y de exportación</strong>: el tipo se elige en la columna
+            “Tipo” y al reemitir se abre el formulario que corresponde.
           </p>
           {filas.some((r) => r.reemisiones_prueba?.length && !r.factura_vinculada_id) && (
             <p className="mt-2 max-w-2xl rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -162,6 +183,27 @@ export default function RegularizacionPage() {
         <form onSubmit={registrar} className="zx-surface space-y-4 p-6">
           <h2 className="text-sm font-semibold text-slate-800">Datos de la factura original</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="md:col-span-4">
+              <label className={lbl}>Tipo de factura *</label>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["EXPORTACION", "De exportación", "USD", ""],
+                    ["LOCAL", "Local", "PYG", "PARAGUAY"],
+                  ] as const
+                ).map(([k, label, mon, pais]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setForm({ ...form, tipo: k, moneda: mon, cliente_pais: pais || (form.cliente_pais === "PARAGUAY" ? "" : form.cliente_pais) })}
+                    className={`rounded-lg border px-4 py-2 text-sm font-medium ${form.tipo === k ? "border-[#4FAEB2] bg-[#4FAEB2]/10 text-[#2f7679]" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">Al reemitir se abre el formulario de ese tipo, con sus datos y su formato de impresión.</p>
+            </div>
             <div>
               <label className={lbl}>Número original *</label>
               <input value={form.numero_original} onChange={(e) => setForm({ ...form, numero_original: e.target.value })} className={input} placeholder="001-001-0000107" />
@@ -241,6 +283,7 @@ export default function RegularizacionPage() {
             <thead>
               <tr className="text-[11px] uppercase tracking-wide text-slate-500">
                 <th className="py-2 pr-3">Factura original</th>
+                <th className="py-2 pr-3">Tipo</th>
                 <th className="py-2 pr-3">Fecha</th>
                 <th className="py-2 pr-3">Cliente</th>
                 <th className="py-2 pr-3 text-right">Total</th>
@@ -251,15 +294,30 @@ export default function RegularizacionPage() {
               </tr>
             </thead>
             <tbody>
-              {cargando && <tr><td colSpan={8} className="py-8 text-center text-slate-400">Cargando…</td></tr>}
+              {cargando && <tr><td colSpan={9} className="py-8 text-center text-slate-400">Cargando…</td></tr>}
               {!cargando && filas.length === 0 && (
-                <tr><td colSpan={8} className="py-8 text-center text-slate-400">No hay facturas registradas.</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-slate-400">No hay facturas registradas.</td></tr>
               )}
               {filas.map((r) => (
                 <tr key={r.id} className="border-b border-slate-100 align-top hover:bg-slate-50/70">
                   <td className="py-2 pr-3">
                     <p className="font-mono text-slate-800">{r.numero_original}</p>
                     <p className="text-[11px] text-slate-400">Timbrado {r.timbrado_original}</p>
+                  </td>
+                  <td className="py-2 pr-3">
+                    {r.estado === "REEMITIDA" ? (
+                      <span className="text-xs text-slate-600">{tipoReemision(r) === "LOCAL" ? "Local" : "Exportación"}</span>
+                    ) : (
+                      <select
+                        value={tipoReemision(r)}
+                        onChange={(e) => cambiarTipo(r, e.target.value as "LOCAL" | "EXPORTACION")}
+                        className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-700"
+                        title="Tipo de factura que se abre al reemitir"
+                      >
+                        <option value="LOCAL">Local</option>
+                        <option value="EXPORTACION">Exportación</option>
+                      </select>
+                    )}
                   </td>
                   <td className="py-2 pr-3">{fechaES(r.fecha_original)}</td>
                   <td className="py-2 pr-3">

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // REEMITIDA solo la pone la emisión real de la factura nueva, no se elige a mano.
 const ESTADOS_MANUALES = ["PENDIENTE", "CORRECTA", "ANULADA", "PENDIENTE_REEMISION"];
 
-/** PATCH { estado?, motivo?, observaciones? } — solo admin. Guarda valor anterior y nuevo en auditoría. */
+/** PATCH { estado?, motivo?, observaciones?, tipo?, moneda?, cliente_pais? } — solo admin. Guarda valor anterior y nuevo en auditoría. */
 export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const actual = await supabase
       .from("facturas_regularizacion")
-      .select("estado, motivo, observaciones")
+      .select("estado, motivo, observaciones, tipo, moneda, cliente_pais")
       .eq("empresa_id", auth.empresa_id)
       .eq("id", id)
       .maybeSingle();
@@ -40,6 +40,15 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
     }
     if (typeof b.motivo === "string" && b.motivo.trim()) patch.motivo = b.motivo.trim();
     if (b.observaciones !== undefined) patch.observaciones = b.observaciones ? String(b.observaciones).trim() : null;
+    if (b.tipo !== undefined) {
+      if (b.tipo !== "LOCAL" && b.tipo !== "EXPORTACION") return NextResponse.json(errorResponse("Tipo de factura inválido."), { status: 400 });
+      patch.tipo = b.tipo;
+    }
+    if (typeof b.moneda === "string") {
+      if (!["USD", "PYG", "BOB"].includes(b.moneda)) return NextResponse.json(errorResponse("Moneda inválida."), { status: 400 });
+      patch.moneda = b.moneda;
+    }
+    if (typeof b.cliente_pais === "string") patch.cliente_pais = b.cliente_pais.trim().toUpperCase() || null;
     if (!Object.keys(patch).length) return NextResponse.json(errorResponse("Nada para actualizar."), { status: 400 });
     patch.updated_at = new Date().toISOString();
 

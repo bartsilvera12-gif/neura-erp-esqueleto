@@ -86,6 +86,8 @@ export interface FacturaRegularizacion {
   fecha_original: string;
   timbrado_original: string;
   punto_original: string | null;
+  /** Local o de exportación. Las registradas antes de este campo lo tienen vacío. */
+  tipo: "LOCAL" | "EXPORTACION" | null;
   cliente_nombre: string;
   cliente_pais: string | null;
   moneda: string;

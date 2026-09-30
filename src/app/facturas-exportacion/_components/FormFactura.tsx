@@ -49,6 +49,7 @@ interface Reemision {
   cliente_nombre: string;
   cliente_pais: string | null;
   moneda: string;
+  punto_original: string | null;
 }
 
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -249,6 +250,15 @@ export default function FormFactura() {
   useEffect(() => {
     if (!punto && puntos.length) setPunto(puntos[0].punto_expedicion);
   }, [puntos, punto]);
+
+  // Reemisión: arranca en el mismo punto de expedición de la factura original (ej. 001-005-… → 005), si sigue activo.
+  const puntoReemision = useRef(false);
+  useEffect(() => {
+    if (!reemision || !puntos.length || puntoReemision.current) return;
+    puntoReemision.current = true;
+    const orig = (reemision.punto_original ?? reemision.numero_original.split("-")[1] ?? "").trim().padStart(3, "0");
+    if (puntos.some((p) => p.punto_expedicion === orig)) setPunto(orig);
+  }, [reemision, puntos]);
 
   // Al editar vale el punto original aunque hoy esté inactivo.
   const cfg = (editarParam ? config : puntos).find((c) => c.punto_expedicion === punto);

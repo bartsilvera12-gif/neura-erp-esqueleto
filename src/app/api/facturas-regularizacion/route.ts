@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
         fecha_original: fecha.slice(0, 10),
         timbrado_original: timbrado,
         punto_original: txt(b.punto_original),
+        tipo: b.tipo === "LOCAL" || b.tipo === "EXPORTACION" ? b.tipo : null,
         cliente_nombre: cliente,
         cliente_pais: txt(b.cliente_pais),
         moneda: (txt(b.moneda) ?? "USD").toUpperCase(),
