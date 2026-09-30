@@ -103,7 +103,18 @@ export default function NuevaCompraPage() {
     plazo_dias: "",
     moneda: "PYG" as Moneda,
     tipo_cambio: "",
+    /** Almacén al que entra la mercadería ("" = el depósito principal de cada producto). */
+    ubicacion_id: "",
   });
+  const [depositos, setDepositos] = useState<{ id: string; nombre: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/depositos", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.success) setDepositos((j.data?.depositos ?? []) as { id: string; nombre: string }[]);
+      })
+      .catch(() => undefined);
+  }, []);
 
   // Líneas de la compra (editables inline)
   const [lineas, setLineas] = useState<LineaCompra[]>([]);
@@ -283,6 +294,7 @@ export default function NuevaCompraPage() {
           tipo_pago: cab.tipo_pago,
           plazo_dias: cab.tipo_pago === "credito" && cab.plazo_dias ? parseInt(cab.plazo_dias) : undefined,
           nro_timbrado: cab.nro_timbrado,
+          ubicacion_id: cab.ubicacion_id || null,
           numero_factura: cab.numero_factura,
           comprobante_storage_path: comprobante?.comprobante_storage_path ?? null,
           comprobante_nombre: comprobante?.comprobante_nombre ?? null,
@@ -499,6 +511,15 @@ export default function NuevaCompraPage() {
                   options={[{ value: "PYG", label: "Guaraníes (₲)" }, { value: "USD", label: "Dólares (USD)" }]}
                   onChange={(v) => setCab((p) => ({ ...p, moneda: v, tipo_cambio: "" }))} />
               </div>
+              <div>
+                <label className={labelClass}>Almacén al que entra la mercadería</label>
+                <select value={cab.ubicacion_id} onChange={(e) => setCab((p) => ({ ...p, ubicacion_id: e.target.value }))} className={inputClass}>
+                  <option value="">El depósito principal de cada producto</option>
+                  {depositos.map((d) => (
+                    <option key={d.id} value={d.id}>{d.nombre}</option>
+                  ))}
+                </select>
+              </div>
               {cab.tipo_pago === "credito" && (
                 <div>
                   <label className={labelClass}>Plazo (días)</label>
@@ -573,7 +594,7 @@ export default function NuevaCompraPage() {
                             target: { name: "unidad_medida", value: v },
                           } as React.ChangeEvent<HTMLInputElement>)
                         }
-                        options={["Unidad", "Kg", "G", "Litro", "Caja"].map((u) => ({ value: u, label: u }))}
+                        options={["Unidad", "Pza", "Kg", "G", "Litro", "Caja"].map((u) => ({ value: u, label: u }))}
                       />
                     </div>
                     <div>

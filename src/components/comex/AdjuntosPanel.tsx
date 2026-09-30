@@ -8,13 +8,15 @@ import type { AdjuntoComex, OrigenComex } from "@/lib/comex/types";
 import { Aviso, api, btnPrimario, fechaHora, inputClass, labelClass } from "./ui";
 
 const CATEGORIAS_IMPORTACION = [
-  "Factura del proveedor",
+  "Invoice (factura del proveedor)",
   "Proforma",
   "Packing list",
+  "Transporte / flete",
+  "Seguro",
+  "Gastos logísticos",
   "Conocimiento de embarque",
   "Despacho aduanero",
   "Certificado de origen",
-  "Seguro",
   "Fotos",
   "Otro",
 ];

@@ -4,7 +4,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 
 const COLS =
-  "id, empresa_id, numero, fecha, emisor, ubicacion_origen_id, ubicacion_destino_id, motivo, estado, motivo_rechazo, aprobada_at, aprobada_por, transportista, ruc_transportista, conductor, ci_conductor, chapa, fecha_inicio_traslado, fecha_fin_traslado, observaciones, created_at, updated_at";
+  "id, empresa_id, numero, fecha, emisor, ubicacion_origen_id, ubicacion_destino_id, motivo, estado, motivo_rechazo, aprobada_at, aprobada_por, transportista, ruc_transportista, conductor, ci_conductor, chapa, fecha_inicio_traslado, fecha_fin_traslado, observaciones, created_at, updated_at, destino_tipo, cliente_id, destino_nombre, destino_direccion, destino_ciudad, timbrado, marca_vehiculo, documento_origen";
 
 /** GET /api/notas-remision/[id] — detalle con items + nombres de ubicación. */
 export async function GET(
@@ -48,16 +48,16 @@ export async function GET(
 
     // Nombres de productos para mostrar en el detalle
     const prodIds = Array.from(new Set(items.map((i) => i.producto_id)));
-    const prodMap = new Map<string, { nombre: string; sku: string }>();
+    const prodMap = new Map<string, { nombre: string; sku: string; unidad: string }>();
     if (prodIds.length > 0) {
       const pQ = await supabase
         .from("productos")
-        .select("id, nombre, sku")
+        .select("id, nombre, sku, unidad_medida")
         .eq("empresa_id", auth.empresa_id)
         .in("id", prodIds);
       if (pQ.error) throw new Error(pQ.error.message);
-      for (const p of (pQ.data ?? []) as Array<{ id: string; nombre: string; sku: string | null }>) {
-        prodMap.set(p.id, { nombre: p.nombre, sku: p.sku ?? "" });
+      for (const p of (pQ.data ?? []) as Array<{ id: string; nombre: string; sku: string | null; unidad_medida: string | null }>) {
+        prodMap.set(p.id, { nombre: p.nombre, sku: p.sku ?? "", unidad: p.unidad_medida ?? "" });
       }
     }
 
@@ -65,12 +65,22 @@ export async function GET(
       producto_id: i.producto_id,
       producto_nombre: prodMap.get(i.producto_id)?.nombre ?? "?",
       producto_sku: prodMap.get(i.producto_id)?.sku ?? "",
+      unidad: prodMap.get(i.producto_id)?.unidad ?? "",
       cantidad: Number(i.cantidad),
     }));
+
+    // RUC / C.I. del destinatario cuando el destino es un cliente.
+    let clienteDocumento: string | null = null;
+    if (nr.cliente_id) {
+      const cQ = await supabase.from("clientes").select("*").eq("empresa_id", auth.empresa_id).eq("id", nr.cliente_id as string).maybeSingle();
+      const c = (cQ.data ?? null) as Record<string, unknown> | null;
+      clienteDocumento = c ? String(c.ruc ?? c.documento ?? c.ci ?? "").trim() || null : null;
+    }
 
     return NextResponse.json(successResponse({
       nota_remision: {
         ...nr,
+        cliente_documento: clienteDocumento,
         origen: ubMap.get(nr.ubicacion_origen_id as string) ?? null,
         destino: ubMap.get(nr.ubicacion_destino_id as string) ?? null,
         items: detalleItems,

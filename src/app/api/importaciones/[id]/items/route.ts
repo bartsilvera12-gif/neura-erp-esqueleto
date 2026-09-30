@@ -4,7 +4,7 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { contenedorDeOperacion, getComexCtx, registrarHistorial } from "@/lib/comex/server";
 
 const COLS =
-  "id, importacion_id, producto_id, producto_nombre, sku, cantidad, precio_unitario, moneda, subtotal, cantidad_recibida, observacion, contenedor_id";
+  "id, importacion_id, producto_id, producto_nombre, sku, cantidad, precio_unitario, moneda, subtotal, cantidad_recibida, observacion, contenedor_id, unidad";
 
 const MONEDAS = new Set(["PYG", "USD", "BOB"]);
 
@@ -54,11 +54,11 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     if (!productoId) return NextResponse.json(errorResponse("Elegí un producto del inventario."), { status: 400 });
     const { data: prod } = await ctx.supabase
       .from("productos")
-      .select("id, nombre, sku, activo")
+      .select("id, nombre, sku, activo, unidad_medida")
       .eq("empresa_id", emp)
       .eq("id", productoId)
       .maybeSingle();
-    const p = prod as { id: string; nombre: string; sku: string | null; activo: boolean | null } | null;
+    const p = prod as { id: string; nombre: string; sku: string | null; activo: boolean | null; unidad_medida: string | null } | null;
     if (!p) return NextResponse.json(errorResponse("Ese producto no existe en el inventario."), { status: 400 });
     if (p.activo === false) return NextResponse.json(errorResponse(`"${p.nombre}" está desactivado en el inventario.`), { status: 400 });
     if (!(cantidad > 0)) return NextResponse.json(errorResponse("La cantidad tiene que ser mayor a 0."), { status: 400 });
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
         producto_id: p.id,
         producto_nombre: p.nombre,
         sku: p.sku,
+        unidad: p.unidad_medida,
         cantidad,
         precio_unitario: precioOk,
         moneda,

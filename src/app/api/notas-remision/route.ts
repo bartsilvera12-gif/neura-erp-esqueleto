@@ -4,7 +4,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 
 const COLS =
-  "id, empresa_id, numero, fecha, emisor, ubicacion_origen_id, ubicacion_destino_id, motivo, estado, motivo_rechazo, aprobada_at, aprobada_por, transportista, ruc_transportista, conductor, ci_conductor, chapa, fecha_inicio_traslado, fecha_fin_traslado, observaciones, created_at, updated_at, destino_tipo, cliente_id, destino_nombre, destino_direccion, destino_ciudad";
+  "id, empresa_id, numero, fecha, emisor, ubicacion_origen_id, ubicacion_destino_id, motivo, estado, motivo_rechazo, aprobada_at, aprobada_por, transportista, ruc_transportista, conductor, ci_conductor, chapa, fecha_inicio_traslado, fecha_fin_traslado, observaciones, created_at, updated_at, destino_tipo, cliente_id, destino_nombre, destino_direccion, destino_ciudad, timbrado, marca_vehiculo, documento_origen";
 
 type ItemIn = { producto_id: string; cantidad: number };
 
@@ -83,6 +83,9 @@ export async function POST(request: NextRequest) {
       conductor?: string;
       ci_conductor?: string;
       chapa?: string;
+      marca_vehiculo?: string;
+      /** De qué factura o compromiso de venta se trajeron los productos (texto). */
+      documento_origen?: string;
       fecha_inicio_traslado?: string;
       fecha_fin_traslado?: string;
       observaciones?: string;
@@ -163,7 +166,25 @@ export async function POST(request: NextRequest) {
       const m = last.match(/(\d+)$/);
       if (m) next = parseInt(m[1], 10) + 1;
     }
-    const numero = `NR-${String(next).padStart(6, "0")}`;
+    let numero = `NR-${String(next).padStart(6, "0")}`;
+    // Con timbrado de remisiones cargado: numeración de la DNIT (001-004-0000001).
+    let timbrado: string | null = null;
+    const cfgQ = await supabase.from("notas_remision_config").select("timbrado, establecimiento, punto_expedicion, proximo_numero").eq("empresa_id", auth.empresa_id).maybeSingle();
+    const cfg = (cfgQ.data ?? null) as { timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number } | null;
+    if (cfg?.timbrado) {
+      // Se reserva el número: si dos personas emiten a la vez, solo una se lo queda y la otra reintenta.
+      let reservado: number | null = null;
+      for (let i = 0; i < 5 && reservado === null; i++) {
+        const act = await supabase.from("notas_remision_config").select("proximo_numero").eq("empresa_id", auth.empresa_id).maybeSingle();
+        const n = Number((act.data as { proximo_numero: number } | null)?.proximo_numero) || 1;
+        const upd = await supabase.from("notas_remision_config").update({ proximo_numero: n + 1, updated_at: new Date().toISOString() }).eq("empresa_id", auth.empresa_id).eq("proximo_numero", n).select("proximo_numero");
+        if (upd.error) throw new Error(upd.error.message);
+        if ((upd.data ?? []).length) reservado = n;
+      }
+      if (reservado === null) return NextResponse.json(errorResponse("No se pudo asignar el número. Probá de nuevo."), { status: 409 });
+      numero = `${cfg.establecimiento}-${cfg.punto_expedicion}-${String(reservado).padStart(7, "0")}`;
+      timbrado = cfg.timbrado;
+    }
 
     const insNr = await supabase
       .from("notas_remision")
@@ -185,6 +206,9 @@ export async function POST(request: NextRequest) {
         conductor: body.conductor?.trim() || null,
         ci_conductor: body.ci_conductor?.trim() || null,
         chapa: body.chapa?.trim() || null,
+        marca_vehiculo: body.marca_vehiculo?.trim() || null,
+        documento_origen: body.documento_origen?.trim().slice(0, 120) || null,
+        timbrado,
         fecha_inicio_traslado: body.fecha_inicio_traslado || null,
         fecha_fin_traslado: body.fecha_fin_traslado || null,
         observaciones: body.observaciones?.trim() || null,

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
-import { esUuid, getComexCtx, hoyPY, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, hoyPY, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { ingresarStock, revertirIngreso } from "@/lib/comex/stock-deposito";
 
 const ESTADOS_RECEPCION = new Set(["arribado", "nacionalizada", "entregada"]);
 
@@ -56,7 +57,8 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 /**
  * POST { fecha, ubicacion_id, final, observacion, items: [{ item_id, cantidad }] }
  * Registra lo que llegó. Si llegó de más, o si es la recepción final y faltó
- * algo, se crea una incidencia de diferencia (IMP-04). No mueve stock.
+ * algo, se crea una incidencia de diferencia (IMP-04). Lo recibido entra al
+ * stock del almacén de Paraguay de la importación.
  */
 export async function POST(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
@@ -66,11 +68,11 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     const emp = ctx.auth.empresa_id;
     const { data: imp } = await ctx.supabase
       .from("importaciones")
-      .select("estado, numero, responsable_id, responsable_nombre")
+      .select("estado, numero, responsable_id, responsable_nombre, ubicacion_destino_py_id")
       .eq("empresa_id", emp)
       .eq("id", id)
       .maybeSingle();
-    const im = imp as { estado: string; numero: string; responsable_id: string | null; responsable_nombre: string | null } | null;
+    const im = imp as { estado: string; numero: string; responsable_id: string | null; responsable_nombre: string | null; ubicacion_destino_py_id: string | null } | null;
     if (!im) return NextResponse.json(errorResponse("Importación no encontrada."), { status: 404 });
     if (!ESTADOS_RECEPCION.has(im.estado))
       return NextResponse.json(errorResponse("La recepción se carga cuando la importación ya arribó."), { status: 400 });
@@ -83,11 +85,11 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const { data: itemsData, error: itemsErr } = await ctx.supabase
       .from("importacion_items")
-      .select("id, producto_nombre, cantidad")
+      .select("id, producto_id, producto_nombre, cantidad")
       .eq("empresa_id", emp)
       .eq("importacion_id", id);
     if (itemsErr) throw new Error(itemsErr.message);
-    const items = (itemsData ?? []) as { id: string; producto_nombre: string; cantidad: number }[];
+    const items = (itemsData ?? []) as { id: string; producto_id: string | null; producto_nombre: string; cantidad: number }[];
     const porId = new Map(items.map((i) => [i.id, i]));
 
     const lineas = (Array.isArray(b.items) ? b.items : [])
@@ -96,6 +98,13 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
       .filter((x) => porId.has(x.item_id) && Number.isFinite(x.cantidad) && x.cantidad > 0);
     const final = b.final === true;
     if (!lineas.length && !final) return NextResponse.json(errorResponse("Cargá cuánto llegó de al menos un producto."), { status: 400 });
+    // Lo recibido entra al stock: hace falta saber a qué almacén.
+    const almacen = im.ubicacion_destino_py_id;
+    if (lineas.length && !almacen)
+      return NextResponse.json(errorResponse("Elegí el almacén de Paraguay en los datos de la importación: ahí entra la mercadería recibida."), { status: 400 });
+    const sinVincular = lineas.map((l) => porId.get(l.item_id)).filter((i) => i && !i.producto_id);
+    if (sinVincular.length)
+      return NextResponse.json(errorResponse(`Vinculá al inventario antes de recibir: ${sinVincular.map((i) => i?.producto_nombre).join(", ")}.`), { status: 400 });
     if ((Array.isArray(b.items) ? b.items : []).some((x) => Number((x as { cantidad?: unknown }).cantidad) < 0))
       return NextResponse.json(errorResponse("Las cantidades no pueden ser negativas."), { status: 400 });
 
@@ -117,14 +126,16 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     // Escrituras. Si algo falla se deshace lo hecho, para no dejar una recepción a medias.
     let recepcionId: string | null = null;
     let incidenciaId: string | null = null;
+    const ingresos: { productoId: string; ubicacionId: string; cantidad: number; movimientoId: string | null }[] = [];
+    const fechaRec = typeof b.fecha === "string" && /^\d{4}-\d{2}-\d{2}/.test(b.fecha) ? b.fecha.slice(0, 10) : hoyPY();
     try {
       const { data: rec, error } = await ctx.supabase
         .from("importacion_recepciones")
         .insert({
           empresa_id: emp,
           importacion_id: id,
-          fecha: typeof b.fecha === "string" && /^\d{4}-\d{2}-\d{2}/.test(b.fecha) ? b.fecha.slice(0, 10) : hoyPY(),
-          ubicacion_id: esUuid(b.ubicacion_id) ? b.ubicacion_id : null,
+          fecha: fechaRec,
+          ubicacion_id: almacen,
           final,
           observacion: b.observacion ? String(b.observacion).slice(0, 1000) : null,
           usuario_id: ctx.auth.usuarioCatalogId ?? null,
@@ -161,7 +172,25 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
         incidenciaId = (inc as { id: string }).id;
       }
       await actualizarRecibido(ctx.supabase, emp, items.map((i) => i.id), recibido);
+      // Entrada al stock del almacén de Paraguay.
+      for (const l of lineas) {
+        const productoId = porId.get(l.item_id)?.producto_id;
+        if (!productoId || !almacen) continue;
+        const ing = { productoId, ubicacionId: almacen, cantidad: l.cantidad, movimientoId: null as string | null };
+        ingresos.push(ing);
+        ing.movimientoId = await ingresarStock(ctx.supabase, emp, {
+          productoId,
+          ubicacionId: almacen,
+          cantidad: l.cantidad,
+          referencia: `Importación ${im.numero}`,
+          observacion: `Recepción de la importación ${im.numero}`,
+          fecha: fechaRec,
+          usuarioId: ctx.auth.user.id,
+          usuarioNombre: nombreUsuario(ctx.auth),
+        });
+      }
     } catch (e) {
+      for (const ing of ingresos.filter((x) => x.movimientoId)) await revertirIngreso(ctx.supabase, emp, ing).catch(() => undefined);
       if (incidenciaId) await ctx.supabase.from("comex_incidencias").delete().eq("empresa_id", emp).eq("id", incidenciaId);
       if (recepcionId) await ctx.supabase.from("importacion_recepciones").delete().eq("empresa_id", emp).eq("id", recepcionId);
       await actualizarRecibido(ctx.supabase, emp, items.map((i) => i.id), await recibidoPorItem(ctx.supabase, emp, id)).catch(() => undefined);

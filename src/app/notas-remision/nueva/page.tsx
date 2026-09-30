@@ -39,6 +39,13 @@ export default function EmitirNRPage() {
   const [conductor, setConductor] = useState("");
   const [ciConductor, setCiConductor] = useState("");
   const [chapa, setChapa] = useState("");
+  const [marcaVehiculo, setMarcaVehiculo] = useState("");
+  /** Facturas y compromisos de venta desde los que se pueden traer los productos. */
+  type DocOrigen = { id: string; numero: string | null; cliente: string | null; fecha: string | null; prueba?: boolean };
+  const [docs, setDocs] = useState<{ facturas: DocOrigen[]; compromisos: DocOrigen[] }>({ facturas: [], compromisos: [] });
+  const [docElegido, setDocElegido] = useState("");
+  const [docOrigen, setDocOrigen] = useState("");
+  const [avisoDoc, setAvisoDoc] = useState<string[]>([]);
   const [fechaInicio, setFechaInicio] = useState(hoyISO());
   const [fechaFin, setFechaFin] = useState(hoyISO());
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +91,50 @@ export default function EmitirNRPage() {
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    fetch("/api/notas-remision/origenes", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.success) setDocs({ facturas: j.data?.facturas ?? [], compromisos: j.data?.compromisos ?? [] });
+      })
+      .catch(() => undefined);
+  }, []);
+
+  /** Trae cliente y productos de una factura o compromiso de venta, para no tipearlos. */
+  async function traerDe(valor: string) {
+    setDocElegido(valor);
+    setAvisoDoc([]);
+    if (!valor) { setDocOrigen(""); return; }
+    const [tipo, id] = valor.split(":");
+    const j = await fetch(`/api/notas-remision/origenes?tipo=${tipo}&id=${id}`, { credentials: "include", cache: "no-store" }).then((r) => r.json()).catch(() => null);
+    if (!j?.success) { setError(j?.error ?? "No se pudo traer el documento."); return; }
+    const d = j.data as { documento: string; cliente: { id: string | null; nombre: string | null; direccion: string | null; ciudad: string | null }; items: { producto_id: string | null; descripcion: string; cantidad: number }[] };
+    setDocOrigen(d.documento);
+    // La mercadería va al cliente del documento.
+    setDestinoTipo("cliente");
+    setMotivo("venta");
+    setClienteId(d.cliente.id ?? "");
+    setDestNombre(d.cliente.nombre ?? "");
+    setDestDireccion(d.cliente.direccion ?? "");
+    setDestCiudad(d.cliente.ciudad ?? "");
+    const enStock = new Map(stockOrigen.map((p) => [p.producto_id, p]));
+    const ids: string[] = [];
+    const cants: Record<string, number> = {};
+    const avisos: string[] = [];
+    for (const it of d.items) {
+      const p = it.producto_id ? enStock.get(it.producto_id) : undefined;
+      if (!it.producto_id) { avisos.push(`“${it.descripcion}” no está vinculado a un producto del inventario: no se pudo traer.`); continue; }
+      if (!p) { avisos.push(`“${it.descripcion}” no tiene stock en ${nombreUbic(origen)}: no se pudo traer.`); continue; }
+      const cant = (cants[it.producto_id] ?? 0) + it.cantidad;
+      if (cant > p.stock) avisos.push(`“${p.nombre}”: el documento pide ${fmt(cant)} y en ${nombreUbic(origen)} hay ${fmt(p.stock)}. Se cargó lo que hay.`);
+      cants[it.producto_id] = Math.min(cant, p.stock);
+      if (!ids.includes(it.producto_id)) ids.push(it.producto_id);
+    }
+    setProductosAgregados(ids);
+    setCantidades(cants);
+    setAvisoDoc(avisos);
+  }
 
   /** Alta rápida: el cliente recién creado queda seleccionado al instante. */
   function onClienteCreado(c: ClienteCreado) {
@@ -135,6 +186,8 @@ export default function EmitirNRPage() {
       conductor: conductor.trim() || undefined,
       ci_conductor: ciConductor.trim() || undefined,
       chapa: chapa.trim() || undefined,
+      marca_vehiculo: marcaVehiculo.trim() || undefined,
+      documento_origen: docOrigen || undefined,
       fecha_inicio_traslado: fechaInicio || undefined,
       fecha_fin_traslado: fechaFin || undefined,
       observaciones: obs.trim() || undefined,
@@ -291,6 +344,7 @@ export default function EmitirNRPage() {
           <Field label="RUC transportista"><input type="text" value={rucTransp} onChange={(e) => setRucTransp(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></Field>
           <Field label="Conductor"><input type="text" value={conductor} onChange={(e) => setConductor(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></Field>
           <Field label="CI conductor"><input type="text" value={ciConductor} onChange={(e) => setCiConductor(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></Field>
+          <Field label="Marca del vehículo"><input type="text" value={marcaVehiculo} onChange={(e) => setMarcaVehiculo(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></Field>
           <Field label="Chapa vehículo"><input type="text" value={chapa} onChange={(e) => setChapa(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></Field>
           <Field label="Inicio traslado"><input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></Field>
           <Field label="Fin traslado"><input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></Field>
@@ -299,6 +353,36 @@ export default function EmitirNRPage() {
 
       <div className="zx-surface">
         <div className="border-b border-slate-100 px-5 py-4">
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+            <label className="text-xs font-medium text-slate-700">Traer los productos de una factura o compromiso de venta (opcional)</label>
+            <select value={docElegido} onChange={(e) => void traerDe(e.target.value)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+              <option value="">— Cargar los productos a mano —</option>
+              {docs.facturas.length > 0 && (
+                <optgroup label="Facturas">
+                  {docs.facturas.map((f) => (
+                    <option key={f.id} value={`factura:${f.id}`}>
+                      {f.numero ?? "s/n"} · {f.cliente ?? ""}{f.prueba ? " (prueba)" : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {docs.compromisos.length > 0 && (
+                <optgroup label="Compromisos de venta">
+                  {docs.compromisos.map((c) => (
+                    <option key={c.id} value={`compromiso:${c.id}`}>
+                      {c.numero ?? "s/n"} · {c.cliente ?? ""}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">Trae el cliente y los productos con sus cantidades. Después se pueden corregir.</p>
+            {avisoDoc.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-amber-800">
+                {avisoDoc.map((a) => <li key={a}>{a}</li>)}
+              </ul>
+            )}
+          </div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-slate-800">Productos a trasladar</h2>
             <p className="text-xs text-slate-500">Buscando en <strong>{nombreUbic(origen)}</strong></p>

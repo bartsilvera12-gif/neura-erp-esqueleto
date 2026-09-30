@@ -79,6 +79,9 @@ export default function NuevaTransferenciaPage() {
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error ?? "No se pudo transferir");
+      // Abre el comprobante para imprimir y firmar.
+      const tid = j?.data?.transferencia_id as string | undefined;
+      if (tid) window.open(`/api/inventario/transferencias/${tid}/imprimir?auto=1`, "_blank", "noopener");
       router.push("/inventario/transferencias");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");

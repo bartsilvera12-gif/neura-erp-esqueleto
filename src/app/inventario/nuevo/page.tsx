@@ -14,7 +14,7 @@ import { AlertTriangle } from "lucide-react";
 
 // Opciones estándar de unidad de medida para gastro
 const UNIDADES_OPCIONES = [
-  "UNIDAD","KG","G","LT","ML","CAJA","BOLSA","PAQUETE","DOCENA","LATA","BOTELLA","PORCION","COMBO",
+  "UNIDAD","PZA","KG","G","LT","ML","CAJA","BOLSA","PAQUETE","DOCENA","LATA","BOTELLA","PORCION","COMBO",
 ] as const;
 
 interface CatRow { id: string; nombre: string }

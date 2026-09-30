@@ -81,7 +81,9 @@ export default function RecepcionTab({
         <Aviso tipo="info">La recepción se habilita cuando la importación está en “Arribado”.</Aviso>
       )}
       {terminada && <Aviso tipo="ok">La recepción está terminada.</Aviso>}
-      <Aviso tipo="info">Por ahora la recepción <strong>no suma al stock</strong>: falta que el cliente confirme cómo quiere que se haga.</Aviso>
+      <Aviso tipo="info">
+        Lo que se recibe <strong>entra al stock</strong> del almacén de Paraguay elegido en los datos de la importación, en el momento de registrar la recepción.
+      </Aviso>
       {resultado && (
         resultado.length ? (
           <Aviso>

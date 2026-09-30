@@ -142,7 +142,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Bancos y cajas chicas", href: "/tesoreria" },
     { label: "Tipos de cambio", href: "/tipos-cambio" },
   ]},
-  { key: "presupuestos", slug: "presupuestos", label: "Presupuestos", href: "/presupuestos", icon: FileText },
+  { key: "presupuestos", slug: "presupuestos", label: "Compromisos de venta", href: "/presupuestos", icon: FileText },
   { key: "facturas_exportacion", slug: "facturas_exportacion", label: "Facturación", href: "/facturas-exportacion", icon: FileText, children: [
     { label: "Facturas", href: "/facturas-exportacion", exactMatch: true },
     { label: "Nueva factura", href: "/facturas-exportacion/nueva" },

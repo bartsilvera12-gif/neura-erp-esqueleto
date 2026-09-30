@@ -195,6 +195,8 @@ export interface CompraHeaderInput {
   comprobante_mime_type: string | null;
   created_by: string | null;
   usuario_nombre: string | null;
+  /** Almacén al que entra la mercadería. Vacío = el depósito principal de cada producto. */
+  ubicacion_id?: string | null;
 }
 
 /** Una línea (producto) de la compra. */
@@ -240,6 +242,7 @@ export async function insertComprasConImpactoTx(
   const tM = quoteSchemaTable(schema, "movimientos_inventario");
   const tP = quoteSchemaTable(schema, "productos");
   const tPP = quoteSchemaTable(schema, "proveedor_productos");
+  const tS = quoteSchemaTable(schema, "inventario_stock_ubicacion");
 
   const insertedRows: CompraRow[] = [];
   const warnings: string[] = [];
@@ -290,14 +293,14 @@ export async function insertComprasConImpactoTx(
         `INSERT INTO ${tM} (
            empresa_id, producto_id, producto_nombre, producto_sku,
            tipo, cantidad, costo_unitario, origen, referencia, fecha,
-           created_by, usuario_nombre
+           created_by, usuario_nombre, ubicacion_destino_id
          )
          SELECT $1::uuid, $2::uuid, $3, COALESCE(p.sku, ''),
                 'ENTRADA', $4::numeric, $5::numeric, 'compra', $6, now(),
-                $7::uuid, $8
+                $7::uuid, $8, COALESCE($9::uuid, p.ubicacion_principal_id)
          FROM ${tP} p WHERE p.id = $2::uuid`,
         [empresaId, it.producto_id, it.producto_nombre, it.cantidad,
-         it.costo_unitario, numero, header.created_by, header.usuario_nombre]
+         it.costo_unitario, numero, header.created_by, header.usuario_nombre, header.ubicacion_id || null]
       );
     } catch (movErr) {
       const msg = movErr instanceof Error ? movErr.message : String(movErr);
@@ -306,6 +309,30 @@ export async function insertComprasConImpactoTx(
       });
       warnings.push(it.producto_nombre);
     }
+
+    // Stock por almacén: la mercadería entra al almacén elegido (o al principal del producto).
+    // Va ANTES de sumar al total: si el producto todavía no llevaba stock por depósito,
+    // primero se anota lo que ya tenía en su depósito principal.
+    await client.query(
+      `INSERT INTO ${tS} (empresa_id, producto_id, ubicacion_id, stock_actual, es_principal)
+       SELECT p.empresa_id, p.id, p.ubicacion_principal_id, p.stock_actual, true
+         FROM ${tP} p
+        WHERE p.id = $2::uuid AND p.empresa_id = $1::uuid
+          AND p.ubicacion_principal_id IS NOT NULL AND p.stock_actual > 0
+          AND NOT EXISTS (SELECT 1 FROM ${tS} s WHERE s.empresa_id = $1::uuid AND s.producto_id = $2::uuid)
+       ON CONFLICT DO NOTHING`,
+      [empresaId, it.producto_id]
+    );
+    await client.query(
+      `INSERT INTO ${tS} (empresa_id, producto_id, ubicacion_id, stock_actual)
+       SELECT p.empresa_id, p.id, COALESCE($3::uuid, p.ubicacion_principal_id), $4::numeric
+         FROM ${tP} p
+        WHERE p.id = $2::uuid AND p.empresa_id = $1::uuid
+          AND COALESCE($3::uuid, p.ubicacion_principal_id) IS NOT NULL
+       ON CONFLICT (empresa_id, producto_id, ubicacion_id)
+       DO UPDATE SET stock_actual = ${tS}.stock_actual + EXCLUDED.stock_actual, updated_at = now()`,
+      [empresaId, it.producto_id, header.ubicacion_id || null, it.cantidad]
+    );
 
     // Actualizar producto: stock + costo_promedio siempre.
     // precio_venta SOLO se actualiza si la compra trae un precio > 0 (productos

@@ -90,7 +90,9 @@ export default function MercaderiaTab({
         <table className="w-full min-w-[620px] text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
+              <th className="px-4 py-3">Código</th>
               <th className="px-4 py-3">Producto</th>
+              <th className="px-4 py-3">Unidad</th>
               <th className="px-4 py-3 text-right">Pedido</th>
               <th className="px-4 py-3 text-right">Recibido</th>
               <th className="px-4 py-3">Contenedor</th>
@@ -101,7 +103,7 @@ export default function MercaderiaTab({
           <tbody>
             {items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
                   Todavía no hay productos.
                 </td>
               </tr>
@@ -111,13 +113,12 @@ export default function MercaderiaTab({
               const hayRecepcion = Number(it.cantidad_recibida) > 0;
               return (
                 <tr key={it.id} className="border-t border-slate-100 align-top">
+                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{it.sku || "—"}</td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-slate-900">{it.producto_nombre}</div>
-                    <div className="text-xs text-slate-500">
-                      {it.sku ?? ""}
-                      {!it.producto_id && <span className="ml-1 font-semibold text-rose-600">· sin vincular</span>}
-                    </div>
+                    {!it.producto_id && <div className="text-xs font-semibold text-rose-600">sin vincular</div>}
                   </td>
+                  <td className="px-4 py-3 text-xs text-slate-700">{it.unidad || "—"}</td>
                   <td className="px-4 py-3 text-right">{cant(it.cantidad)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className={hayRecepcion && dif !== 0 ? "font-semibold text-rose-700" : "text-slate-700"}>{cant(it.cantidad_recibida)}</div>

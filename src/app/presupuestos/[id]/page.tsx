@@ -184,6 +184,13 @@ export default function PresupuestoDetallePage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => window.open(`/api/presupuestos/${id}/compromiso?auto=1`, "_blank", "noopener")}
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            title="Imprime el compromiso de ventas para firmar"
+          >
+            <Download className="h-4 w-4" /> Imprimir compromiso de venta
+          </button>
           <button onClick={abrirPdf} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <Download className="h-4 w-4" /> Descargar PDF
           </button>

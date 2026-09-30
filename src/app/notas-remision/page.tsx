@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Truck, Plus, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { fetchDepositos, fetchNRs, type Deposito, type NotaRemision, type NotaRemisionEstado } from "@/lib/multideposito/client";
 import { Select } from "@/components/ui/Select";
+import { useIsAdmin } from "@/lib/auth/use-is-admin";
+import { TimbradoModal } from "./_components/TimbradoModal";
 
 function fmt(n: number) { return n.toLocaleString("es-PY"); }
 function fmtFecha(iso: string) {
@@ -23,6 +25,8 @@ export default function HistorialNRPage() {
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isAdmin } = useIsAdmin();
+  const [timbradoOpen, setTimbradoOpen] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -69,6 +73,12 @@ export default function HistorialNRPage() {
           </div>
           <div className="flex gap-2">
             {/* Acceso a Recepción oculto junto con el módulo (ver Sidebar / app/recepcion). */}
+            {isAdmin && (
+              <button type="button" onClick={() => setTimbradoOpen(true)} className="zx-surface rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Timbrado
+              </button>
+            )}
+            {timbradoOpen && <TimbradoModal onClose={() => setTimbradoOpen(false)} />}
             <Link href="/notas-remision/nueva" className="rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm ring-1 ring-emerald-500/30 hover:shadow-md inline-flex items-center gap-1.5">
               <Plus className="h-4 w-4" /> Emitir NR
             </Link>

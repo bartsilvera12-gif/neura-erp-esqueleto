@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { asegurarStockPorDeposito } from "@/lib/comex/stock-deposito";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
 
 /**
  * GET /api/inventario/transferencias — lista transferencias (agrupa SALIDA + ENTRADA
@@ -142,6 +144,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Si el producto todavía no lleva stock por depósito, su stock se toma como que está en su depósito principal.
+    await asegurarStockPorDeposito(ctx.supabase as unknown as AppSupabaseClient, ctx.auth.empresa_id, producto_id);
 
     const { data, error } = await ctx.supabase.rpc("transferir_stock_entre_depositos", {
       p_empresa_id: ctx.auth.empresa_id,

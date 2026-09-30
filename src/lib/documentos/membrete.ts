@@ -6,13 +6,18 @@
  */
 
 export const EMPRESA_DOC = {
-  nombre: "DEMO ERP",
-  actividad: [] as string[],
-  telefono: "",
+  nombre: "LIVING ROOM MUEBLES E.A.S.",
+  ruc: "80150840-1",
+  actividad: [
+    "Comercio al por mayor de muebles y artículos de iluminación",
+    "Venta de muebles importados · Actividades de diseño especializado",
+    "Actividades de decoradores de interiores / Diseño de interiores",
+  ] as string[],
+  telefono: "(0971) 880-905",
   email: "",
-  direccion: [] as string[],
+  direccion: ["Avda. Santa Teresa No. 2709 c/ Denis Roa", "Asunción - Paraguay"] as string[],
   /** Logo del cliente. Servido desde /public. */
-  logoUrl: "/brand/zentra-logo-official.png",
+  logoUrl: "/brand/livingroom-logo.png",
 };
 
 function esc(v: unknown): string {

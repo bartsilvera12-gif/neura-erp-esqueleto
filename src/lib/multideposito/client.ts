@@ -27,6 +27,7 @@ export type NotaRemisionItem = {
   producto_id: string;
   producto_nombre?: string;
   producto_sku?: string;
+  unidad?: string;
   cantidad: number;
 };
 
@@ -53,6 +54,11 @@ export type NotaRemision = {
   conductor: string | null;
   ci_conductor: string | null;
   chapa: string | null;
+  marca_vehiculo?: string | null;
+  /** Timbrado de la DNIT con el que se emitió (vacío en las remisiones internas viejas). */
+  timbrado?: string | null;
+  documento_origen?: string | null;
+  cliente_documento?: string | null;
   fecha_inicio_traslado: string | null;
   fecha_fin_traslado: string | null;
   observaciones: string | null;
@@ -125,6 +131,8 @@ export async function crearNR(payload: {
   conductor?: string;
   ci_conductor?: string;
   chapa?: string;
+  marca_vehiculo?: string;
+  documento_origen?: string;
   fecha_inicio_traslado?: string;
   fecha_fin_traslado?: string;
   observaciones?: string;

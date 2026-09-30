@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
       comprobante_mime_type: body.comprobante_mime_type != null && String(body.comprobante_mime_type).trim() !== "" ? String(body.comprobante_mime_type) : null,
       created_by: ctx.auth.usuarioCatalogId ?? null,
       usuario_nombre: ctx.auth.user?.email ?? null,
+      ubicacion_id: /^[0-9a-f-]{36}$/i.test(String(body.ubicacion_id ?? "")) ? String(body.ubicacion_id) : null,
     };
 
     const items: CompraItemInput[] = [];

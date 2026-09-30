@@ -51,13 +51,13 @@ export async function PATCH(request: NextRequest, p: Params) {
     if (b.producto_id !== undefined) {
       const { data: prod } = await ctx.supabase
         .from("productos")
-        .select("id, nombre, sku, activo")
+        .select("id, nombre, sku, activo, unidad_medida")
         .eq("empresa_id", ctx.auth.empresa_id)
         .eq("id", String(b.producto_id))
         .maybeSingle();
-      const pr = prod as { id: string; nombre: string; sku: string | null; activo: boolean | null } | null;
+      const pr = prod as { id: string; nombre: string; sku: string | null; activo: boolean | null; unidad_medida: string | null } | null;
       if (!pr || pr.activo === false) return NextResponse.json(errorResponse("Ese producto no existe o está desactivado."), { status: 400 });
-      Object.assign(update, { producto_id: pr.id, producto_nombre: pr.nombre, sku: pr.sku });
+      Object.assign(update, { producto_id: pr.id, producto_nombre: pr.nombre, sku: pr.sku, unidad: pr.unidad_medida });
     }
     const cantidad = b.cantidad !== undefined ? Number(b.cantidad) : Number(item.cantidad);
     const precio = b.precio_unitario !== undefined ? Number(b.precio_unitario) : Number(item.precio_unitario);

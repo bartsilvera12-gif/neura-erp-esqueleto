@@ -39,6 +39,7 @@ export interface ImportacionItem {
   producto_id: string | null;
   producto_nombre: string;
   sku: string | null;
+  unidad?: string | null;
   cantidad: number;
   precio_unitario: number;
   moneda: "PYG" | "USD" | "BOB";

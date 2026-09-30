@@ -104,6 +104,8 @@ export interface CompraHeaderPayload {
   tipo_pago: "contado" | "credito";
   plazo_dias?: number;
   nro_timbrado: string;
+  /** Almacén al que entra la mercadería. Vacío = el depósito principal de cada producto. */
+  ubicacion_id?: string | null;
   numero_factura?: string | null;
   orden_compra_numero?: string | null;
   comprobante_storage_path?: string | null;

@@ -114,19 +114,20 @@ export default function TransferenciasPage() {
               <th className="px-4 py-3"></th>
               <th className="px-4 py-3">Destino</th>
               <th className="px-4 py-3">Usuario</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                   Cargando…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                   No hay transferencias registradas.
                 </td>
               </tr>
@@ -154,6 +155,16 @@ export default function TransferenciasPage() {
                     : "—"}
                 </td>
                 <td className="px-4 py-3 text-slate-500">{t.usuario_nombre ?? "—"}</td>
+                <td className="px-4 py-3 text-right">
+                  <a
+                    href={`/api/inventario/transferencias/${t.transferencia_id}/imprimir?auto=1`}
+                    target="_blank"
+                    rel="noopener"
+                    className="rounded border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    Imprimir
+                  </a>
+                </td>
               </tr>
             ))}
           </tbody>
