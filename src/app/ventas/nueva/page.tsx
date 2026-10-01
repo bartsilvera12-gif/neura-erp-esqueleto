@@ -160,6 +160,13 @@ export default function NuevaVentaPage() {
   const { isAdmin } = useIsAdmin();
   /** Paso a producción: usa el mismo endpoint y los mismos permisos que Facturación. */
   const [confirmarProduccion, setConfirmarProduccion] = useState(false);
+  /** Datos del cliente para la factura: los mismos que pide Facturación local.
+   *  Se completan solos al elegir un cliente, o se escriben a mano. */
+  const datosClienteVacio = { nombre: "", documento: "", direccion: "", ciudad: "", telefono: "", email: "", pais: "PARAGUAY" };
+  const [datosCliente, setDatosCliente] = useState(datosClienteVacio);
+  const [notaRemisionNro, setNotaRemisionNro] = useState("");
+  const [guardarCliente, setGuardarCliente] = useState(false);
+  const setDC = (k: keyof typeof datosClienteVacio, v: string) => setDatosCliente((d) => ({ ...d, [k]: v }));
   const [pasandoProduccion, setPasandoProduccion] = useState(false);
   const [errorLinea, setErrorLinea] = useState<string | null>(null);
   const [errorVenta, setErrorVenta] = useState<string | null>(null);
@@ -228,6 +235,16 @@ export default function NuevaVentaPage() {
     setClienteId(c.id);
     setClienteQuery("");
     setGeneraNotaRemision(c.usa_nota_remision);
+    setDatosCliente({
+      nombre: c.label,
+      documento: c.ruc ?? "",
+      direccion: c.direccion ?? "",
+      ciudad: c.ciudad ?? "",
+      telefono: c.telefono ?? "",
+      email: c.email ?? "",
+      pais: "PARAGUAY",
+    });
+    setGuardarCliente(false);
     setShowCrearCliente(false);
   }
 
@@ -1088,6 +1105,26 @@ export default function NuevaVentaPage() {
       // es el mismo hecho, no una carga aparte.
       let docUrl = ticketUrl;
       if (documento === "factura") {
+        // Alta del cliente en Clientes, si lo pidió y todavía no existe.
+        let clienteFacturaId: string | null = clienteId || null;
+        if (guardarCliente && !clienteFacturaId) {
+          const rc = await fetchWithSupabaseSession("/api/clientes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tipo_cliente: "empresa",
+              empresa: datosCliente.nombre.trim(),
+              nombre_contacto: datosCliente.nombre.trim(),
+              ruc: datosCliente.documento.trim() || null,
+              direccion: datosCliente.direccion.trim() || null,
+              ciudad: datosCliente.ciudad.trim() || null,
+              pais: datosCliente.pais.trim() || null,
+              telefono: datosCliente.telefono.trim() || null,
+              email: datosCliente.email.trim() || null,
+            }),
+          }).then((r) => r.json()).catch(() => null);
+          if (rc?.success && rc.data?.id) clienteFacturaId = rc.data.id as string;
+        }
         const rf = await fetchWithSupabaseSession("/api/facturas-exportacion", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1098,14 +1135,15 @@ export default function NuevaVentaPage() {
             fecha: new Date().toISOString().slice(0, 10),
             moneda: "PYG",
             condicion_venta: tipoVenta === "CREDITO" ? "CREDITO" : "CONTADO",
-            cliente_id: clienteIdFinal || null,
-            cliente_nombre: clienteSel?.label ?? "",
-            cliente_documento: clienteSel?.ruc ?? "",
-            cliente_direccion: clienteSel?.direccion ?? "",
-            cliente_ciudad: clienteSel?.ciudad ?? "",
-            cliente_telefono: clienteSel?.telefono ?? "",
-            cliente_email: clienteSel?.email ?? "",
-            cliente_pais: (clienteSel?.pais || "PARAGUAY").toUpperCase(),
+            cliente_id: clienteFacturaId,
+            cliente_nombre: datosCliente.nombre.trim(),
+            cliente_documento: datosCliente.documento.trim(),
+            cliente_direccion: datosCliente.direccion.trim(),
+            cliente_ciudad: datosCliente.ciudad.trim(),
+            cliente_telefono: datosCliente.telefono.trim(),
+            cliente_email: datosCliente.email.trim(),
+            cliente_pais: datosCliente.pais.trim().toUpperCase() || "PARAGUAY",
+            nota_remision: notaRemisionNro.trim() || null,
             establecimiento: puntoSel?.establecimiento ?? "",
             punto_expedicion: puntoSel?.punto_expedicion ?? "",
             items: items.map((it) => ({
@@ -1162,8 +1200,16 @@ export default function NuevaVentaPage() {
     e.preventDefault();
     setErrorVenta(null);
     if (!ventaValida) return;
-    if (documento === "factura" && !clienteId) {
-      setErrorVenta("Para emitir la factura hace falta elegir el cliente.");
+    if (documento === "factura" && !datosCliente.nombre.trim()) {
+      setErrorVenta("Para emitir la factura hace falta el nombre o razón social del cliente.");
+      return;
+    }
+    if (documento === "factura" && !datosCliente.pais.trim()) {
+      setErrorVenta("Para emitir la factura hace falta el país del cliente.");
+      return;
+    }
+    if (tipoVenta === "CREDITO" && !clienteId) {
+      setErrorVenta("Una venta a crédito necesita un cliente de la lista: la deuda queda a su nombre.");
       return;
     }
     if (documento === "factura" && !puntoSel) {
@@ -1277,7 +1323,7 @@ export default function NuevaVentaPage() {
                 {clienteSel && (
                   <button
                     type="button"
-                    onClick={() => { setClienteId(""); setClienteQuery(""); setGeneraNotaRemision(false); }}
+                    onClick={() => { setClienteId(""); setClienteQuery(""); setGeneraNotaRemision(false); setDatosCliente(datosClienteVacio); }}
                     className="shrink-0 rounded-lg border border-slate-200 px-3 text-xs text-slate-500 hover:bg-slate-50"
                   >
                     Quitar
@@ -1293,7 +1339,22 @@ export default function NuevaVentaPage() {
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => { setClienteId(c.id); setClienteQuery(""); setClienteOpen(false); setGeneraNotaRemision(c.usa_nota_remision); }}
+                        onClick={() => {
+                          setClienteId(c.id);
+                          setClienteQuery("");
+                          setClienteOpen(false);
+                          setGeneraNotaRemision(c.usa_nota_remision);
+                          setDatosCliente({
+                            nombre: c.label,
+                            documento: c.ruc ?? "",
+                            direccion: c.direccion ?? "",
+                            ciudad: c.ciudad ?? "",
+                            telefono: c.telefono ?? "",
+                            email: c.email ?? "",
+                            pais: (c.pais || "PARAGUAY").toUpperCase(),
+                          });
+                          setGuardarCliente(false);
+                        }}
                         className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
                       >
                         <span className="font-medium text-gray-800">{c.label}</span>
@@ -1305,8 +1366,61 @@ export default function NuevaVentaPage() {
                 </div>
               )}
               <p className="mt-1 text-[11px] text-gray-400">
-                Si no seleccionás cliente, la venta se registra sin cliente.
+                {documento === "factura"
+                  ? "Buscalo arriba o escribí los datos abajo: la factura los imprime."
+                  : "Si no seleccionás cliente, la venta se registra sin cliente."}
               </p>
+
+              {/* Datos del cliente para la factura: los mismos que Facturación local. */}
+              {documento === "factura" && (
+                <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>Nombre o razón social <span className="text-red-500">*</span></label>
+                      <input value={datosCliente.nombre} onChange={(e) => setDC("nombre", e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>RUC o C.I. Nº</label>
+                      <input value={datosCliente.documento} onChange={(e) => setDC("documento", e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Dirección</label>
+                      <input value={datosCliente.direccion} onChange={(e) => setDC("direccion", e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>País <span className="text-red-500">*</span></label>
+                      <input value={datosCliente.pais} onChange={(e) => setDC("pais", e.target.value.toUpperCase())} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Ciudad</label>
+                      <input value={datosCliente.ciudad} onChange={(e) => setDC("ciudad", e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Teléfono</label>
+                      <input value={datosCliente.telefono} onChange={(e) => setDC("telefono", e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Correo</label>
+                      <input value={datosCliente.email} onChange={(e) => setDC("email", e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Nota de remisión Nº</label>
+                      <input value={notaRemisionNro} onChange={(e) => setNotaRemisionNro(e.target.value)} className={inputClass} />
+                    </div>
+                  </div>
+                  {!clienteId && datosCliente.nombre.trim() && (
+                    <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={guardarCliente}
+                        onChange={(e) => setGuardarCliente(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-[#0EA5E9] focus:ring-[#0EA5E9]"
+                      />
+                      Guardar este cliente en Clientes para la próxima vez
+                    </label>
+                  )}
+                </div>
+              )}
 
               {/* Nota de remisión: solo con cliente. Si el cliente la usa, viene activada. */}
               {clienteSel && (
