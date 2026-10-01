@@ -44,7 +44,7 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
     const ventaId = (upd.data as { venta_id?: string | null }).venta_id ?? null;
     let avisoVenta: string | null = null;
     if (ventaId) {
-      const rv = await anularVentaCompleta(supabase, auth.empresa_id, ventaId).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : "error" }));
+      const rv = await anularVentaCompleta(supabase, auth.empresa_id, ventaId, "anular").catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : "error" }));
       if (!rv.ok) avisoVenta = `La factura quedó anulada, pero su venta no se pudo deshacer (${rv.error}): revisá el stock y la caja.`;
     }
 

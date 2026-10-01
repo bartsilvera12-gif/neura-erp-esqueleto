@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -29,6 +29,8 @@ import {
 import CantidadInput from "@/components/ui/CantidadInput";
 import type { Producto, MetodoValuacion } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { useIsAdmin } from "@/lib/auth/use-is-admin";
 
 /** Miniatura de producto con fallback a un placeholder si no hay imagen o falla. */
 function ProductoThumb({ url, alt, size = "h-10 w-10" }: { url?: string | null; alt: string; size?: string }) {
@@ -155,6 +157,10 @@ export default function NuevaVentaPage() {
   type PuntoFactura = { establecimiento: string; punto_expedicion: string; timbrado: string; modo_prueba: boolean; activo: boolean };
   const [puntos, setPuntos] = useState<PuntoFactura[]>([]);
   const [punto, setPunto] = useState("");
+  const { isAdmin } = useIsAdmin();
+  /** Paso a producción: usa el mismo endpoint y los mismos permisos que Facturación. */
+  const [confirmarProduccion, setConfirmarProduccion] = useState(false);
+  const [pasandoProduccion, setPasandoProduccion] = useState(false);
   const [errorLinea, setErrorLinea] = useState<string | null>(null);
   const [errorVenta, setErrorVenta] = useState<string | null>(null);
   // Venta sin stock: faltantes devueltos por el backend + modal de confirmación.
@@ -650,17 +656,37 @@ export default function NuevaVentaPage() {
   }, [ubicacionId]);
 
   // Timbrado: puntos de expedición activos. Si no hay ninguno, no se puede facturar.
-  useEffect(() => {
-    fetchWithSupabaseSession("/api/facturas-exportacion/config", { cache: "no-store" })
+  const cargarPuntos = useCallback(async () => {
+    const j = await fetchWithSupabaseSession("/api/facturas-exportacion/config", { cache: "no-store" })
       .then((r) => r.json())
-      .then((j) => {
-        if (!j?.success) return;
-        const activos = ((j.data?.config ?? []) as PuntoFactura[]).filter((p) => p.activo);
-        setPuntos(activos);
-        if (activos.length) setPunto((prev) => prev || activos[0].punto_expedicion);
-      })
-      .catch(() => undefined);
+      .catch(() => null);
+    if (!j?.success) return;
+    const activos = ((j.data?.config ?? []) as PuntoFactura[]).filter((p) => p.activo);
+    setPuntos(activos);
+    if (activos.length) setPunto((prev) => prev || activos[0].punto_expedicion);
   }, []);
+  useEffect(() => { void cargarPuntos(); }, [cargarPuntos]);
+
+  /** Saca el modo prueba de TODOS los puntos, igual que el botón de Facturación. */
+  async function pasarAProduccion() {
+    if (pasandoProduccion) return;
+    setPasandoProduccion(true);
+    try {
+      const j = await fetchWithSupabaseSession("/api/facturas-exportacion/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo_prueba: false }),
+      }).then((r) => r.json()).catch(() => null);
+      if (!j?.success) {
+        setErrorVenta(j?.error ?? "No se pudo pasar a producción.");
+        return;
+      }
+      await cargarPuntos();
+      setConfirmarProduccion(false);
+    } finally {
+      setPasandoProduccion(false);
+    }
+  }
   const puntoSel = puntos.find((p) => p.punto_expedicion === punto) ?? null;
   const clientesFiltrados = (clienteQuery.trim() === ""
     ? clientes
@@ -1068,6 +1094,7 @@ export default function NuevaVentaPage() {
             cliente_id: clienteIdFinal || null,
             cliente_nombre: clienteSel?.label ?? "",
             cliente_documento: clienteSel?.ruc ?? "",
+            cliente_pais: "PARAGUAY",
             establecimiento: puntoSel?.establecimiento ?? "",
             punto_expedicion: puntoSel?.punto_expedicion ?? "",
             items: items.map((it) => ({
@@ -1084,8 +1111,15 @@ export default function NuevaVentaPage() {
         if (rf?.success && rf.data?.factura?.id) {
           docUrl = `/api/facturas-exportacion/${rf.data.factura.id}/pdf`;
         } else {
-          // La venta ya quedó registrada: no se pierde. Se avisa y se entrega el ticket.
-          setErrorVenta(`La venta ${v.numero_control} se registró, pero la factura no se pudo emitir: ${rf?.error ?? "error desconocido"}. Emitila desde Facturación.`);
+          // La venta ya quedó registrada: no se pierde. Se avisa y se corta acá,
+          // para que el cajero vea el error en vez de irse con un ticket.
+          setErrorVenta(
+            `La venta ${v.numero_control} se registró y el stock ya se descontó, pero la FACTURA NO se emitió: ${rf?.error ?? "error desconocido"}. ` +
+            `Emitila desde Facturación → Nueva factura, o anulá la venta.`
+          );
+          try { ventanaDoc?.close(); } catch {}
+          ventanaDoc = null;
+          return;
         }
       }
       // Se reutiliza la ventana abierta durante el clic. Si el navegador la
@@ -1125,6 +1159,15 @@ export default function NuevaVentaPage() {
       setErrorVenta("No hay un punto de expedición activo. Revisalo en Facturación → Timbrado.");
       return;
     }
+    // La factura no admite renglones en cero: se avisa antes de registrar la
+    // venta, para no quedarse con la venta hecha y sin comprobante.
+    if (documento === "factura") {
+      const malo = items.find((i) => !(i.cantidad > 0) || !(i.precio_venta > 0));
+      if (malo) {
+        setErrorVenta(`"${malo.producto_nombre}": para facturar, la cantidad y el precio tienen que ser mayores a 0.`);
+        return;
+      }
+    }
     await enviarVenta(false);
   }
 
@@ -1138,6 +1181,21 @@ export default function NuevaVentaPage() {
 
   return (
     <div className="space-y-8">
+      <ConfirmModal
+        open={confirmarProduccion}
+        title="Pasar la facturación a producción"
+        message={
+          <div className="space-y-2">
+            <p>Desde ahora cada factura usa un <strong>número real del timbrado</strong> y tiene valor fiscal. Afecta a todos los puntos de expedición, no solo a este.</p>
+            <p>Las facturas de prueba que ya existen quedan como están, marcadas como PRUEBA. Se pueden borrar desde Facturación.</p>
+          </div>
+        }
+        confirmLabel="Pasar a producción"
+        tone="primary"
+        loading={pasandoProduccion}
+        onConfirm={pasarAProduccion}
+        onCancel={() => setConfirmarProduccion(false)}
+      />
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -1283,9 +1341,20 @@ export default function NuevaVentaPage() {
                 <p className="mt-1 text-xs font-medium text-amber-700">No hay un punto de expedición activo. Revisalo en Facturación → Timbrado.</p>
               )}
               {documento === "factura" && puntoSel?.modo_prueba && (
-                <p className="mt-1 text-xs font-medium text-amber-700">
-                  El punto {puntoSel.establecimiento}-{puntoSel.punto_expedicion} está en <strong>modo prueba</strong>: la factura sale marcada como PRUEBA, sin valor fiscal.
-                </p>
+                <div className="mt-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+                  <p className="text-xs font-medium text-amber-900">
+                    El punto {puntoSel.establecimiento}-{puntoSel.punto_expedicion} está en <strong>modo prueba</strong>: la factura sale marcada como PRUEBA, sin valor fiscal.
+                  </p>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmarProduccion(true)}
+                      className="mt-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                    >
+                      Pasar a producción
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 

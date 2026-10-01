@@ -83,6 +83,9 @@ export async function sumarStockDeposito(sb: AppSupabaseClient, emp: string, pro
       .eq("ubicacion_id", ubicacionId);
     if (error) throw new Error(error.message);
   } else {
+    // Sin fila previa no hay nada que sacar: una salida de un depósito vacío es
+    // un error de datos, no un stock negativo que quede guardado.
+    if (delta < 0) throw new Error("Ese producto no tiene stock registrado en ese depósito.");
     const { error } = await sb.from("inventario_stock_ubicacion").insert({ empresa_id: emp, producto_id: productoId, ubicacion_id: ubicacionId, stock_actual: delta });
     if (error) throw new Error(error.message);
   }

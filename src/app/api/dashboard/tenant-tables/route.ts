@@ -228,7 +228,8 @@ export async function GET(request: NextRequest) {
       return range ? base.gte("fecha", range.desde).lte("fecha", range.hasta) : base;
     };
     const buildVentasQ = () => {
-      const base = supabase.from("ventas").select("*").eq("empresa_id", empresaId);
+      // Las anuladas no son facturación: no entran en los números del tablero.
+      const base = supabase.from("ventas").select("*").eq("empresa_id", empresaId).neq("estado", "anulada");
       // hasta incluye todo el dia (fecha en 'ventas' es timestamptz con hora)
       return range ? base.gte("fecha", range.desde).lte("fecha", `${range.hasta}T23:59:59.999Z`) : base;
     };

@@ -68,6 +68,9 @@ export async function GET(request: NextRequest) {
         "id, empresa_id, numero_control, moneda, tipo_cambio, subtotal, monto_iva, total, tipo_venta, plazo_dias, metodo_pago, fecha, created_by_user_id"
       )
       .eq("empresa_id", empresaId)
+      // Las anuladas (p. ej. por anular su factura) no son ventas: no van al
+      // listado ni a los totales del día.
+      .neq("estado", "anulada")
       .order("fecha", { ascending: false })
       .limit(500);
     if (!scope.esAdmin) {
