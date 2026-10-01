@@ -4,7 +4,8 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 
 /**
- * Documentos desde los que se puede armar una nota de remisión sin tipear los productos.
+ * Documentos desde los que se puede armar una nota de remisión o una factura
+ * sin tipear los productos.
  * GET                      → lista de facturas emitidas y compromisos de venta recientes.
  * GET ?tipo=factura&id=…   → cliente y productos de esa factura.
  * GET ?tipo=compromiso&id= → cliente y productos de ese compromiso de venta.
@@ -37,8 +38,8 @@ export async function GET(request: NextRequest) {
     }
     if (tipo === "compromiso" && id) {
       const [p, it] = await Promise.all([
-        supabase.from("presupuestos").select("id, numero_control, cliente_id, cliente_nombre, cliente_direccion").eq("empresa_id", emp).eq("id", id).maybeSingle(),
-        supabase.from("presupuesto_items").select("producto_id, producto_nombre, cantidad").eq("empresa_id", emp).eq("presupuesto_id", id),
+        supabase.from("presupuestos").select("id, numero_control, cliente_id, cliente_nombre, cliente_ruc, cliente_telefono, cliente_direccion, moneda").eq("empresa_id", emp).eq("id", id).maybeSingle(),
+        supabase.from("presupuesto_items").select("producto_id, producto_nombre, sku, cantidad, unidad_medida, precio_unitario, iva_tipo, descuento").eq("empresa_id", emp).eq("presupuesto_id", id),
       ]);
       if (p.error || it.error) throw new Error((p.error ?? it.error)?.message);
       if (!p.data) return NextResponse.json(errorResponse("El compromiso de venta no existe."), { status: 404 });
@@ -46,20 +47,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         successResponse({
           documento: `Compromiso de venta ${c.numero_control ?? ""}`.trim(),
-          cliente: { id: c.cliente_id, nombre: c.cliente_nombre, direccion: c.cliente_direccion, ciudad: null },
-          items: ((it.data ?? []) as unknown as { producto_id: string | null; producto_nombre: string; cantidad: number }[]).map((x) => ({ producto_id: x.producto_id, descripcion: x.producto_nombre, cantidad: Number(x.cantidad) })),
+          moneda: c.moneda ?? "PYG",
+          cliente: { id: c.cliente_id, nombre: c.cliente_nombre, documento: c.cliente_ruc, telefono: c.cliente_telefono, direccion: c.cliente_direccion, ciudad: null },
+          items: ((it.data ?? []) as unknown as Record<string, unknown>[]).map((x) => ({
+            producto_id: (x.producto_id as string) ?? null,
+            descripcion: String(x.producto_nombre ?? ""),
+            sku: (x.sku as string) ?? null,
+            unidad: (x.unidad_medida as string) ?? null,
+            cantidad: Number(x.cantidad) || 0,
+            precio_unitario: Number(x.precio_unitario) || 0,
+            iva_tipo: String(x.iva_tipo ?? "10%"),
+            descuento: Number(x.descuento) || 0,
+          })),
         })
       );
     }
 
     const [fs, ps] = await Promise.all([
       supabase.from("facturas_exportacion").select("id, numero_formateado, cliente_nombre, fecha, prueba").eq("empresa_id", emp).eq("estado", "EMITIDA").order("emitida_at", { ascending: false }).limit(100),
-      supabase.from("presupuestos").select("id, numero_control, cliente_nombre, fecha, estado").eq("empresa_id", emp).neq("estado", "rechazado").order("created_at", { ascending: false }).limit(100),
+      supabase.from("presupuestos").select("id, numero_control, cliente_nombre, fecha, estado, total, moneda").eq("empresa_id", emp).neq("estado", "rechazado").order("created_at", { ascending: false }).limit(100),
     ]);
     return NextResponse.json(
       successResponse({
         facturas: ((fs.data ?? []) as unknown as Record<string, unknown>[]).map((f) => ({ id: f.id, numero: f.numero_formateado, cliente: f.cliente_nombre, fecha: f.fecha, prueba: f.prueba === true })),
-        compromisos: ((ps.data ?? []) as unknown as Record<string, unknown>[]).map((p) => ({ id: p.id, numero: p.numero_control, cliente: p.cliente_nombre, fecha: p.fecha })),
+        compromisos: ((ps.data ?? []) as unknown as Record<string, unknown>[]).map((p) => ({ id: p.id, numero: p.numero_control, cliente: p.cliente_nombre, fecha: p.fecha, total: Number(p.total) || 0, moneda: p.moneda ?? "PYG" })),
       })
     );
   } catch (err) {

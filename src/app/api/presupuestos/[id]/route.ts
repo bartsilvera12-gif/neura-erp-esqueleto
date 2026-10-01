@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { faltanteDeStock } from "@/lib/presupuestos/server/stock";
 import { ESTADOS_PRESUPUESTO, type EstadoPresupuesto } from "@/lib/presupuestos/types";
 
 const PRESU_COLS =
@@ -131,6 +132,14 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
           total: Math.round(bruto),
         });
       }
+
+      // No se compromete mercadería que no hay en el almacén.
+      const sinStock = await faltanteDeStock(
+        ctx.supabase,
+        ctx.auth.empresa_id,
+        rawItems.map((it) => ({ producto_id: it.producto_id ? String(it.producto_id) : null, cantidad: Number(it.cantidad) }))
+      );
+      if (sinStock) return NextResponse.json(errorResponse(sinStock), { status: 400 });
 
       // Delete items viejos + insertar nuevos.
       const delR = await ctx.supabase.from("presupuesto_items").delete()

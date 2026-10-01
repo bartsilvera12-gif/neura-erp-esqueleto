@@ -123,6 +123,10 @@ export default function FormFactura() {
   });
   const [observaciones, setObservaciones] = useState("");
   const [items, setItems] = useState<Item[]>([]);
+  /** Compromisos de venta de los que se pueden traer el cliente y los productos. */
+  const [compromisos, setCompromisos] = useState<{ id: string; numero: string | null; cliente: string | null; total: number; moneda: string }[]>([]);
+  const [compromisoElegido, setCompromisoElegido] = useState("");
+  const [avisoCompromiso, setAvisoCompromiso] = useState<string | null>(null);
   const [enviando, setEnviando] = useState<"" | "borrador" | "emitir">("");
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -152,6 +156,56 @@ export default function FormFactura() {
       })
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/notas-remision/origenes", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.success) setCompromisos(j.data?.compromisos ?? []);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  /** Trae el cliente y los productos de un compromiso de venta, para no tipearlos. */
+  async function traerCompromiso(valor: string) {
+    setCompromisoElegido(valor);
+    setAvisoCompromiso(null);
+    if (!valor) return;
+    const j = await fetch(`/api/notas-remision/origenes?tipo=compromiso&id=${valor}`, { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .catch(() => null);
+    if (!j?.success) return setError(j?.error ?? "No se pudo traer el compromiso de venta.");
+    const d = j.data as {
+      documento: string;
+      moneda: string;
+      cliente: { id: string | null; nombre: string | null; documento: string | null; telefono: string | null; direccion: string | null };
+      items: { producto_id: string | null; descripcion: string; sku: string | null; unidad: string | null; cantidad: number; precio_unitario: number; iva_tipo: string; descuento: number }[];
+    };
+    setCliente((c) => ({
+      ...c,
+      id: d.cliente.id ?? "",
+      nombre: d.cliente.nombre ?? c.nombre,
+      documento: d.cliente.documento ?? c.documento,
+      telefono: d.cliente.telefono ?? c.telefono,
+      direccion: d.cliente.direccion ?? c.direccion,
+    }));
+    setItems(
+      d.items.map((x) => ({
+        producto_id: x.producto_id ?? "",
+        codigo: x.sku ?? "",
+        descripcion: x.descripcion,
+        unidad: x.unidad || "UN",
+        cantidad: String(x.cantidad),
+        precio_unitario: String(x.precio_unitario),
+        descuento: x.descuento ? String(x.descuento) : "",
+        iva_tipo: (x.iva_tipo === "10%" ? "10" : x.iva_tipo === "5%" ? "5" : "EXENTA") as IvaTipo,
+      }))
+    );
+    const avisos: string[] = [];
+    if (d.moneda && d.moneda !== moneda) avisos.push(`el compromiso está en ${d.moneda} y la factura en ${moneda}: revisá los precios`);
+    if (d.items.some((x) => !x.producto_id)) avisos.push("algún renglón no está vinculado a un producto del inventario");
+    setAvisoCompromiso(avisos.length ? `Se trajeron los datos de ${d.documento}, pero ${avisos.join("; ")}.` : `Se trajeron los datos de ${d.documento}.`);
+  }
 
   // Reemisión de una factura de agosto: precarga cliente y moneda.
   useEffect(() => {
@@ -852,6 +906,21 @@ export default function FormFactura() {
             + Agregar producto
           </button>
         </div>
+        {!reemiteId && !editarParam && compromisos.length > 0 && (
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+            <label className={lbl}>Traer de un compromiso de venta (opcional)</label>
+            <select value={compromisoElegido} onChange={(e) => void traerCompromiso(e.target.value)} className={input}>
+              <option value="">— Cargar los productos a mano —</option>
+              {compromisos.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.numero ?? "s/n"} · {c.cliente ?? ""} · {c.moneda === "USD" ? "USD" : "Gs."} {Number(c.total).toLocaleString("es-PY")}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">Trae el cliente y los productos con sus cantidades y precios. Después se pueden corregir.</p>
+            {avisoCompromiso && <p className="mt-2 text-xs font-medium text-amber-800">{avisoCompromiso}</p>}
+          </div>
+        )}
         <div className="space-y-3">
           {items.map((it, i) => (
             <div key={i} className="rounded-lg border border-slate-200 p-3">

@@ -15,6 +15,8 @@ type ProductoLite = {
   sku: string;
   precio_venta: number;
   unidad_medida: string;
+  /** Null si el producto no controla stock. */
+  stock: number | null;
 };
 type ClienteLite = {
   id: string;
@@ -91,6 +93,7 @@ export default function NuevoPresupuestoPage() {
                 sku: String(p.sku ?? ""),
                 precio_venta: Number(p.precio_venta) || 0,
                 unidad_medida: String(p.unidad_medida ?? "UNIDAD"),
+                stock: p.controla_stock === false ? null : Number(p.stock_actual) || 0,
               }))
           );
         }
@@ -184,9 +187,19 @@ export default function NuevoPresupuestoPage() {
     return { subtotal: round2(subtotal), iva: round2(iva), desc: round2(desc), total: round2(total) };
   }, [items]);
 
+  // No se compromete mercadería que no hay en el almacén.
+  const stockDe = useMemo(() => new Map(productos.map((p) => [p.id, p.stock])), [productos]);
+  const faltaStock = (it: Item) => {
+    if (!it.producto_id) return false;
+    const hay = stockDe.get(it.producto_id);
+    return hay != null && Number(it.cantidad) > hay;
+  };
+  const haySinStock = items.some(faltaStock);
+
   const valido =
     clienteNombre.trim().length > 0 &&
     items.length > 0 &&
+    !haySinStock &&
     items.every((it) => it.producto_nombre.trim() && it.cantidad > 0 && it.precio_unitario >= 0);
 
   async function guardar() {
@@ -335,7 +348,19 @@ export default function NuevoPresupuestoPage() {
                         <input value={it.producto_nombre} onChange={(e) => updItem(i, { producto_nombre: e.target.value })} className={inputClass} placeholder="Descripción" />
                       </td>
                       <td className="py-2 px-2">
-                        <input type="number" min="0" step="1" value={it.cantidad || ""} onChange={(e) => updItem(i, { cantidad: Number(e.target.value) })} className={inputClass} />
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={it.cantidad || ""}
+                          onChange={(e) => updItem(i, { cantidad: Number(e.target.value) })}
+                          className={`${inputClass} ${faltaStock(it) ? "border-rose-400 bg-rose-50" : ""}`}
+                        />
+                        {it.producto_id && stockDe.get(it.producto_id) != null && (
+                          <span className={`mt-0.5 block text-[11px] ${faltaStock(it) ? "font-semibold text-rose-700" : "text-gray-400"}`}>
+                            hay {Number(stockDe.get(it.producto_id)).toLocaleString("es-PY")}
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 px-2">
                         <input type="number" min="0" step="1" value={it.precio_unitario || ""} onChange={(e) => updItem(i, { precio_unitario: Number(e.target.value) })} className={inputClass} />
@@ -397,6 +422,11 @@ export default function NuevoPresupuestoPage() {
         <Link href="/presupuestos" className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
           Cancelar
         </Link>
+        {haySinStock && (
+          <p className="mr-auto self-center text-sm font-medium text-rose-700">
+            No se puede guardar: hay productos con más cantidad de la que hay en el almacén.
+          </p>
+        )}
         <button onClick={guardar} disabled={!valido || guardando} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#4FAEB2] px-5 py-2 text-sm font-medium text-white hover:bg-[#3F8E91] disabled:opacity-50">
           {guardando ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando…</> : "Guardar presupuesto"}
         </button>
