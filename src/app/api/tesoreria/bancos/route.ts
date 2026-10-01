@@ -19,7 +19,11 @@ export async function POST(request: NextRequest) {
       .insert({ ...d.datos, empresa_id: ctx.auth.empresa_id, tipo: "banco", activo: true, orden: 0 })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (/duplicate|unique|23505/i.test(error.message))
+        return NextResponse.json(errorResponse("Ya existe una cuenta con ese nombre. Poné otro."), { status: 409 });
+      return NextResponse.json(errorResponse(`No se pudo crear la cuenta: ${error.message}`), { status: 400 });
+    }
     return NextResponse.json(successResponse({ id: (data as { id: string }).id }));
   } catch (err) {
     console.error("[/api/tesoreria/bancos POST]", err);

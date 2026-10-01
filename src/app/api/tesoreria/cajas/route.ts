@@ -14,7 +14,11 @@ export async function POST(request: NextRequest) {
     const d = datosCajaChica((await request.json().catch(() => ({}))) as Record<string, unknown>, true);
     if ("error" in d) return NextResponse.json(errorResponse(d.error), { status: 400 });
     const { data, error } = await ctx.supabase.from("cajas_chicas").insert({ ...d.datos, empresa_id: ctx.auth.empresa_id, activa: true }).select("id").single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (/duplicate|unique|23505/i.test(error.message))
+        return NextResponse.json(errorResponse("Ya existe una caja chica con ese nombre. Poné otro."), { status: 409 });
+      return NextResponse.json(errorResponse(`No se pudo crear la caja chica: ${error.message}`), { status: 400 });
+    }
     return NextResponse.json(successResponse({ id: (data as { id: string }).id }));
   } catch (err) {
     console.error("[/api/tesoreria/cajas POST]", err);
