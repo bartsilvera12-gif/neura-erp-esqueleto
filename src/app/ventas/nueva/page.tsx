@@ -195,7 +195,9 @@ export default function NuevaVentaPage() {
   const [plazoDias, setPlazoDias] = useState("");
 
   // Cliente (opcional). Si se selecciona, se envía cliente_id al crear la venta.
-  type ClienteLite = { id: string; label: string; ruc: string | null; usa_nota_remision: boolean };
+  // Los datos que la factura necesita del cliente: se copian de su ficha, para
+  // no pedirlos de nuevo en Caja.
+  type ClienteLite = { id: string; label: string; ruc: string | null; usa_nota_remision: boolean; direccion?: string; ciudad?: string; telefono?: string; email?: string; pais?: string };
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
   const [clienteId, setClienteId] = useState("");
   const [clienteQuery, setClienteQuery] = useState("");
@@ -515,6 +517,11 @@ export default function NuevaVentaPage() {
           label: s(r.empresa) || s(r.nombre_contacto) || s(r.nombre) || "Cliente",
           ruc: s(r.ruc) || null,
           usa_nota_remision: r.usa_nota_remision === true,
+          direccion: s(r.direccion),
+          ciudad: s(r.ciudad),
+          telefono: s(r.telefono),
+          email: s(r.email),
+          pais: s(r.pais),
         }));
         setClientes(lite);
       })
@@ -1094,7 +1101,11 @@ export default function NuevaVentaPage() {
             cliente_id: clienteIdFinal || null,
             cliente_nombre: clienteSel?.label ?? "",
             cliente_documento: clienteSel?.ruc ?? "",
-            cliente_pais: "PARAGUAY",
+            cliente_direccion: clienteSel?.direccion ?? "",
+            cliente_ciudad: clienteSel?.ciudad ?? "",
+            cliente_telefono: clienteSel?.telefono ?? "",
+            cliente_email: clienteSel?.email ?? "",
+            cliente_pais: (clienteSel?.pais || "PARAGUAY").toUpperCase(),
             establecimiento: puntoSel?.establecimiento ?? "",
             punto_expedicion: puntoSel?.punto_expedicion ?? "",
             items: items.map((it) => ({

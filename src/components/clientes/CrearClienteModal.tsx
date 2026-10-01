@@ -17,6 +17,11 @@ export interface ClienteCreado {
   label: string;
   ruc: string | null;
   usa_nota_remision: boolean;
+  /** Datos que la factura imprime; se devuelven para no volver a pedirlos. */
+  direccion?: string;
+  ciudad?: string;
+  telefono?: string;
+  email?: string;
 }
 
 type TipoCli = "empresa" | "persona";
@@ -87,6 +92,10 @@ export default function CrearClienteModal({
         label,
         ruc: (tipo === "empresa" ? ruc.trim() : documento.trim()) || null,
         usa_nota_remision: usaNotaRemision,
+        direccion: direccion.trim(),
+        ciudad: ciudad.trim(),
+        telefono: telefono.trim(),
+        email: email.trim(),
       });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error de red.");
