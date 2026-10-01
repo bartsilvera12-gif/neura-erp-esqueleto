@@ -36,7 +36,9 @@ export async function GET(
         .from("inventario_ubicaciones")
         .select("id, nombre, codigo")
         .eq("empresa_id", auth.empresa_id)
-        .in("id", [nr.ubicacion_origen_id as string, nr.ubicacion_destino_id as string]),
+        // Una remisión a un cliente no tiene depósito de destino: ese id va vacío
+        // y no se puede mandar a la consulta.
+        .in("id", [nr.ubicacion_origen_id, nr.ubicacion_destino_id].filter(Boolean) as string[]),
     ]);
     if (itemsQ.error) throw new Error(itemsQ.error.message);
     if (ubQ.error) throw new Error(ubQ.error.message);
