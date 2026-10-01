@@ -27,6 +27,16 @@ export default function HistorialNRPage() {
   const [error, setError] = useState<string | null>(null);
   const { isAdmin } = useIsAdmin();
   const [timbradoOpen, setTimbradoOpen] = useState(false);
+  /** Timbrado de remisiones, para mostrar con qué numeración salen las notas. */
+  type ConfigNR = { timbrado: string; establecimiento: string; punto_expedicion: string; vigencia_desde: string | null; vigencia_hasta: string | null; proximo_numero: number };
+  const [configNR, setConfigNR] = useState<ConfigNR | null>(null);
+  const cargarConfigNR = useCallback(async () => {
+    const j = await fetch("/api/notas-remision/config", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .catch(() => null);
+    if (j?.success) setConfigNR((j.data?.config ?? null) as ConfigNR | null);
+  }, []);
+  useEffect(() => { void cargarConfigNR(); }, [cargarConfigNR]);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -70,6 +80,22 @@ export default function HistorialNRPage() {
               Notas de Remisión
             </h1>
             <p className="mt-1 text-sm text-slate-500">Historial completo de traspasos entre depósitos.</p>
+            {configNR ? (
+              <p className="mt-1 text-xs text-slate-600">
+                Timbrado <strong className="font-mono">{configNR.timbrado}</strong>
+                {configNR.vigencia_desde && configNR.vigencia_hasta
+                  ? ` · vigente del ${configNR.vigencia_desde.split("-").reverse().join("/")} al ${configNR.vigencia_hasta.split("-").reverse().join("/")}`
+                  : ""}
+                {" · "}la próxima nota sale como{" "}
+                <strong className="font-mono">
+                  {configNR.establecimiento}-{configNR.punto_expedicion}-{String(configNR.proximo_numero).padStart(7, "0")}
+                </strong>
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-amber-700">
+                Sin timbrado cargado: las notas salen numeradas como NR-000001, sin valor fiscal.
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             {/* Acceso a Recepción oculto junto con el módulo (ver Sidebar / app/recepcion). */}
@@ -78,7 +104,7 @@ export default function HistorialNRPage() {
                 Timbrado
               </button>
             )}
-            {timbradoOpen && <TimbradoModal onClose={() => setTimbradoOpen(false)} />}
+            {timbradoOpen && <TimbradoModal onClose={() => { setTimbradoOpen(false); void cargarConfigNR(); }} />}
             <Link href="/notas-remision/nueva" className="rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm ring-1 ring-emerald-500/30 hover:shadow-md inline-flex items-center gap-1.5">
               <Plus className="h-4 w-4" /> Emitir NR
             </Link>
