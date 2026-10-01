@@ -10,7 +10,7 @@ import { anularPago, ErrorTesoreria, pagosVigentes, registrarPago, validarMovimi
 
 export const COMPRA_COLS =
   "id, numero_control, fecha, tipo_id, tipo_codigo, tipo_nombre, condicion, nro_comprobante, proveedor_id, proveedor_nombre, proveedor_ruc, " +
-  "timbrado, es_electronica, cdc, moneda, cotizacion, cuotas, explicacion, impacta, retencion_iva, retencion_renta, total_exentas, " +
+  "timbrado, es_electronica, cdc, moneda, cotizacion, cuotas, explicacion, impacta, retencion_iva, retencion_renta, total_exentas, nota_credito_de_id, " +
   "total_gravado10, total_gravado5, iva10, iva5, total, estado, anulada_motivo, created_by_nombre, updated_by_nombre, created_at, updated_at";
 
 const MONEDAS = new Set(["PYG", "USD", "BOB"]);
@@ -170,6 +170,24 @@ export async function guardarCompra(
     }
   }
 
+  // Nota de crédito: a qué compra corrige. Tiene que ser del mismo proveedor y moneda.
+  let notaCreditoDeId: string | null = null;
+  if (esNC && esUuid(body.nota_credito_de_id)) {
+    const { data: orig } = await sb
+      .from("libro_compras")
+      .select("id, proveedor_nombre, moneda, estado, total")
+      .eq("empresa_id", emp)
+      .eq("id", String(body.nota_credito_de_id))
+      .maybeSingle();
+    const o = orig as { id: string; proveedor_nombre: string; moneda: string; estado: string; total: number } | null;
+    if (!o) throw new ErrorValidacion("El comprobante que querés corregir no existe.");
+    if (o.estado === "anulada") throw new ErrorValidacion("Ese comprobante está anulado.");
+    if (o.moneda !== moneda) throw new ErrorValidacion(`El comprobante original está en ${o.moneda} y la nota de crédito en ${moneda}.`);
+    if (t.total > Number(o.total) + 1)
+      throw new ErrorValidacion(`La nota de crédito (${t.total.toLocaleString("es-PY")}) no puede superar el comprobante que corrige (${Number(o.total).toLocaleString("es-PY")}).`);
+    notaCreditoDeId = o.id;
+  }
+
   const datos = {
     fecha,
     tipo_id: tipo.id,
@@ -196,6 +214,7 @@ export async function guardarCompra(
     iva10: t.iva10,
     iva5: t.iva5,
     total: t.total,
+    nota_credito_de_id: notaCreditoDeId,
     updated_at: new Date().toISOString(),
     updated_by_nombre: nombreUsuario(auth),
   };

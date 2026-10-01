@@ -36,6 +36,19 @@ export default function CajaChicaPage({ params }: { params: Promise<{ id: string
   const m = d.caja.moneda;
   const gastado = d.caja.fondo_fijo ? Math.max(0, Number(d.caja.fondo_fijo) - d.saldo) : null;
 
+  // Resumen del período: desde el último arqueo hasta hoy. Si nunca se hizo uno, desde el principio.
+  const ultimo = d.arqueos[0] ?? null;
+  const desde = ultimo ? ultimo.fecha : null;
+  const delPeriodo = desde ? d.movimientos.filter((x) => x.fecha > desde) : d.movimientos;
+  const suma = (p: (t: string, monto: number) => boolean) => delPeriodo.filter((x) => p(x.tipo, Number(x.monto))).reduce((t, x) => t + Math.abs(Number(x.monto)), 0);
+  const resumen = {
+    inicial: ultimo ? Number(ultimo.contado) : 0,
+    entradas: suma((t, monto) => t === "aporte" || t === "saldo_inicial" || (t === "ajuste" && monto > 0)),
+    gastos: suma((t) => t === "gasto"),
+    otrasSalidas: suma((t, monto) => t === "retiro" || (t === "ajuste" && monto < 0)),
+    cantidadGastos: delPeriodo.filter((x) => x.tipo === "gasto").length,
+  };
+
   return (
     <div className="space-y-5">
       <Link href="/tesoreria" className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800">
@@ -57,6 +70,35 @@ export default function CajaChicaPage({ params }: { params: Promise<{ id: string
           {gastado !== null && gastado > 0 && <p className="text-xs text-slate-500">Gastado desde la última reposición: {plata(gastado, m)}</p>}
         </div>
       </header>
+      {/* Resumen para el arqueo: de dónde salió el saldo que dice el sistema. */}
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-2 text-sm font-semibold text-slate-800">
+          {ultimo ? `Desde el último arqueo (${fechaHora(ultimo.fecha)})` : "Desde que se abrió la caja"}
+        </h2>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3 lg:grid-cols-5">
+          <div>
+            <dt className="text-xs uppercase text-slate-500">{ultimo ? "Contado en el arqueo" : "Saldo inicial"}</dt>
+            <dd className="font-medium text-slate-800">{plata(resumen.inicial, m)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Reposiciones</dt>
+            <dd className="font-medium text-emerald-700">+ {plata(resumen.entradas, m)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Gastos ({resumen.cantidadGastos})</dt>
+            <dd className="font-medium text-rose-700">− {plata(resumen.gastos, m)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Otras salidas</dt>
+            <dd className="font-medium text-rose-700">− {plata(resumen.otrasSalidas, m)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Saldo según el sistema</dt>
+            <dd className="text-base font-semibold text-slate-900">{plata(d.saldo, m)}</dd>
+          </div>
+        </dl>
+      </section>
+
       <div className="flex flex-wrap gap-2">
         <Link href={`/libro-compras/nuevo?caja=${id}`} className={btnPrimario}>
           <Receipt className="h-3.5 w-3.5" /> Registrar gasto

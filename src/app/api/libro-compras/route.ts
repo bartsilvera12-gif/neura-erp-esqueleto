@@ -25,6 +25,9 @@ export async function GET(request: NextRequest) {
     if (esUuid(tipo)) q = q.eq("tipo_id", tipo);
     const estado = sp.get("estado");
     if (estado === "registrada" || estado === "anulada") q = q.eq("estado", estado);
+    // Para elegir qué comprobante corrige una nota de crédito: solo compras vigentes del proveedor.
+    const proveedor = sp.get("proveedor");
+    if (proveedor) q = q.eq("proveedor_nombre", proveedor).eq("estado", "registrada");
     const busca = textoBusqueda(sp.get("q"));
     if (busca) q = q.or(`proveedor_nombre.ilike.%${busca}%,nro_comprobante.ilike.%${busca}%,numero_control.ilike.%${busca}%,proveedor_ruc.ilike.%${busca}%`);
     const { data, error } = await q;

@@ -103,6 +103,10 @@ export default function FormCompra({ id }: { id?: string }) {
   const [retIva, setRetIva] = useState("");
   const [retRenta, setRetRenta] = useState("");
   const [cuotas, setCuotas] = useState<Cuota[]>([]);
+  /** Nota de crédito: qué comprobante corrige (del mismo proveedor). */
+  type CompraLite = { id: string; numero_control: string; nro_comprobante: string; fecha: string; total: number; moneda: string; tipo_nombre: string; tipo_codigo: number };
+  const [ncDe, setNcDe] = useState("");
+  const [candidatas, setCandidatas] = useState<CompraLite[]>([]);
   const [genCuotas, setGenCuotas] = useState({ cantidad: "1", primera: "", cada: "mensual" });
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -199,6 +203,7 @@ export default function FormCompra({ id }: { id?: string }) {
           }))
         );
         setCuotas(qs.map((q) => ({ vencimiento: s(q.vencimiento), monto: s(q.monto), pagare: s(q.pagare), pagado: Number(q.pagado) ? s(q.pagado) : "" })));
+        setNcDe(s(c.nota_credito_de_id));
         // Hasta tener los pagos no se muestra el formulario: si no, guardar borraría el pago de contado.
         return cargarPagos().then((ps) => {
           const contado = (ps as (PagoReg & { entidad_bancaria_id?: string | null; caja_chica_id?: string | null })[]).find((x) => x.cuota_nro === null);
@@ -212,6 +217,19 @@ export default function FormCompra({ id }: { id?: string }) {
       .catch((e) => setError(e instanceof Error ? e.message : "Error"))
       .finally(() => setCargando(false));
   }, [id]);
+
+  // Comprobantes que esta nota de crédito puede corregir: del mismo proveedor, vigentes y que no sean NC.
+  useEffect(() => {
+    if (!esNC || !proveedor.nombre.trim()) {
+      setCandidatas([]);
+      return;
+    }
+    const codigosNc = new Set(tipos.filter((x) => x.es_nota_credito).map((x) => x.codigo));
+    api<{ compras: CompraLite[] }>(`/api/libro-compras?proveedor=${encodeURIComponent(proveedor.nombre.trim())}`)
+      .then((d) => setCandidatas((d.compras ?? []).filter((x) => x.id !== id && !codigosNc.has(x.tipo_codigo))))
+      .catch(() => setCandidatas([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esNC, proveedor.nombre, id, tipos]);
 
   // Texto por defecto de cada renglón, como en el sistema anterior: "TIPO PROVEEDOR NÚMERO".
   const explicacionDefecto = [tipo?.nombre, proveedor.nombre, nro].filter(Boolean).join(" ");
@@ -325,6 +343,7 @@ export default function FormCompra({ id }: { id?: string }) {
         imputa_iva: impacta !== "NO_IMPUTA" && impacta !== "SOLO_IRE",
         formulario: l.iva_porcentaje ? "Form120-R6-a" : null,
       })),
+      nota_credito_de_id: esNC && ncDe ? ncDe : null,
       cuotas_detalle: credito ? cuotas.map((c) => ({ vencimiento: c.vencimiento, monto: Number(c.monto) || 0, pagare: c.pagare, pagado: Number(c.pagado) || 0 })) : [],
       pago: tipo?.condicion === "CONTADO" && pagoMedio && pagoCuenta ? { medio: pagoMedio, cuenta_id: pagoCuenta, referencia: pagoRef } : null,
     };
@@ -397,7 +416,8 @@ export default function FormCompra({ id }: { id?: string }) {
       )}
 
       <fieldset disabled={bloqueado} className="space-y-5">
-        {/* CDC */}
+        {/* CDC. El recibo común no es electrónico, así que no se muestra. */}
+        {tipo?.codigo !== 12 && (
         <section className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
           <label className={labelClass}>¿Es factura electrónica? Pegá el CDC y se completa solo</label>
           <div className="flex flex-wrap gap-2">
@@ -417,6 +437,7 @@ export default function FormCompra({ id }: { id?: string }) {
             </div>
           )}
         </section>
+        )}
 
         {/* Datos */}
         <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -620,6 +641,32 @@ export default function FormCompra({ id }: { id?: string }) {
           </div>
         </section>
 
+        {/* Nota de crédito: a qué comprobante corrige */}
+        {esNC && (
+          <section className="space-y-2 rounded-xl border border-sky-200 bg-sky-50/40 p-5">
+            <h2 className="text-sm font-semibold text-slate-800">¿Qué comprobante corrige?</h2>
+            {!proveedor.nombre.trim() ? (
+              <p className="text-sm text-slate-500">Elegí primero el proveedor.</p>
+            ) : (
+              <>
+                <select value={ncDe} onChange={(e) => setNcDe(e.target.value)} className={inputClass}>
+                  <option value="">— Ninguno en particular —</option>
+                  {candidatas.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.nro_comprobante} · {x.tipo_nombre} · {x.fecha.split("-").reverse().join("/")} · {fmt(Number(x.total), x.moneda)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500">
+                  {candidatas.length === 0
+                    ? `No hay comprobantes vigentes de ${proveedor.nombre}.`
+                    : "Dejalo vacío solo si la nota no corresponde a una compra puntual."}
+                </p>
+              </>
+            )}
+          </section>
+        )}
+
         {/* De dónde sale el dinero (contado) */}
         {tipo && tipo.condicion === "CONTADO" && (
           <section className="space-y-3 rounded-xl border border-emerald-200 bg-white p-5 shadow-sm">
@@ -642,7 +689,7 @@ export default function FormCompra({ id }: { id?: string }) {
           </section>
         )}
 
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className={`grid gap-5 ${credito ? "lg:grid-cols-2" : ""}`}>
           {/* Retenciones */}
           <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-800">Retenciones</h2>
@@ -663,16 +710,11 @@ export default function FormCompra({ id }: { id?: string }) {
             )}
           </section>
 
-          {/* Cuotas */}
+          {/* Cuotas: solo a crédito. Al contado no van, así que la sección no se muestra. */}
+          {credito && (
           <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-800">Vencimientos</h2>
-            {!credito ? (
-              <p className="text-sm text-slate-500">
-                {esNC && tipo?.condicion === "CREDITO" ? "Nota de crédito a crédito: baja la deuda con el proveedor, no tiene cuotas." : "Al contado no tiene cuotas."}
-              </p>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-wrap items-end gap-2">
                   <div>
                     <label className={labelClass}>Cuotas</label>
                     <input type="number" min={1} max={60} value={genCuotas.cantidad} onWheel={noRueda} onChange={(e) => setGenCuotas({ ...genCuotas, cantidad: e.target.value })} className={`${num} w-20`} />
@@ -698,7 +740,7 @@ export default function FormCompra({ id }: { id?: string }) {
                   >
                     Generar
                   </button>
-                </div>
+            </div>
                 {cuotas.length > 0 && (
                   <table className="w-full text-sm">
                     <thead className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -745,10 +787,9 @@ export default function FormCompra({ id }: { id?: string }) {
                     Suman {fmt(cuotas.reduce((s, c) => s + (Number(c.monto) || 0), 0), moneda)} de {fmt(aPagar, moneda)} · Saldo pendiente{" "}
                     {fmt(cuotas.reduce((s, c) => s + (Number(c.monto) || 0) - (Number(c.pagado) || 0), 0), moneda)}
                   </p>
-                )}
-              </>
             )}
           </section>
+          )}
         </div>
 
         {/* Pre-asiento */}
