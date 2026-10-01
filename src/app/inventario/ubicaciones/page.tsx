@@ -286,6 +286,12 @@ export default function UbicacionesPage() {
                     </td>
                     <td className="px-4 py-2 text-right">
                       <div className="inline-flex items-center gap-3">
+                        <Link
+                          href={`/inventario/ubicaciones/${u.id}/stock`}
+                          className="text-xs font-semibold text-sky-700 hover:text-sky-900 underline"
+                        >
+                          Ver stock
+                        </Link>
                         <button
                           onClick={() => editar(u)}
                           className="text-xs text-sky-700 hover:text-sky-900 underline"
