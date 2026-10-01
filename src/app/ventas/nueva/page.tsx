@@ -151,6 +151,10 @@ export default function NuevaVentaPage() {
   /** Depósito del que sale la mercadería (el local). */
   const [depositos, setDepositos]   = useState<{ id: string; nombre: string }[]>([]);
   const [ubicacionId, setUbicacionId] = useState("");
+  /** Puntos de expedición activos del timbrado, para emitir la factura. */
+  type PuntoFactura = { establecimiento: string; punto_expedicion: string; timbrado: string; modo_prueba: boolean; activo: boolean };
+  const [puntos, setPuntos] = useState<PuntoFactura[]>([]);
+  const [punto, setPunto] = useState("");
   const [errorLinea, setErrorLinea] = useState<string | null>(null);
   const [errorVenta, setErrorVenta] = useState<string | null>(null);
   // Venta sin stock: faltantes devueltos por el backend + modal de confirmación.
@@ -644,6 +648,20 @@ export default function NuevaVentaPage() {
   useEffect(() => {
     try { if (ubicacionId) localStorage.setItem("venta_deposito_id", ubicacionId); } catch { /* noop */ }
   }, [ubicacionId]);
+
+  // Timbrado: puntos de expedición activos. Si no hay ninguno, no se puede facturar.
+  useEffect(() => {
+    fetchWithSupabaseSession("/api/facturas-exportacion/config", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j?.success) return;
+        const activos = ((j.data?.config ?? []) as PuntoFactura[]).filter((p) => p.activo);
+        setPuntos(activos);
+        if (activos.length) setPunto((prev) => prev || activos[0].punto_expedicion);
+      })
+      .catch(() => undefined);
+  }, []);
+  const puntoSel = puntos.find((p) => p.punto_expedicion === punto) ?? null;
   const clientesFiltrados = (clienteQuery.trim() === ""
     ? clientes
     : clientes.filter((c) => productoMatchesQuery(clienteQuery, c.label, c.ruc))
@@ -1050,6 +1068,8 @@ export default function NuevaVentaPage() {
             cliente_id: clienteIdFinal || null,
             cliente_nombre: clienteSel?.label ?? "",
             cliente_documento: clienteSel?.ruc ?? "",
+            establecimiento: puntoSel?.establecimiento ?? "",
+            punto_expedicion: puntoSel?.punto_expedicion ?? "",
             items: items.map((it) => ({
               producto_id: it.producto_id || null,
               codigo: it.sku,
@@ -1099,6 +1119,10 @@ export default function NuevaVentaPage() {
     if (!ventaValida) return;
     if (documento === "factura" && !clienteId) {
       setErrorVenta("Para emitir la factura hace falta elegir el cliente.");
+      return;
+    }
+    if (documento === "factura" && !puntoSel) {
+      setErrorVenta("No hay un punto de expedición activo. Revisalo en Facturación → Timbrado.");
       return;
     }
     await enviarVenta(false);
@@ -1255,7 +1279,29 @@ export default function NuevaVentaPage() {
               {documento === "factura" && !clienteId && (
                 <p className="mt-1 text-xs font-medium text-amber-700">Elegí el cliente: la factura necesita a quién se le emite.</p>
               )}
+              {documento === "factura" && puntos.length === 0 && (
+                <p className="mt-1 text-xs font-medium text-amber-700">No hay un punto de expedición activo. Revisalo en Facturación → Timbrado.</p>
+              )}
+              {documento === "factura" && puntoSel?.modo_prueba && (
+                <p className="mt-1 text-xs font-medium text-amber-700">
+                  El punto {puntoSel.establecimiento}-{puntoSel.punto_expedicion} está en <strong>modo prueba</strong>: la factura sale marcada como PRUEBA, sin valor fiscal.
+                </p>
+              )}
             </div>
+
+            {/* Punto de expedición, solo si hay más de uno */}
+            {documento === "factura" && puntos.length > 1 && (
+              <div>
+                <label className={labelClass}>Punto de expedición</label>
+                <select value={punto} onChange={(e) => setPunto(e.target.value)} className={inputClass}>
+                  {puntos.map((p) => (
+                    <option key={p.punto_expedicion} value={p.punto_expedicion}>
+                      {p.establecimiento}-{p.punto_expedicion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Depósito del que sale la mercadería */}
             {depositos.length > 1 && (
