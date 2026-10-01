@@ -146,6 +146,11 @@ export default function NuevaVentaPage() {
   // ── Estado global ──────────────────────────────────────────────────────────
   const [productos, setProductos]   = useState<Producto[]>([]);
   const [items, setItems]           = useState<LineaVenta[]>([]);
+  /** Qué documento se entrega: ticket interno o factura local con timbrado. */
+  const [documento, setDocumento]   = useState<"ticket" | "factura">("ticket");
+  /** Depósito del que sale la mercadería (el local). */
+  const [depositos, setDepositos]   = useState<{ id: string; nombre: string }[]>([]);
+  const [ubicacionId, setUbicacionId] = useState("");
   const [errorLinea, setErrorLinea] = useState<string | null>(null);
   const [errorVenta, setErrorVenta] = useState<string | null>(null);
   // Venta sin stock: faltantes devueltos por el backend + modal de confirmación.
@@ -617,6 +622,28 @@ export default function NuevaVentaPage() {
 
   // Cliente (opcional) — selección + filtrado del buscador.
   const clienteSel = clientes.find((c) => c.id === clienteId) ?? null;
+
+  // Depósitos: por defecto el del local (Asunción), y se recuerda el elegido.
+  useEffect(() => {
+    fetch("/api/depositos", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j?.success) return;
+        const lista = (j.data?.depositos ?? []) as { id: string; nombre: string }[];
+        setDepositos(lista);
+        let guardado = "";
+        try { guardado = localStorage.getItem("venta_deposito_id") ?? ""; } catch { /* noop */ }
+        const elegido =
+          lista.find((d) => d.id === guardado) ??
+          lista.find((d) => d.nombre.toUpperCase().includes("ASUNCI")) ??
+          lista[0];
+        if (elegido) setUbicacionId(elegido.id);
+      })
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    try { if (ubicacionId) localStorage.setItem("venta_deposito_id", ubicacionId); } catch { /* noop */ }
+  }, [ubicacionId]);
   const clientesFiltrados = (clienteQuery.trim() === ""
     ? clientes
     : clientes.filter((c) => productoMatchesQuery(clienteQuery, c.label, c.ruc))
@@ -965,6 +992,7 @@ export default function NuevaVentaPage() {
             },
         {
           permitirSinStock, pedidoId, pedidoCajaId, cajaId: cajaActivaFinal,
+          ubicacionId: ubicacionId || null,
           usarSaldoFavor: saldoAplicado,
           retirarSaldoEfectivo: retirarExcedente ? saldoRestante : 0,
           pagos: metodoPago === "mixto"
@@ -1004,9 +1032,42 @@ export default function NuevaVentaPage() {
       const generaNota = v.genera_nota_remision === true || !!v.nota_remision_numero;
       const ticketUrl = `/api/ventas/${v.id}/ticket?auto=1`;
       const remisionUrl = `/api/ventas/${v.id}/ticket?tipo=remision&auto=1`;
-      // Esta instancia no usa el autoimpresor de facturas: el documento de la
-      // venta es el ticket. La factura electrónica se emite aparte desde SIFEN.
-      const docUrl = ticketUrl;
+      // El documento de la venta es el ticket interno o la factura local con
+      // timbrado. La factura se emite acá con los mismos datos de la venta:
+      // es el mismo hecho, no una carga aparte.
+      let docUrl = ticketUrl;
+      if (documento === "factura") {
+        const rf = await fetchWithSupabaseSession("/api/facturas-exportacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accion: "emitir",
+            tipo: "LOCAL",
+            venta_id: v.id,
+            fecha: new Date().toISOString().slice(0, 10),
+            moneda: "PYG",
+            condicion_venta: tipoVenta === "CREDITO" ? "CREDITO" : "CONTADO",
+            cliente_id: clienteIdFinal || null,
+            cliente_nombre: clienteSel?.label ?? "",
+            cliente_documento: clienteSel?.ruc ?? "",
+            items: items.map((it) => ({
+              producto_id: it.producto_id || null,
+              codigo: it.sku,
+              descripcion: it.producto_nombre,
+              unidad: it.unidad_medida ?? "UN",
+              cantidad: it.cantidad,
+              precio_unitario: it.precio_venta,
+              iva_tipo: it.tipo_iva === "EXENTA" ? "EXENTA" : it.tipo_iva === "5%" ? "5" : "10",
+            })),
+          }),
+        }).then((r) => r.json()).catch(() => null);
+        if (rf?.success && rf.data?.factura?.id) {
+          docUrl = `/api/facturas-exportacion/${rf.data.factura.id}/pdf`;
+        } else {
+          // La venta ya quedó registrada: no se pierde. Se avisa y se entrega el ticket.
+          setErrorVenta(`La venta ${v.numero_control} se registró, pero la factura no se pudo emitir: ${rf?.error ?? "error desconocido"}. Emitila desde Facturación.`);
+        }
+      }
       // Se reutiliza la ventana abierta durante el clic. Si el navegador la
       // bloqueó igual, se intenta abrir ahora como último recurso.
       if (ventanaDoc && !ventanaDoc.closed) {
@@ -1036,6 +1097,10 @@ export default function NuevaVentaPage() {
     e.preventDefault();
     setErrorVenta(null);
     if (!ventaValida) return;
+    if (documento === "factura" && !clienteId) {
+      setErrorVenta("Para emitir la factura hace falta elegir el cliente.");
+      return;
+    }
     await enviarVenta(false);
   }
 
@@ -1170,6 +1235,39 @@ export default function NuevaVentaPage() {
                 </div>
               )}
             </div>
+
+            {/* Documento: ticket interno o factura local con timbrado. */}
+            <div>
+              <label className={labelClass}>Documento</label>
+              <SegmentedControl<"ticket" | "factura">
+                value={documento}
+                options={[
+                  { value: "ticket", label: "Ticket" },
+                  { value: "factura", label: "Factura" },
+                ]}
+                onChange={setDocumento}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                {documento === "factura"
+                  ? "Se emite la factura local con timbrado y se abre para imprimir."
+                  : "Comprobante interno, sin valor fiscal."}
+              </p>
+              {documento === "factura" && !clienteId && (
+                <p className="mt-1 text-xs font-medium text-amber-700">Elegí el cliente: la factura necesita a quién se le emite.</p>
+              )}
+            </div>
+
+            {/* Depósito del que sale la mercadería */}
+            {depositos.length > 1 && (
+              <div>
+                <label className={labelClass}>Sale del depósito</label>
+                <select value={ubicacionId} onChange={(e) => setUbicacionId(e.target.value)} className={inputClass}>
+                  {depositos.map((d) => (
+                    <option key={d.id} value={d.id}>{d.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Condición: Contado / Crédito */}
             <div>

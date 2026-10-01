@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { anularVentaCompleta } from "@/lib/ventas/server/anular-venta";
 
 /**
  * DELETE /api/ventas/:id — anula una venta y repone el stock.
@@ -15,55 +16,23 @@ export async function DELETE(request: NextRequest, ctxP: { params: Promise<{ id:
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const empresaId = ctx.auth.empresa_id;
 
-    // Traer venta e ítems para reponer stock
-    const { data: venta, error: eV } = await ctx.supabase
-      .from("ventas")
-      .select("id, estado")
+    // Una venta con factura emitida no se borra suelta: hay que anular la
+    // factura, y eso deshace la venta (son el mismo hecho).
+    const { data: fac } = await ctx.supabase
+      .from("facturas_exportacion")
+      .select("numero_formateado")
       .eq("empresa_id", empresaId)
-      .eq("id", id)
+      .eq("venta_id", id)
+      .eq("estado", "EMITIDA")
       .maybeSingle();
-    if (eV) throw new Error(eV.message);
-    if (!venta) return NextResponse.json(errorResponse("Venta no encontrada."), { status: 404 });
+    if (fac)
+      return NextResponse.json(
+        errorResponse(`Esta venta tiene la factura ${(fac as { numero_formateado: string }).numero_formateado} emitida. Anulá la factura desde Facturación: eso devuelve el stock y la plata.`),
+        { status: 409 }
+      );
 
-    const { data: items } = await ctx.supabase
-      .from("ventas_items")
-      .select("producto_id, cantidad")
-      .eq("empresa_id", empresaId)
-      .eq("venta_id", id);
-
-    // Reponer stock por cada línea (solo si tenía producto_id)
-    for (const it of (items ?? []) as Array<{ producto_id: string | null; cantidad: number }>) {
-      if (!it.producto_id) continue;
-      const cantidad = Number(it.cantidad) || 0;
-      if (cantidad <= 0) continue;
-      // Traer stock actual
-      const { data: p } = await ctx.supabase
-        .from("productos")
-        .select("stock_actual")
-        .eq("empresa_id", empresaId)
-        .eq("id", it.producto_id)
-        .maybeSingle();
-      if (p) {
-        const nuevo = Number((p as { stock_actual: number }).stock_actual ?? 0) + cantidad;
-        await ctx.supabase
-          .from("productos")
-          .update({ stock_actual: nuevo })
-          .eq("empresa_id", empresaId)
-          .eq("id", it.producto_id);
-      }
-    }
-
-    // Borrar movimientos de inventario ligados a la venta (best-effort)
-    await ctx.supabase
-      .from("movimientos_inventario")
-      .delete()
-      .eq("empresa_id", empresaId)
-      .eq("venta_id", id);
-
-    // Borrar ítems y venta
-    await ctx.supabase.from("ventas_items").delete().eq("empresa_id", empresaId).eq("venta_id", id);
-    const { error: eDel } = await ctx.supabase.from("ventas").delete().eq("empresa_id", empresaId).eq("id", id);
-    if (eDel) throw new Error(eDel.message);
+    const r = await anularVentaCompleta(ctx.supabase, empresaId, id);
+    if (!r.ok) return NextResponse.json(errorResponse(r.error), { status: r.error === "Venta no encontrada." ? 404 : 500 });
 
     return NextResponse.json(successResponse({ id }));
   } catch (err) {

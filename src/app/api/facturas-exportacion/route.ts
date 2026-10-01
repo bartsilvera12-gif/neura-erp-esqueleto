@@ -3,6 +3,7 @@ import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
+import { esUuid } from "@/lib/comex/server";
 import type { TipoFactura } from "@/lib/facturas-exportacion/config";
 import type { IvaTipo } from "@/lib/facturas-exportacion/types";
 
@@ -13,7 +14,7 @@ const COLS =
   "fecha, moneda, tipo_cambio, cliente_nombre, cliente_documento, cliente_direccion, cliente_pais, " +
   "cliente_ciudad, cliente_telefono, condicion_venta, nota_remision, " +
   "subtotal, total, observaciones, estado, motivo_anulacion, anulada_at, anulada_por_nombre, " +
-  "prueba, regularizacion_id, total_pyg, total_descuento, cliente_id, emitida_at, created_at, updated_at, created_by_nombre";
+  "prueba, regularizacion_id, total_pyg, total_descuento, cliente_id, venta_id, emitida_at, created_at, updated_at, created_by_nombre";
 
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -261,6 +262,8 @@ export async function POST(request: NextRequest) {
       cliente_email: txt(body.cliente_email),
       cliente_pais: (pais ?? (tipo === "LOCAL" ? "PARAGUAY" : "")).toUpperCase(),
       condicion_venta: body.condicion_venta === "CREDITO" ? "CREDITO" : "CONTADO",
+      // Venta de mostrador que origina esta factura: la plata y el stock ya se movieron ahí.
+      venta_id: esUuid(body.venta_id) ? String(body.venta_id) : null,
       nota_remision: tipo === "LOCAL" ? txt(body.nota_remision) : null,
       tipo_operacion: tipo === "EXPORTACION" ? txt(body.tipo_operacion) ?? "EXPORTACIÓN" : null,
       condicion_negociacion: tipo === "EXPORTACION" ? txt(body.condicion_negociacion) : null,

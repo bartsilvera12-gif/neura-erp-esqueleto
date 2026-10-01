@@ -90,6 +90,8 @@ export async function saveVenta(
     retirarSaldoEfectivo?: number;
     /** Cobro mixto: varias líneas de pago que suman el total a cobrar. */
     pagos?: PagoLineaInput[] | null;
+    /** Depósito del que sale la mercadería (el local). */
+    ubicacionId?: string | null;
   }
 ): Promise<ResultadoGuardarVenta> {
   if (!datos.items || datos.items.length === 0) {
@@ -120,6 +122,7 @@ export async function saveVenta(
         pedido_id: opts?.pedidoId ?? null,
         pedido_caja_id: opts?.pedidoCajaId ?? null,
         caja_id: opts?.cajaId ?? null,
+        ubicacion_id: opts?.ubicacionId ?? null,
         usar_saldo_favor: opts?.usarSaldoFavor ?? 0,
         retirar_saldo_efectivo: opts?.retirarSaldoEfectivo ?? 0,
       }),

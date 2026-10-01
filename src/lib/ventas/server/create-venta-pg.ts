@@ -1,4 +1,6 @@
 import { createServiceRoleClientWithDbSchema } from "@/lib/supabase/empresa-data-schema";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
+import { sumarStockDeposito } from "@/lib/comex/stock-deposito";
 
 export interface CreateVentaItemInput {
   /** NULL en las líneas manuales (no apuntan al catálogo). */
@@ -51,6 +53,8 @@ export interface CreateVentaPgParams {
    *  abierta, se usa esa. Sin ninguna caja abierta la venta se rechaza: si no,
    *  el arqueo de cierre no la contaría y daría faltante. */
   cajaId?: string | null;
+  /** Depósito del que sale la mercadería (el local). Vacío = solo baja el stock total. */
+  ubicacionId?: string | null;
   /** Auditoría: quién registra la venta. Se propaga a los movimientos de stock. */
   createdBy?: string | null;
   usuarioNombre?: string | null;
@@ -294,6 +298,10 @@ export async function createVentaTransaccionalPg(
         .eq("empresa_id", params.empresaId);
       if (upd.error) throw new Error(upd.error.message);
       p.stock = nuevoStock;
+      // La mercadería sale de un depósito concreto, no solo del total del producto.
+      if (params.ubicacionId) {
+        await sumarStockDeposito(sb as unknown as AppSupabaseClient, params.empresaId, line.producto_id as string, params.ubicacionId, -line.cantidad);
+      }
 
       const mov = await sb.from("movimientos_inventario").insert({
         empresa_id: params.empresaId,
@@ -306,6 +314,7 @@ export async function createVentaTransaccionalPg(
         origen: "venta",
         referencia: numeroControl,
         fecha: fechaIso,
+        ubicacion_origen_id: params.ubicacionId ?? null,
         venta_id: ventaId,
         created_by: params.createdBy ?? null,
         usuario_nombre: params.usuarioNombre ?? null,
