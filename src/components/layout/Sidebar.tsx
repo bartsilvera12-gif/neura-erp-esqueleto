@@ -77,7 +77,27 @@ function leerMapa(clave: string, porDefecto: Record<string, boolean>): Record<st
   }
 }
 
-function guardarMapa(clave: string, valor: Record<string, boolean>) {
+const SB_RUTAS = "zentra_sidebar_rutas";
+
+/** Última pantalla visitada dentro de cada módulo, para volver ahí y no al listado. */
+function leerRutas(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const guardado = window.localStorage.getItem(SB_RUTAS);
+    if (!guardado) return {};
+    const valor = JSON.parse(guardado) as unknown;
+    if (!valor || typeof valor !== "object" || Array.isArray(valor)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(valor as Record<string, unknown>)) {
+      if (typeof v === "string" && v.startsWith("/") && v.length < 300) out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function guardarMapa(clave: string, valor: Record<string, boolean> | Record<string, string>) {
   try {
     window.localStorage.setItem(clave, JSON.stringify(valor));
   } catch {
@@ -98,6 +118,15 @@ function normalizeMenuSearch(s: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "");
+}
+
+/** A qué ítem del menú pertenece una ruta. "/" se excluye porque matchearía todo. */
+function menuDeRuta(path: string): MenuItem | undefined {
+  if (!path) return undefined;
+  return MENU_STRUCTURE.find((item) => {
+    if (item.href !== "/" && (path === item.href || path.startsWith(`${item.href}/`))) return true;
+    return item.children?.some((c) => menuChildPathActive(path, c.href, c.exactMatch)) ?? false;
+  });
 }
 
 function menuItemMatchesQuery(item: MenuItem, queryRaw: string): boolean {
@@ -248,6 +277,7 @@ function NavItem({
   collapsed,
   expanded,
   onToggleExpand,
+  destino,
 }: {
   item: MenuItem;
   itemId: string;
@@ -258,6 +288,9 @@ function NavItem({
   collapsed: boolean;
   expanded: boolean;
   onToggleExpand: () => void;
+  /** A dónde lleva el ítem: la última pantalla que el usuario tenía abierta en
+   *  ese módulo, o el listado si no estuvo nunca o si ya está adentro. */
+  destino: string;
 }) {
   const Icon = item.icon;
   const p = usePathname() ?? "";
@@ -276,9 +309,9 @@ function NavItem({
       <div className="space-y-0.5">
         <div className={`flex items-center gap-0.5 rounded-lg text-sm font-medium transition-colors ${rowTone}`}>
           <Link
-            href={item.href}
+            href={destino}
             prefetch={false}
-            onMouseEnter={() => router.prefetch(item.href)}
+            onMouseEnter={() => router.prefetch(destino)}
             className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5"
             title={item.label}
           >
@@ -339,9 +372,9 @@ function NavItem({
 
   return (
     <Link
-      href={item.href}
+      href={destino}
       prefetch={false}
-      onMouseEnter={() => router.prefetch(item.href)}
+      onMouseEnter={() => router.prefetch(destino)}
       className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
         isActive
           ? "bg-[color:var(--zentra-sidebar-active)] text-white shadow-[inset_3px_0_0_var(--zentra-sidebar-accent)]"
@@ -397,6 +430,9 @@ export default function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(() =>
     leerMapa(SB_MENUS, { inventario: true, sorteos: true, compras: true }),
   );
+  // Última pantalla por módulo, para que volver a "Comercio exterior" te devuelva
+  // a la exportación que estabas haciendo y no al listado.
+  const [ultimaRuta, setUltimaRuta] = useState<Record<string, string>>(() => leerRutas());
   // Familias del menú colapsables (agrupamiento visual). Abiertas por defecto.
   const [expandedFamilies, setExpandedFamilies] = useState<Record<string, boolean>>(() =>
     leerMapa(SB_FAMILIAS, {}),
@@ -596,6 +632,15 @@ export default function Sidebar() {
 
   const slugToId = (slug: string) => modulos.find((m) => m.slug === slug)?.id ?? slug;
 
+  /** Estando adentro del módulo, el ítem vuelve al listado: así siempre hay
+   *  forma de salir del detalle. Desde afuera, lleva a donde quedó el usuario. */
+  const destinoDe = (item: MenuItem) => {
+    const p = pathname ?? "";
+    if (menuDeRuta(p)?.key === item.key) return item.href;
+    const guardada = ultimaRuta[item.key];
+    return guardada && menuDeRuta(guardada)?.key === item.key ? guardada : item.href;
+  };
+
   const favoritosItemsFiltered = useMemo(() => {
     const slugs = new Set(modulos.map((m) => m.slug));
     const idForSlug = (slug: string) => modulos.find((m) => m.slug === slug)?.id ?? slug;
@@ -675,6 +720,19 @@ export default function Sidebar() {
   useEffect(() => {
     guardarMapa(SB_FAMILIAS, expandedFamilies);
   }, [expandedFamilies]);
+
+  /** Recordar en qué pantalla de cada módulo estuvo el usuario. */
+  useEffect(() => {
+    const p = pathname ?? "";
+    const item = menuDeRuta(p);
+    if (!item) return;
+    setUltimaRuta((prev) => {
+      if (prev[item.key] === p) return prev;
+      const next = { ...prev, [item.key]: p };
+      guardarMapa(SB_RUTAS, next);
+      return next;
+    });
+  }, [pathname]);
 
   /** Si la pantalla actual es una subpágina (ej. Comercio exterior → Despachos),
    *  ese menú queda abierto solo, sin cerrar lo que el usuario ya tenía abierto. */
@@ -839,6 +897,7 @@ export default function Sidebar() {
                   collapsed={collapsed}
                   expanded={expandedItems[item.key] ?? false}
                   onToggleExpand={() => toggleExpand(item.key)}
+                  destino={destinoDe(item)}
                 />
               ))}
             </div>
@@ -863,6 +922,7 @@ export default function Sidebar() {
                 collapsed={collapsed}
                 expanded={expandedItems[item.key] ?? false}
                 onToggleExpand={() => toggleExpand(item.key)}
+                destino={destinoDe(item)}
               />
             ))}
           </div>
@@ -893,6 +953,7 @@ export default function Sidebar() {
                         collapsed={collapsed}
                         expanded={expandedItems[item.key] ?? false}
                         onToggleExpand={() => toggleExpand(item.key)}
+                        destino={destinoDe(item)}
                       />
                     ))}
                   </div>
