@@ -188,7 +188,7 @@ export default function HistorialNRPage() {
                     <td className="px-5 py-3 text-right">
                       <div className="inline-flex items-center gap-1.5">
                         <Link
-                          href={`/notas-remision/${nr.id}/documento`}
+                          href={`/api/notas-remision/${nr.id}/imprimir`}
                           className="zx-surface rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                           title="Ver documento imprimible"
                         >

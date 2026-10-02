@@ -119,7 +119,7 @@ export default function VinculosCard({
                 {fechaES(remision.fecha)} · {remision.destino_nombre ?? "—"} · {ESTADO_NR[remision.estado] ?? remision.estado}
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
-                <Link href={`/notas-remision/${remision.id}/documento`} target="_blank" className={btnSecundario}>
+                <Link href={`/api/notas-remision/${remision.id}/imprimir`} target="_blank" className={btnSecundario}>
                   Ver / imprimir
                 </Link>
                 {puedeRemision && (
