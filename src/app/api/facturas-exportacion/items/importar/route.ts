@@ -19,11 +19,13 @@ const num = (v: unknown) => {
   return Number.isFinite(n) ? n : 0;
 };
 const txt = (v: unknown, max = 200) => String(v ?? "").trim().slice(0, max);
-/** Busca el valor de una columna aceptando variantes del encabezado. */
+/** "Precio unitario" y "precio_unitario" son la misma columna: se compara sin tildes ni separadores. */
+const clave = (v: string) =>
+  v.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s._-]/g, "");
 const col = (fila: Record<string, string>, ...nombres: string[]) => {
   for (const n of nombres) {
     for (const k of Object.keys(fila)) {
-      if (k.trim().toLowerCase().replace(/[\s._-]/g, "") === n) return fila[k];
+      if (clave(k) === n) return fila[k];
     }
   }
   return "";
@@ -56,10 +58,16 @@ export async function POST(request: NextRequest) {
     const avisos: string[] = [];
     const errores: string[] = [];
 
+    let ejemplos = 0;
     filas.forEach((f, i) => {
       const linea = i + 2; // +1 por el encabezado, +1 porque Excel arranca en 1
-      const codigo = txt(col(f, "codigo", "código", "sku"), 40);
-      const descripcionExcel = txt(col(f, "descripcion", "descripción", "producto", "detalle"));
+      const codigo = txt(col(f, "codigo", "sku"), 40);
+      // La fila de muestra de la plantilla no se carga.
+      if (codigo.toUpperCase() === "EJEMPLO") {
+        ejemplos++;
+        return;
+      }
+      const descripcionExcel = txt(col(f, "descripcion", "producto", "detalle"));
       const cantidad = num(col(f, "cantidad", "cant"));
       const precio = num(col(f, "preciounitario", "precio", "preciounit"));
       const descuento = Math.max(0, num(col(f, "descuento", "desc")));
@@ -96,7 +104,7 @@ export async function POST(request: NextRequest) {
     if (!items.length)
       return NextResponse.json(errorResponse(`No se pudo cargar ninguna fila. ${errores.slice(0, 3).join(" ")}`), { status: 400 });
 
-    return NextResponse.json(successResponse({ items, avisos, errores, total_filas: filas.length }));
+    return NextResponse.json(successResponse({ items, avisos, errores, total_filas: filas.length - ejemplos }));
   } catch (err) {
     console.error("[/api/facturas-exportacion/items/importar]", err);
     return NextResponse.json(errorResponse("No se pudo leer el archivo."), { status: 500 });
