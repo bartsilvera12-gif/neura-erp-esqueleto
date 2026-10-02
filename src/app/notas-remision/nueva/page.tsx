@@ -164,7 +164,6 @@ export default function EmitirNRPage() {
     setError(null);
     if (destinoTipo === "deposito" && origen === destino) { setError("Origen y destino no pueden ser iguales."); return; }
     if (destinoTipo === "cliente" && !destNombre.trim()) { setError("Indicá a quién se envía la mercadería."); return; }
-    if (!emisor.trim()) { setError("Emisor obligatorio."); return; }
     const items = productosAgregados
       .map((pid) => ({ producto_id: pid, cantidad: Number(cantidades[pid] ?? 0) }))
       .filter((i) => i.cantidad > 0);
@@ -316,8 +315,8 @@ export default function EmitirNRPage() {
               ]}
             />
           </Field>
-          <Field label="Emisor *">
-            <input type="text" value={emisor} onChange={(e) => setEmisor(e.target.value)} placeholder="Ej: Marcial (Central)" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+          <Field label="Emisor (opcional)">
+            <input type="text" value={emisor} onChange={(e) => setEmisor(e.target.value)} placeholder="Quién la emite, ej.: Marcial" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
           </Field>
         </div>
 

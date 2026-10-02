@@ -35,7 +35,8 @@ export type NotaRemision = {
   id: string;
   numero: string;
   fecha: string;
-  emisor: string;
+  /** Quién la emite. Opcional. */
+  emisor: string | null;
   ubicacion_origen_id: string;
   /** Null cuando el destino es un cliente / dirección externa. */
   ubicacion_destino_id: string | null;

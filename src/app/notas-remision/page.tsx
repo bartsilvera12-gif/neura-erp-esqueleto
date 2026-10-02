@@ -181,7 +181,7 @@ export default function HistorialNRPage() {
                     <td className="px-5 py-3 text-xs text-slate-700">
                       {nombreUbic(nr.ubicacion_origen_id)} <span className="text-slate-400">→</span> <strong>{nombreDestino(nr)}</strong>
                     </td>
-                    <td className="px-5 py-3 text-xs text-slate-700">{nr.emisor}</td>
+                    <td className="px-5 py-3 text-xs text-slate-700">{nr.emisor || "—"}</td>
                     <td className="px-5 py-3 text-right tabular-nums text-xs">{(nr.items ?? []).length}</td>
                     <td className="px-5 py-3 text-right tabular-nums font-medium text-slate-800">{fmt(total)}</td>
                     <td className="px-5 py-3"><EstadoBadge estado={nr.estado} /></td>

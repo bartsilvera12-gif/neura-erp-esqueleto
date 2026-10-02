@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
     const destinoNombre = String(body.destino_nombre ?? "").trim();
     const clienteId = String(body.cliente_id ?? "").trim();
     const motivo = ["traslado", "venta", "devolucion"].includes(String(body.motivo)) ? body.motivo! : "traslado";
-    if (!emisor) return NextResponse.json(errorResponse("Emisor obligatorio."), { status: 400 });
     if (!origenId) return NextResponse.json(errorResponse("Depósito de origen obligatorio."), { status: 400 });
     if (destinoTipo === "deposito") {
       if (!destinoId) return NextResponse.json(errorResponse("Depósito de destino obligatorio."), { status: 400 });
@@ -187,7 +186,7 @@ export async function POST(request: NextRequest) {
       .insert({
         empresa_id: auth.empresa_id,
         numero,
-        emisor,
+        emisor: emisor || null,
         ubicacion_origen_id: origenId,
         ubicacion_destino_id: destinoTipo === "deposito" ? destinoId : null,
         destino_tipo: destinoTipo,

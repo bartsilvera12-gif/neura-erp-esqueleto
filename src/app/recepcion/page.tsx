@@ -199,7 +199,7 @@ function RecepcionNRPageInner() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 px-5 py-4 text-xs">
-            <Info label="Emisor" value={nr.emisor} />
+            <Info label="Emisor" value={nr.emisor ?? undefined} />
             <Info label="Transportista" value={nr.transportista ?? undefined} />
             <Info label="Conductor" value={nr.conductor ?? undefined} />
             <Info label="Chapa" value={nr.chapa ?? undefined} />
