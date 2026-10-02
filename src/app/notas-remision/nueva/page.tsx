@@ -46,6 +46,10 @@ export default function EmitirNRPage() {
   const [docElegido, setDocElegido] = useState("");
   const [docOrigen, setDocOrigen] = useState("");
   const [avisoDoc, setAvisoDoc] = useState<string[]>([]);
+  /** Timbrados activos: con cuál sale la nota. */
+  type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean };
+  const [timbrados, setTimbrados] = useState<TimbradoNR[]>([]);
+  const [timbradoId, setTimbradoId] = useState("");
   const [fechaInicio, setFechaInicio] = useState(hoyISO());
   const [fechaFin, setFechaFin] = useState(hoyISO());
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +94,18 @@ export default function EmitirNRPage() {
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/notas-remision/config", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j?.success) return;
+        const activos = ((j.data?.timbrados ?? []) as TimbradoNR[]).filter((t) => t.activo);
+        setTimbrados(activos);
+        if (activos.length) setTimbradoId((prev) => prev || activos[0].id);
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -187,6 +203,7 @@ export default function EmitirNRPage() {
       chapa: chapa.trim() || undefined,
       marca_vehiculo: marcaVehiculo.trim() || undefined,
       documento_origen: docOrigen || undefined,
+      timbrado_config_id: timbradoId || undefined,
       fecha_inicio_traslado: fechaInicio || undefined,
       fecha_fin_traslado: fechaFin || undefined,
       observaciones: obs.trim() || undefined,
@@ -315,6 +332,30 @@ export default function EmitirNRPage() {
               ]}
             />
           </Field>
+          {timbrados.length > 0 && (
+            <Field label={timbrados.length > 1 ? "Timbrado" : "Timbrado"}>
+              {timbrados.length > 1 ? (
+                <select
+                  value={timbradoId}
+                  onChange={(e) => setTimbradoId(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {timbrados.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.establecimiento}-{t.punto_expedicion} · {t.timbrado} · próxima {String(t.proximo_numero).padStart(7, "0")}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="py-2 text-sm text-slate-700">
+                  {timbrados[0].establecimiento}-{timbrados[0].punto_expedicion} · {timbrados[0].timbrado}
+                  <span className="block text-xs text-slate-500">
+                    Sale como {timbrados[0].establecimiento}-{timbrados[0].punto_expedicion}-{String(timbrados[0].proximo_numero).padStart(7, "0")}
+                  </span>
+                </p>
+              )}
+            </Field>
+          )}
           <Field label="Emisor (opcional)">
             <input type="text" value={emisor} onChange={(e) => setEmisor(e.target.value)} placeholder="Quién la emite, ej.: Marcial" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
           </Field>

@@ -134,6 +134,7 @@ export async function crearNR(payload: {
   chapa?: string;
   marca_vehiculo?: string;
   documento_origen?: string;
+  timbrado_config_id?: string;
   fecha_inicio_traslado?: string;
   fecha_fin_traslado?: string;
   observaciones?: string;

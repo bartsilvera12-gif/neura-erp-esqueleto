@@ -28,13 +28,13 @@ export default function HistorialNRPage() {
   const { isAdmin } = useIsAdmin();
   const [timbradoOpen, setTimbradoOpen] = useState(false);
   /** Timbrado de remisiones, para mostrar con qué numeración salen las notas. */
-  type ConfigNR = { timbrado: string; establecimiento: string; punto_expedicion: string; vigencia_desde: string | null; vigencia_hasta: string | null; proximo_numero: number };
-  const [configNR, setConfigNR] = useState<ConfigNR | null>(null);
+  type ConfigNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; vigencia_desde: string | null; vigencia_hasta: string | null; proximo_numero: number; activo: boolean };
+  const [timbradosNR, setTimbradosNR] = useState<ConfigNR[]>([]);
   const cargarConfigNR = useCallback(async () => {
     const j = await fetch("/api/notas-remision/config", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .catch(() => null);
-    if (j?.success) setConfigNR((j.data?.config ?? null) as ConfigNR | null);
+    if (j?.success) setTimbradosNR(((j.data?.timbrados ?? []) as ConfigNR[]).filter((t) => t.activo));
   }, []);
   useEffect(() => { void cargarConfigNR(); }, [cargarConfigNR]);
 
@@ -80,17 +80,20 @@ export default function HistorialNRPage() {
               Notas de Remisión
             </h1>
             <p className="mt-1 text-sm text-slate-500">Historial completo de traspasos entre depósitos.</p>
-            {configNR ? (
-              <p className="mt-1 text-xs text-slate-600">
-                Timbrado <strong className="font-mono">{configNR.timbrado}</strong>
-                {configNR.vigencia_desde && configNR.vigencia_hasta
-                  ? ` · vigente del ${configNR.vigencia_desde.split("-").reverse().join("/")} al ${configNR.vigencia_hasta.split("-").reverse().join("/")}`
-                  : ""}
-                {" · "}la próxima nota sale como{" "}
-                <strong className="font-mono">
-                  {configNR.establecimiento}-{configNR.punto_expedicion}-{String(configNR.proximo_numero).padStart(7, "0")}
-                </strong>
-              </p>
+            {timbradosNR.length > 0 ? (
+              <div className="mt-1 space-y-0.5">
+                {timbradosNR.map((t) => (
+                  <p key={t.id} className="text-xs text-slate-600">
+                    Timbrado <strong className="font-mono">{t.timbrado}</strong> · punto{" "}
+                    <strong className="font-mono">{t.establecimiento}-{t.punto_expedicion}</strong>
+                    {t.vigencia_desde && t.vigencia_hasta
+                      ? ` · vigente del ${t.vigencia_desde.split("-").reverse().join("/")} al ${t.vigencia_hasta.split("-").reverse().join("/")}`
+                      : ""}
+                    {" · "}próxima{" "}
+                    <strong className="font-mono">{t.establecimiento}-{t.punto_expedicion}-{String(t.proximo_numero).padStart(7, "0")}</strong>
+                  </p>
+                ))}
+              </div>
             ) : (
               <p className="mt-1 text-xs text-amber-700">
                 Sin timbrado cargado: las notas salen numeradas como NR-000001, sin valor fiscal.

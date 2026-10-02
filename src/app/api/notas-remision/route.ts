@@ -88,6 +88,8 @@ export async function POST(request: NextRequest) {
       marca_vehiculo?: string;
       /** De qué factura o compromiso de venta se trajeron los productos (texto). */
       documento_origen?: string;
+      /** Con qué timbrado se emite. Vacío = el único activo. */
+      timbrado_config_id?: string;
       fecha_inicio_traslado?: string;
       fecha_fin_traslado?: string;
       observaciones?: string;
@@ -164,21 +166,37 @@ export async function POST(request: NextRequest) {
     let numero = `NR-${String(next).padStart(6, "0")}`;
     // Con timbrado de remisiones cargado: numeración de la DNIT (001-004-0000001).
     let timbrado: string | null = null;
-    const cfgQ = await supabase.from("notas_remision_config").select("timbrado, establecimiento, punto_expedicion, proximo_numero").eq("empresa_id", auth.empresa_id).maybeSingle();
-    const cfg = (cfgQ.data ?? null) as { timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number } | null;
+    let timbradoId: string | null = null;
+    let cfgQ = supabase
+      .from("notas_remision_config")
+      .select("id, timbrado, establecimiento, punto_expedicion, proximo_numero")
+      .eq("empresa_id", auth.empresa_id)
+      .eq("activo", true);
+    if (body.timbrado_config_id) cfgQ = cfgQ.eq("id", body.timbrado_config_id);
+    const cfgRes = await cfgQ.order("punto_expedicion").limit(1);
+    const cfg = ((cfgRes.data ?? [])[0] ?? null) as { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number } | null;
+    if (body.timbrado_config_id && !cfg)
+      return NextResponse.json(errorResponse("Ese timbrado no existe o está desactivado."), { status: 400 });
     if (cfg?.timbrado) {
       // Se reserva el número: si dos personas emiten a la vez, solo una se lo queda y la otra reintenta.
       let reservado: number | null = null;
       for (let i = 0; i < 5 && reservado === null; i++) {
-        const act = await supabase.from("notas_remision_config").select("proximo_numero").eq("empresa_id", auth.empresa_id).maybeSingle();
+        const act = await supabase.from("notas_remision_config").select("proximo_numero").eq("empresa_id", auth.empresa_id).eq("id", cfg.id).maybeSingle();
         const n = Number((act.data as { proximo_numero: number } | null)?.proximo_numero) || 1;
-        const upd = await supabase.from("notas_remision_config").update({ proximo_numero: n + 1, updated_at: new Date().toISOString() }).eq("empresa_id", auth.empresa_id).eq("proximo_numero", n).select("proximo_numero");
+        const upd = await supabase
+          .from("notas_remision_config")
+          .update({ proximo_numero: n + 1, updated_at: new Date().toISOString() })
+          .eq("empresa_id", auth.empresa_id)
+          .eq("id", cfg.id)
+          .eq("proximo_numero", n)
+          .select("proximo_numero");
         if (upd.error) throw new Error(upd.error.message);
         if ((upd.data ?? []).length) reservado = n;
       }
       if (reservado === null) return NextResponse.json(errorResponse("No se pudo asignar el número. Probá de nuevo."), { status: 409 });
       numero = `${cfg.establecimiento}-${cfg.punto_expedicion}-${String(reservado).padStart(7, "0")}`;
       timbrado = cfg.timbrado;
+      timbradoId = cfg.id;
     }
 
     const insNr = await supabase
@@ -204,6 +222,7 @@ export async function POST(request: NextRequest) {
         marca_vehiculo: body.marca_vehiculo?.trim() || null,
         documento_origen: body.documento_origen?.trim().slice(0, 120) || null,
         timbrado,
+        timbrado_config_id: timbradoId,
         fecha_inicio_traslado: body.fecha_inicio_traslado || null,
         fecha_fin_traslado: body.fecha_fin_traslado || null,
         observaciones: body.observaciones?.trim() || null,
