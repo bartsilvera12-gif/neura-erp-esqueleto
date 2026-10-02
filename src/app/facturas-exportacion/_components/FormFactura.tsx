@@ -127,6 +127,39 @@ export default function FormFactura() {
   const [compromisos, setCompromisos] = useState<{ id: string; numero: string | null; cliente: string | null; total: number; moneda: string }[]>([]);
   const [compromisoElegido, setCompromisoElegido] = useState("");
   const [avisoCompromiso, setAvisoCompromiso] = useState<string | null>(null);
+  /** Carga de los productos desde un Excel: no guarda nada, llena la tabla. */
+  const archivoRef = useRef<HTMLInputElement>(null);
+  const [importando, setImportando] = useState(false);
+  const [resultadoExcel, setResultadoExcel] = useState<{ ok: number; avisos: string[]; errores: string[] } | null>(null);
+
+  async function importarExcel(file: File) {
+    if (!tipo) return;
+    setImportando(true);
+    setResultadoExcel(null);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("tipo", tipo);
+      const j = await fetch("/api/facturas-exportacion/items/importar", { method: "POST", credentials: "include", body: fd }).then((r) => r.json());
+      if (!j?.success) {
+        setError(j?.error ?? "No se pudo leer el archivo.");
+        return;
+      }
+      const nuevos = (j.data?.items ?? []) as Item[];
+      // Se reemplazan los renglones vacíos; lo ya cargado a mano se respeta.
+      setItems((prev) => {
+        const conDatos = prev.filter((x) => x.descripcion.trim() || x.producto_id);
+        return [...conDatos, ...nuevos];
+      });
+      setResultadoExcel({ ok: nuevos.length, avisos: j.data?.avisos ?? [], errores: j.data?.errores ?? [] });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo leer el archivo.");
+    } finally {
+      setImportando(false);
+      if (archivoRef.current) archivoRef.current.value = "";
+    }
+  }
   const [enviando, setEnviando] = useState<"" | "borrador" | "emitir">("");
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -898,14 +931,59 @@ export default function FormFactura() {
       <div className="zx-surface p-4 sm:p-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-800">Productos</h2>
-          <button
-            type="button"
-            onClick={() => setItems((p) => [...p, itemVacio(tipo)])}
-            className="rounded border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            + Agregar producto
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {tipo && (
+              <>
+                <a
+                  href={`/api/facturas-exportacion/items/plantilla?tipo=${tipo}`}
+                  className="rounded border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Plantilla Excel
+                </a>
+                <button
+                  type="button"
+                  onClick={() => archivoRef.current?.click()}
+                  disabled={importando}
+                  className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                >
+                  {importando ? "Leyendo…" : "Cargar desde Excel"}
+                </button>
+                <input
+                  ref={archivoRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void importarExcel(f);
+                  }}
+                />
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setItems((p) => [...p, itemVacio(tipo)])}
+              className="rounded border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              + Agregar producto
+            </button>
+          </div>
         </div>
+        {resultadoExcel && (
+          <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-xs">
+            <p className="font-semibold text-emerald-900">Se cargaron {resultadoExcel.ok} producto(s) del Excel. Revisalos antes de emitir.</p>
+            {resultadoExcel.errores.length > 0 && (
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-rose-700">
+                {resultadoExcel.errores.map((x) => <li key={x}>{x}</li>)}
+              </ul>
+            )}
+            {resultadoExcel.avisos.length > 0 && (
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-amber-800">
+                {resultadoExcel.avisos.map((x) => <li key={x}>{x}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
         {!reemiteId && !editarParam && compromisos.length > 0 && (
           <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
             <label className={lbl}>Traer de un compromiso de venta (opcional)</label>
