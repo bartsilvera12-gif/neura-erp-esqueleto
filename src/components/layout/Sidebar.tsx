@@ -53,6 +53,38 @@ type MenuItem = {
   showWhen?: string;
 };
 
+/** Lo que el usuario abrió o cerró en el menú se guarda en el navegador, así al
+ *  volver de otra pantalla el sidebar sigue como lo dejó y no arranca de cero. */
+const SB_MENUS = "zentra_sidebar_menus";
+const SB_FAMILIAS = "zentra_sidebar_familias";
+const SB_SCROLL = "zentra_sidebar_scroll";
+
+function leerMapa(clave: string, porDefecto: Record<string, boolean>): Record<string, boolean> {
+  if (typeof window === "undefined") return porDefecto;
+  try {
+    const guardado = window.localStorage.getItem(clave);
+    if (!guardado) return porDefecto;
+    const valor = JSON.parse(guardado) as unknown;
+    if (!valor || typeof valor !== "object" || Array.isArray(valor)) return porDefecto;
+    const out = { ...porDefecto };
+    for (const [k, v] of Object.entries(valor as Record<string, unknown>)) {
+      if (typeof v === "boolean") out[k] = v;
+    }
+    return out;
+  } catch {
+    // Modo privado o storage bloqueado: se usa el estado por defecto.
+    return porDefecto;
+  }
+}
+
+function guardarMapa(clave: string, valor: Record<string, boolean>) {
+  try {
+    window.localStorage.setItem(clave, JSON.stringify(valor));
+  } catch {
+    /* sin storage: el menú funciona igual, solo no recuerda */
+  }
+}
+
 function menuChildPathActive(path: string, childHref: string, exactMatch?: boolean): boolean {
   if (path === childHref) return true;
   if (exactMatch) return false;
@@ -362,13 +394,13 @@ export default function Sidebar() {
   );
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
-    inventario: true,
-    sorteos: true,
-    compras: true,
-  });
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(() =>
+    leerMapa(SB_MENUS, { inventario: true, sorteos: true, compras: true }),
+  );
   // Familias del menú colapsables (agrupamiento visual). Abiertas por defecto.
-  const [expandedFamilies, setExpandedFamilies] = useState<Record<string, boolean>>({});
+  const [expandedFamilies, setExpandedFamilies] = useState<Record<string, boolean>>(() =>
+    leerMapa(SB_FAMILIAS, {}),
+  );
   // cargando arranca en false si ya hidratamos desde cache; el spinner solo
   // aparece en el primer login real, no al volver a la pestaña.
   const [cargando, setCargando] = useState<boolean>(
@@ -635,6 +667,38 @@ export default function Sidebar() {
     });
   }, [menuSearchQuery]);
 
+  /** Guardar lo abierto/cerrado para la próxima visita. */
+  useEffect(() => {
+    guardarMapa(SB_MENUS, expandedItems);
+  }, [expandedItems]);
+
+  useEffect(() => {
+    guardarMapa(SB_FAMILIAS, expandedFamilies);
+  }, [expandedFamilies]);
+
+  /** Si la pantalla actual es una subpágina (ej. Comercio exterior → Despachos),
+   *  ese menú queda abierto solo, sin cerrar lo que el usuario ya tenía abierto. */
+  useEffect(() => {
+    const p = pathname ?? "";
+    const padre = MENU_STRUCTURE.find((item) =>
+      item.children?.some((c) => menuChildPathActive(p, c.href, c.exactMatch)),
+    );
+    if (!padre) return;
+    setExpandedItems((prev) => (prev[padre.key] ? prev : { ...prev, [padre.key]: true }));
+  }, [pathname]);
+
+  /** Devolver el scroll del menú a donde estaba (por pestaña). */
+  useEffect(() => {
+    const el = navScrollRef.current;
+    if (!el || cargando) return;
+    try {
+      const y = Number(window.sessionStorage.getItem(SB_SCROLL));
+      if (Number.isFinite(y) && y > 0) el.scrollTop = y;
+    } catch {
+      /* sin storage: arranca arriba */
+    }
+  }, [cargando]);
+
   useEffect(() => {
     const el = navScrollRef.current;
     if (!el) return;
@@ -643,11 +707,20 @@ export default function Sidebar() {
     const observer = new ResizeObserver(updateScrollIndicator);
     observer.observe(el);
     if (navContentRef.current) observer.observe(navContentRef.current);
+    const recordarScroll = () => {
+      try {
+        window.sessionStorage.setItem(SB_SCROLL, String(el.scrollTop));
+      } catch {
+        /* sin storage */
+      }
+    };
     el.addEventListener("scroll", updateScrollIndicator, { passive: true });
+    el.addEventListener("scroll", recordarScroll, { passive: true });
 
     return () => {
       observer.disconnect();
       el.removeEventListener("scroll", updateScrollIndicator);
+      el.removeEventListener("scroll", recordarScroll);
     };
   }, [updateScrollIndicator]);
 
