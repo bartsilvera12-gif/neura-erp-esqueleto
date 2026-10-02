@@ -531,6 +531,15 @@ export default function FacturasExportacionPage() {
                         Imprimir
                       </a>
                       )}
+                      {f.estado === "EMITIDA" && (
+                        <Link
+                          href={`/notas-remision/nueva?factura=${f.id}`}
+                          className="rounded border border-sky-300 px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-50"
+                          title="Hacer la nota de remisión con los datos de esta factura"
+                        >
+                          Remisión
+                        </Link>
+                      )}
                       {isAdmin && f.estado === "EMITIDA" && (
                         <Link
                           href={`/facturas-exportacion/nueva?editar=${f.id}&tipo=${f.tipo}`}

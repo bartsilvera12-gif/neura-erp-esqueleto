@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Truck, Send } from "lucide-react";
@@ -44,7 +44,11 @@ export default function EmitirNRPage() {
   type DocOrigen = { id: string; numero: string | null; cliente: string | null; fecha: string | null; prueba?: boolean };
   const [docs, setDocs] = useState<{ facturas: DocOrigen[]; compromisos: DocOrigen[] }>({ facturas: [], compromisos: [] });
   const [docElegido, setDocElegido] = useState("");
+  /** Si se llega desde una factura (?factura=…), se trae sola al abrir. */
+  const traidaAuto = useRef(false);
   const [docOrigen, setDocOrigen] = useState("");
+  /** Id de la factura de la que salió, para dejarlas vinculadas. */
+  const [facturaId, setFacturaId] = useState("");
   const [avisoDoc, setAvisoDoc] = useState<string[]>([]);
   /** Timbrados activos: con cuál sale la nota. */
   type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean };
@@ -117,12 +121,22 @@ export default function EmitirNRPage() {
       .catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    if (traidaAuto.current || !origen || stockOrigen.length === 0) return;
+    const fid = new URLSearchParams(window.location.search).get("factura");
+    if (!fid) return;
+    traidaAuto.current = true;
+    void traerDe(`factura:${fid}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origen, stockOrigen]);
+
   /** Trae cliente y productos de una factura o compromiso de venta, para no tipearlos. */
   async function traerDe(valor: string) {
     setDocElegido(valor);
     setAvisoDoc([]);
-    if (!valor) { setDocOrigen(""); return; }
+    if (!valor) { setDocOrigen(""); setFacturaId(""); return; }
     const [tipo, id] = valor.split(":");
+    setFacturaId(tipo === "factura" ? id : "");
     const j = await fetch(`/api/notas-remision/origenes?tipo=${tipo}&id=${id}`, { credentials: "include", cache: "no-store" }).then((r) => r.json()).catch(() => null);
     if (!j?.success) { setError(j?.error ?? "No se pudo traer el documento."); return; }
     const d = j.data as { documento: string; cliente: { id: string | null; nombre: string | null; direccion: string | null; ciudad: string | null }; items: { producto_id: string | null; descripcion: string; cantidad: number }[] };
@@ -204,6 +218,7 @@ export default function EmitirNRPage() {
       marca_vehiculo: marcaVehiculo.trim() || undefined,
       documento_origen: docOrigen || undefined,
       timbrado_config_id: timbradoId || undefined,
+      factura_id: facturaId || undefined,
       fecha_inicio_traslado: fechaInicio || undefined,
       fecha_fin_traslado: fechaFin || undefined,
       observaciones: obs.trim() || undefined,

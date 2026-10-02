@@ -135,6 +135,8 @@ export async function crearNR(payload: {
   marca_vehiculo?: string;
   documento_origen?: string;
   timbrado_config_id?: string;
+  /** Factura de la que salió: al emitir, su número queda anotado en la factura. */
+  factura_id?: string;
   fecha_inicio_traslado?: string;
   fecha_fin_traslado?: string;
   observaciones?: string;

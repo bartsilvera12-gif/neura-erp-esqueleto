@@ -90,6 +90,8 @@ export async function POST(request: NextRequest) {
       documento_origen?: string;
       /** Con qué timbrado se emite. Vacío = el único activo. */
       timbrado_config_id?: string;
+      /** Factura de la que salió esta nota. */
+      factura_id?: string;
       fecha_inicio_traslado?: string;
       fecha_fin_traslado?: string;
       observaciones?: string;
@@ -243,6 +245,16 @@ export async function POST(request: NextRequest) {
       // Rollback best-effort
       await supabase.from("notas_remision").delete().eq("id", nr.id);
       return NextResponse.json(errorResponse(`Items: ${insItems.error.message}`), { status: 400 });
+    }
+
+    // Si salió de una factura, queda anotada en ella (y así sale impresa).
+    if (body.factura_id) {
+      await supabase
+        .from("facturas_exportacion")
+        .update({ nota_remision: numero })
+        .eq("empresa_id", auth.empresa_id)
+        .eq("id", body.factura_id)
+        .is("nota_remision", null);
     }
 
     return NextResponse.json(successResponse({ nota_remision: { ...nr, items } }));
