@@ -130,7 +130,7 @@ export default function FormFactura() {
   /** Carga de los productos desde un Excel: no guarda nada, llena la tabla. */
   const archivoRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
-  const [resultadoExcel, setResultadoExcel] = useState<{ ok: number; avisos: string[]; errores: string[]; sinVincular: string[] } | null>(null);
+  const [resultadoExcel, setResultadoExcel] = useState<{ ok: number; avisos: string[]; errores: string[]; sinVincular: string[]; creados: string[] } | null>(null);
   const [verDetalleExcel, setVerDetalleExcel] = useState(false);
 
   async function importarExcel(file: File) {
@@ -158,6 +158,7 @@ export default function FormFactura() {
         avisos: j.data?.avisos ?? [],
         errores: j.data?.errores ?? [],
         sinVincular: (j.data?.sin_vincular ?? []) as string[],
+        creados: (j.data?.creados ?? []) as string[],
       });
       setVerDetalleExcel(false);
     } catch (e) {
@@ -991,6 +992,12 @@ export default function FormFactura() {
                 {resultadoExcel.errores.slice(0, 10).map((x) => <li key={x}>{x}</li>)}
                 {resultadoExcel.errores.length > 10 && <li>y {resultadoExcel.errores.length - 10} fila(s) más con problemas.</li>}
               </ul>
+            )}
+
+            {resultadoExcel.creados.length > 0 && (
+              <p className="mt-1.5 text-emerald-800">
+                Se crearon <strong>{resultadoExcel.creados.length}</strong> producto(s) nuevos en el inventario: {resultadoExcel.creados.join(", ")}
+              </p>
             )}
 
             {/* Códigos que no están en el inventario: resumidos en una línea. */}

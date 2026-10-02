@@ -12,6 +12,10 @@ import { traerTodo } from "@/lib/comex/server";
  *
  * El código se busca en el inventario por SKU; si no está, la línea se carga
  * igual con lo que diga el Excel y se avisa.
+ *
+ * Si la fila pide "Crear en inventario" y ese código todavía no existe, el
+ * producto se da de alta con los datos del Excel y la línea queda vinculada.
+ * Un código que ya existe nunca se pisa.
  */
 const num = (v: unknown) => {
   const s = String(v ?? "").trim().replace(/\s/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", ".");
@@ -54,6 +58,16 @@ export async function POST(request: NextRequest) {
     );
     const porSku = new Map(productos.filter((p) => p.sku).map((p) => [String(p.sku).trim().toLowerCase(), p]));
 
+    // Depósitos y categorías, para resolverlos por nombre al dar de alta.
+    const [ubicQ, catQ] = await Promise.all([
+      ctx.supabase.from("inventario_ubicaciones").select("id, nombre").eq("empresa_id", emp),
+      ctx.supabase.from("categorias_productos").select("id, nombre").eq("empresa_id", emp),
+    ]);
+    const porNombre = (rows: unknown) =>
+      new Map(((rows ?? []) as { id: string; nombre: string }[]).map((x) => [x.nombre.trim().toLowerCase(), x.id]));
+    const ubicaciones = porNombre(ubicQ.data);
+    const categorias = porNombre(catQ.data);
+
     const items: Record<string, unknown>[] = [];
     const avisos: string[] = [];
     const errores: string[] = [];
@@ -62,13 +76,15 @@ export async function POST(request: NextRequest) {
     const sinVincular: string[] = [];
 
     let ejemplos = 0;
-    filas.forEach((f, i) => {
+    const creados: string[] = [];
+    for (let i = 0; i < filas.length; i++) {
+      const f = filas[i];
       const linea = i + 2; // +1 por el encabezado, +1 porque Excel arranca en 1
       const codigo = txt(col(f, "codigo", "sku"), 40);
       // La fila de muestra de la plantilla no se carga.
       if (codigo.toUpperCase() === "EJEMPLO") {
         ejemplos++;
-        return;
+        continue;
       }
       const descripcionExcel = txt(col(f, "descripcion", "producto", "detalle"));
       const cantidad = num(col(f, "cantidad", "cant"));
@@ -76,20 +92,61 @@ export async function POST(request: NextRequest) {
       const descuento = Math.max(0, num(col(f, "descuento", "desc")));
       const ivaRaw = txt(col(f, "iva", "ivaporcentaje"), 10).replace("%", "").toUpperCase();
 
-      const p = codigo ? porSku.get(codigo.toLowerCase()) : undefined;
+      let p = codigo ? porSku.get(codigo.toLowerCase()) : undefined;
       const descripcion = descripcionExcel || p?.nombre || "";
       if (!descripcion) {
         errores.push(`Fila ${linea}: sin descripción ni código que exista en el inventario.`);
-        return;
+        continue;
       }
       if (!(cantidad > 0)) {
         errores.push(`Fila ${linea} (${descripcion}): la cantidad tiene que ser mayor a 0.`);
-        return;
+        continue;
       }
       if (!(precio > 0)) {
         errores.push(`Fila ${linea} (${descripcion}): el precio unitario tiene que ser mayor a 0.`);
-        return;
+        continue;
       }
+
+      // Alta en el inventario, solo si la fila lo pide y el código no existe.
+      const quiereCrear = /^(si|sí|s|x|1|true|verdadero)$/i.test(txt(col(f, "creareninventario", "crearinventario", "crearproducto", "crear"), 12));
+      if (quiereCrear && !p) {
+        if (!codigo) {
+          errores.push(`Fila ${linea} (${descripcion}): para crearlo en el inventario hace falta el código.`);
+          continue;
+        }
+        const unidadAlta = txt(col(f, "unidad", "unidaddemedida"), 20) || "UNIDAD";
+        const depNombre = txt(col(f, "deposito", "ubicacion"), 80);
+        const catNombre = txt(col(f, "categoria"), 80);
+        const depId = depNombre ? ubicaciones.get(depNombre.toLowerCase()) : undefined;
+        const catId = catNombre ? categorias.get(catNombre.toLowerCase()) : undefined;
+        if (depNombre && !depId) avisos.push(`Fila ${linea}: el depósito "${depNombre}" no existe; el producto se creó sin depósito.`);
+        if (catNombre && !catId) avisos.push(`Fila ${linea}: la categoría "${catNombre}" no existe; el producto se creó sin categoría.`);
+
+        const { data: nuevo, error: eNuevo } = await ctx.supabase
+          .from("productos")
+          .insert({
+            empresa_id: emp,
+            nombre: descripcion.toUpperCase(),
+            sku: codigo.toUpperCase(),
+            unidad_medida: unidadAlta.toUpperCase(),
+            precio_venta: precio,
+            costo_promedio: Math.max(0, num(col(f, "costo", "costounitario"))),
+            stock_actual: Math.max(0, num(col(f, "stockinicial", "stock"))),
+            categoria_principal_id: catId ?? null,
+            ubicacion_principal_id: depId ?? null,
+            activo: true,
+          })
+          .select("id, nombre, sku, unidad_medida, precio_venta")
+          .single();
+        if (eNuevo) {
+          avisos.push(`Fila ${linea}: no se pudo crear "${codigo}" en el inventario (${eNuevo.message}). La línea se carga sin vincular.`);
+        } else {
+          p = nuevo as { id: string; nombre: string; sku: string | null; unidad_medida: string | null; precio_venta: number | null };
+          porSku.set(codigo.toLowerCase(), p);
+          creados.push(codigo.toUpperCase());
+        }
+      }
+
       if (codigo && !p) sinVincular.push(codigo);
 
       items.push({
@@ -102,12 +159,14 @@ export async function POST(request: NextRequest) {
         descuento: descuento ? String(descuento) : "",
         iva_tipo: tipo === "EXPORTACION" ? "EXENTA" : ivaRaw === "5" ? "5" : ivaRaw === "EXENTA" || ivaRaw === "E" ? "EXENTA" : "10",
       });
-    });
+    }
 
     if (!items.length)
       return NextResponse.json(errorResponse(`No se pudo cargar ninguna fila. ${errores.slice(0, 3).join(" ")}`), { status: 400 });
 
-    return NextResponse.json(successResponse({ items, avisos, errores, sin_vincular: sinVincular, total_filas: filas.length - ejemplos }));
+    return NextResponse.json(
+      successResponse({ items, avisos, errores, sin_vincular: sinVincular, creados, total_filas: filas.length - ejemplos })
+    );
   } catch (err) {
     console.error("[/api/facturas-exportacion/items/importar]", err);
     return NextResponse.json(errorResponse("No se pudo leer el archivo."), { status: 500 });
