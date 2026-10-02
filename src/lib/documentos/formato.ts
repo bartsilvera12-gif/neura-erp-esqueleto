@@ -43,7 +43,9 @@ export const CSS_DOC = `
   .firmas .ln i{flex:1;border-bottom:1px dotted #000;height:12px}
   .toolbar{position:sticky;top:0;background:#111827;padding:10px;text-align:center}
   .toolbar button{background:#4FAEB2;color:#fff;border:0;padding:8px 16px;border-radius:6px;font-size:14px;cursor:pointer}
-  @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;margin:0;padding:0}@page{size:A4;margin:10mm}}
+  /* Margen 0 en @page: así el navegador no agrega la fecha arriba ni la dirección
+     abajo. El margen real lo pone el padding de .page. */
+  @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;margin:0;padding:11mm}@page{size:A4;margin:0}}
 `;
 
 /** Cabecera: [logo] [datos de la empresa] [título + número]. */

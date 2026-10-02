@@ -189,6 +189,8 @@ export default function HistorialNRPage() {
                       <div className="inline-flex items-center gap-1.5">
                         <Link
                           href={`/api/notas-remision/${nr.id}/imprimir`}
+                          target="_blank"
+                          rel="noopener"
                           className="zx-surface rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                           title="Ver documento imprimible"
                         >
