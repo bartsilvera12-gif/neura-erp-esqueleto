@@ -33,9 +33,8 @@ export async function faltantesExportacion(
     if (r.error) throw new Error(r.error.message);
     return r.data;
   };
-  const [items, conts, check, proformas, incs, factura, remision, config] = await Promise.all([
+  const [items, check, proformas, incs, factura, remision, config] = await Promise.all([
     sb.from("exportacion_items").select("producto_id, producto_nombre").eq("empresa_id", empresaId).eq("exportacion_id", exp.id),
-    sb.from("comex_contenedores").select("id").eq("empresa_id", empresaId).eq("exportacion_id", exp.id),
     sb.from("exportacion_checklist").select("item, ok").eq("empresa_id", empresaId).eq("exportacion_id", exp.id),
     sb.from("comex_adjuntos").select("id").eq("empresa_id", empresaId).eq("origen_tipo", "EXPORTACION").eq("origen_id", exp.id).eq("categoria", "Proforma"),
     sb.from("comex_incidencias").select("estado").eq("empresa_id", empresaId).eq("origen_tipo", "EXPORTACION").eq("origen_id", exp.id),
@@ -66,7 +65,6 @@ export async function faltantesExportacion(
     if (!its.length) f.push("Falta cargar los productos.");
     const sinVincular = its.filter((i) => !i.producto_id);
     if (sinVincular.length) f.push(`${sinVincular.length} producto(s) sin vincular al inventario.`);
-    if (!(q(conts) ?? []).length) f.push("Falta agregar el contenedor.");
     if (!exp.fecha_comprometida_embarque) f.push("Falta la fecha comprometida de embarque.");
     return f;
   }
@@ -74,7 +72,6 @@ export async function faltantesExportacion(
   // Aprobar despacho: papeles, checklist y nada pendiente.
   if (hacia === "aprobada") {
     if (!its.length) f.push("Falta cargar los productos.");
-    if (!(q(conts) ?? []).length) f.push("Falta agregar el contenedor.");
     if (exp.requiere_proforma && !(q(proformas) ?? []).length) f.push("Falta adjuntar la proforma (en Documentos, tipo “Proforma”).");
     facturaOk();
     const ok = new Set(((q(check) ?? []) as { item: string; ok: boolean }[]).filter((c) => c.ok).map((c) => c.item));

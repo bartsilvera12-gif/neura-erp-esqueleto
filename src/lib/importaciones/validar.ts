@@ -42,7 +42,6 @@ export async function faltantesParaEstado(
   const sinVincular = its.filter((i) => !i.producto_id);
   if (sinVincular.length)
     f.push(`${sinVincular.length} producto(s) sin vincular al inventario: ${sinVincular.map((i) => i.producto_nombre).join(", ")}.`);
-  if (!(conts.data ?? []).length) f.push("Falta agregar al menos un contenedor.");
   if (!imp.fecha_embarque) f.push("Falta la fecha de embarque.");
   if (hacia === "en_transito") return f;
 
