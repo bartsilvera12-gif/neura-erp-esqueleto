@@ -52,13 +52,13 @@ export async function POST(
 
     const nrQ = await supabase
       .from("notas_remision")
-      .select("id, empresa_id, numero, estado, ubicacion_origen_id, ubicacion_destino_id, destino_tipo, destino_nombre, destino_ciudad")
+      .select("id, empresa_id, numero, estado, ubicacion_origen_id, ubicacion_destino_id, destino_tipo, destino_nombre, destino_ciudad, prueba")
       .eq("empresa_id", auth.empresa_id)
       .eq("id", id)
       .maybeSingle();
     if (nrQ.error) throw new Error(nrQ.error.message);
     if (!nrQ.data) return NextResponse.json(errorResponse(API_ERRORS.NOT_FOUND), { status: 404 });
-    const nr = nrQ.data as { id: string; numero: string; estado: string; ubicacion_origen_id: string; ubicacion_destino_id: string | null; destino_tipo?: string | null };
+    const nr = nrQ.data as { id: string; numero: string; estado: string; ubicacion_origen_id: string; ubicacion_destino_id: string | null; destino_tipo?: string | null; prueba?: boolean };
     // Destino externo (cliente): la mercadería sale del depósito y no entra a otro.
     const esDestinoCliente = (nr.destino_tipo ?? "deposito") === "cliente";
     if (nr.estado !== "pendiente") {
@@ -66,6 +66,17 @@ export async function POST(
     }
     if (!esDestinoCliente && nr.ubicacion_origen_id === nr.ubicacion_destino_id) {
       return NextResponse.json(errorResponse("Origen y destino no pueden ser el mismo depósito."), { status: 400 });
+    }
+
+    // Una nota de prueba se aprueba igual, pero no toca el stock.
+    if (nr.prueba) {
+      const upd = await supabase
+        .from("notas_remision")
+        .update({ estado: "aprobada", aprobada_at: new Date().toISOString(), aprobada_por: aprobador, updated_at: new Date().toISOString() })
+        .eq("empresa_id", auth.empresa_id)
+        .eq("id", id);
+      if (upd.error) throw new Error(upd.error.message);
+      return NextResponse.json(successResponse({ ok: true, numero: nr.numero, prueba: true }));
     }
 
     const itemsQ = await supabase

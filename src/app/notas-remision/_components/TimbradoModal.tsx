@@ -12,9 +12,11 @@ export type TimbradoNR = {
   vigencia_hasta: string | null;
   proximo_numero: number;
   activo: boolean;
+  modo_prueba: boolean;
+  proximo_numero_prueba: number;
 };
 
-const vacio = { id: "", timbrado: "", establecimiento: "001", punto_expedicion: "", vigencia_desde: "", vigencia_hasta: "", proximo_numero: "1", activo: true };
+const vacio = { id: "", timbrado: "", establecimiento: "001", punto_expedicion: "", vigencia_desde: "", vigencia_hasta: "", proximo_numero: "1", proximo_numero_prueba: "1", activo: true, modo_prueba: true };
 const fechaES = (v: string | null) => (v ? v.split("-").reverse().join("/") : "");
 
 /**
@@ -43,7 +45,9 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
       vigencia_desde: t.vigencia_desde ?? "",
       vigencia_hasta: t.vigencia_hasta ?? "",
       proximo_numero: String(t.proximo_numero),
+      proximo_numero_prueba: String(t.proximo_numero_prueba ?? 1),
       activo: t.activo,
+      modo_prueba: t.modo_prueba !== false,
     });
     setEditando(true);
     setError(null);
@@ -53,7 +57,7 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
     setSaving(true);
     setError(null);
     try {
-      const cuerpo = { ...f, proximo_numero: Number(f.proximo_numero) };
+      const cuerpo = { ...f, proximo_numero: Number(f.proximo_numero), proximo_numero_prueba: Number(f.proximo_numero_prueba) };
       if (f.id) await api("/api/notas-remision/config", jsonInit("PUT", cuerpo));
       else await api("/api/notas-remision/config", jsonInit("POST", cuerpo));
       await cargar();
@@ -63,6 +67,17 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setSaving(false);
+    }
+  }
+
+  /** Prueba ↔ producción. En prueba las notas salen marcadas y no mueven stock. */
+  async function alternarModo(t: TimbradoNR) {
+    setError(null);
+    try {
+      await api("/api/notas-remision/config", jsonInit("PUT", { ...t, modo_prueba: t.modo_prueba === false }));
+      await cargar();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
     }
   }
 
@@ -77,6 +92,8 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
         vigencia_desde: t.vigencia_desde,
         vigencia_hasta: t.vigencia_hasta,
         proximo_numero: t.proximo_numero,
+        proximo_numero_prueba: t.proximo_numero_prueba,
+        modo_prueba: t.modo_prueba,
         activo: !t.activo,
       }));
       await cargar();
@@ -100,6 +117,7 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
                   <th className="px-3 py-2">Punto</th>
                   <th className="px-3 py-2">Timbrado</th>
                   <th className="px-3 py-2">Vigencia</th>
+                  <th className="px-3 py-2">Modo</th>
                   <th className="px-3 py-2">Próxima nota</th>
                   <th className="px-3 py-2" />
                 </tr>
@@ -112,11 +130,26 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
                     <td className="px-3 py-2 text-xs">
                       {t.vigencia_desde ? `${fechaES(t.vigencia_desde)} al ${fechaES(t.vigencia_hasta)}` : "—"}
                     </td>
+                    <td className="px-3 py-2">
+                      {t.modo_prueba !== false ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">Prueba</span>
+                      ) : (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Producción</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs">
-                      {t.establecimiento}-{t.punto_expedicion}-{String(t.proximo_numero).padStart(7, "0")}
+                      {t.establecimiento}-{t.punto_expedicion}-
+                      {String(t.modo_prueba !== false ? t.proximo_numero_prueba ?? 1 : t.proximo_numero).padStart(7, "0")}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       <button type="button" onClick={() => editar(t)} className="text-xs font-medium text-emerald-700 hover:underline">Editar</button>
+                      <button
+                        type="button"
+                        onClick={() => void alternarModo(t)}
+                        className="ml-3 text-xs font-medium text-slate-600 hover:underline"
+                      >
+                        {t.modo_prueba !== false ? "Pasar a producción" : "Volver a prueba"}
+                      </button>
                       <button type="button" onClick={() => void alternarActivo(t)} className="ml-3 text-xs text-slate-500 hover:underline">
                         {t.activo ? "Desactivar" : "Activar"}
                       </button>
@@ -158,13 +191,23 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
                 <label className={labelClass}>Vigencia hasta</label>
                 <input type="date" value={f.vigencia_hasta} onChange={(e) => setF({ ...f, vigencia_hasta: e.target.value })} className={inputClass} />
               </div>
-              <div className="col-span-2">
-                <label className={labelClass}>Próximo número *</label>
+              <div>
+                <label className={labelClass}>Próximo número real *</label>
                 <input value={f.proximo_numero} onChange={(e) => setF({ ...f, proximo_numero: e.target.value.replace(/\D/g, "") })} className={inputClass} />
-                <p className="mt-1 text-xs text-slate-500">
-                  La próxima nota de este punto sale como {f.establecimiento || "001"}-{f.punto_expedicion || "___"}-{String(Number(f.proximo_numero) || 1).padStart(7, "0")}.
-                </p>
               </div>
+              <div>
+                <label className={labelClass}>Próximo número de prueba</label>
+                <input value={f.proximo_numero_prueba} onChange={(e) => setF({ ...f, proximo_numero_prueba: e.target.value.replace(/\D/g, "") })} className={inputClass} />
+              </div>
+              <label className="col-span-2 flex cursor-pointer select-none items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={f.modo_prueba} onChange={(e) => setF({ ...f, modo_prueba: e.target.checked })} className="h-4 w-4 rounded border-slate-300" />
+                Modo prueba: las notas salen marcadas como PRUEBA, usan el contador de prueba y no mueven stock
+              </label>
+              <p className="col-span-2 text-xs text-slate-500">
+                La próxima nota sale como {f.establecimiento || "001"}-{f.punto_expedicion || "___"}-
+                {String(Number(f.modo_prueba ? f.proximo_numero_prueba : f.proximo_numero) || 1).padStart(7, "0")}
+                {f.modo_prueba ? " y marcada como PRUEBA." : "."}
+              </p>
             </div>
             <div className="flex justify-end gap-2">
               {lista.length > 0 && (

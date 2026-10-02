@@ -6,7 +6,7 @@ import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { filasStockDeposito, stockEnDeposito, type ProdStock } from "@/lib/comex/stock-deposito";
 
 const COLS =
-  "id, empresa_id, numero, fecha, emisor, ubicacion_origen_id, ubicacion_destino_id, motivo, estado, motivo_rechazo, aprobada_at, aprobada_por, transportista, ruc_transportista, conductor, ci_conductor, chapa, fecha_inicio_traslado, fecha_fin_traslado, observaciones, created_at, updated_at, destino_tipo, cliente_id, destino_nombre, destino_direccion, destino_ciudad, timbrado, marca_vehiculo, documento_origen";
+  "id, empresa_id, numero, fecha, emisor, ubicacion_origen_id, ubicacion_destino_id, motivo, estado, motivo_rechazo, aprobada_at, aprobada_por, transportista, ruc_transportista, conductor, ci_conductor, chapa, fecha_inicio_traslado, fecha_fin_traslado, observaciones, created_at, updated_at, destino_tipo, cliente_id, destino_nombre, destino_direccion, destino_ciudad, timbrado, marca_vehiculo, documento_origen, prueba";
 
 type ItemIn = { producto_id: string; cantidad: number };
 
@@ -171,27 +171,32 @@ export async function POST(request: NextRequest) {
     let timbradoId: string | null = null;
     let cfgQ = supabase
       .from("notas_remision_config")
-      .select("id, timbrado, establecimiento, punto_expedicion, proximo_numero")
+      .select("id, timbrado, establecimiento, punto_expedicion, proximo_numero, modo_prueba, proximo_numero_prueba")
       .eq("empresa_id", auth.empresa_id)
       .eq("activo", true);
     if (body.timbrado_config_id) cfgQ = cfgQ.eq("id", body.timbrado_config_id);
     const cfgRes = await cfgQ.order("punto_expedicion").limit(1);
-    const cfg = ((cfgRes.data ?? [])[0] ?? null) as { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number } | null;
+    const cfg = ((cfgRes.data ?? [])[0] ?? null) as
+      | { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; modo_prueba: boolean; proximo_numero_prueba: number }
+      | null;
     if (body.timbrado_config_id && !cfg)
       return NextResponse.json(errorResponse("Ese timbrado no existe o está desactivado."), { status: 400 });
+    // En modo prueba la numeración sale de un contador aparte: no gasta la real.
+    const enPrueba = cfg?.modo_prueba !== false;
+    const campoNro = enPrueba ? "proximo_numero_prueba" : "proximo_numero";
     if (cfg?.timbrado) {
       // Se reserva el número: si dos personas emiten a la vez, solo una se lo queda y la otra reintenta.
       let reservado: number | null = null;
       for (let i = 0; i < 5 && reservado === null; i++) {
-        const act = await supabase.from("notas_remision_config").select("proximo_numero").eq("empresa_id", auth.empresa_id).eq("id", cfg.id).maybeSingle();
-        const n = Number((act.data as { proximo_numero: number } | null)?.proximo_numero) || 1;
+        const act = await supabase.from("notas_remision_config").select(campoNro).eq("empresa_id", auth.empresa_id).eq("id", cfg.id).maybeSingle();
+        const n = Number((act.data as Record<string, number> | null)?.[campoNro]) || 1;
         const upd = await supabase
           .from("notas_remision_config")
-          .update({ proximo_numero: n + 1, updated_at: new Date().toISOString() })
+          .update({ [campoNro]: n + 1, updated_at: new Date().toISOString() })
           .eq("empresa_id", auth.empresa_id)
           .eq("id", cfg.id)
-          .eq("proximo_numero", n)
-          .select("proximo_numero");
+          .eq(campoNro, n)
+          .select(campoNro);
         if (upd.error) throw new Error(upd.error.message);
         if ((upd.data ?? []).length) reservado = n;
       }
@@ -225,6 +230,7 @@ export async function POST(request: NextRequest) {
         documento_origen: body.documento_origen?.trim().slice(0, 120) || null,
         timbrado,
         timbrado_config_id: timbradoId,
+        prueba: !!cfg?.timbrado && enPrueba,
         fecha_inicio_traslado: body.fecha_inicio_traslado || null,
         fecha_fin_traslado: body.fecha_fin_traslado || null,
         observaciones: body.observaciones?.trim() || null,
@@ -248,7 +254,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Si salió de una factura, queda anotada en ella (y así sale impresa).
-    if (body.factura_id) {
+    if (body.factura_id && !(cfg?.timbrado && enPrueba)) {
       await supabase
         .from("facturas_exportacion")
         .update({ nota_remision: numero })

@@ -179,7 +179,8 @@ export default function HistorialNRPage() {
                 const total = (nr.items ?? []).reduce((s, i) => s + i.cantidad, 0);
                 return (
                   <tr key={nr.id} className="zx-row">
-                    <td className="px-5 py-3 font-mono text-xs font-semibold text-slate-700">{nr.numero}</td>
+                    <td className="px-5 py-3 font-mono text-xs font-semibold text-slate-700">{nr.numero}
+                      {nr.prueba && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Prueba</span>}</td>
                     <td className="px-5 py-3 text-xs tabular-nums text-slate-600">{fmtFecha(nr.fecha)}</td>
                     <td className="px-5 py-3 text-xs text-slate-700">
                       {nombreUbic(nr.ubicacion_origen_id)} <span className="text-slate-400">→</span> <strong>{nombreDestino(nr)}</strong>

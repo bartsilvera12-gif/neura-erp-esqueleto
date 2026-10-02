@@ -53,7 +53,9 @@ export default function EmitirNRPage() {
   const [resDoc, setResDoc] = useState<{ ok: number; sinStock: string[]; sinVincular: string[]; parciales: string[] } | null>(null);
   const [verDetalleDoc, setVerDetalleDoc] = useState(false);
   /** Timbrados activos: con cuál sale la nota. */
-  type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean };
+  type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean; modo_prueba?: boolean; proximo_numero_prueba?: number };
+  /** Número que va a salir según el modo en que esté ese timbrado. */
+  const proxDe = (t: TimbradoNR) => String(t.modo_prueba !== false ? t.proximo_numero_prueba ?? 1 : t.proximo_numero).padStart(7, "0");
   const [timbrados, setTimbrados] = useState<TimbradoNR[]>([]);
   const [timbradoId, setTimbradoId] = useState("");
   const [fechaInicio, setFechaInicio] = useState(hoyISO());
@@ -372,7 +374,8 @@ export default function EmitirNRPage() {
                 >
                   {timbrados.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.establecimiento}-{t.punto_expedicion} · {t.timbrado} · próxima {String(t.proximo_numero).padStart(7, "0")}
+                      {t.establecimiento}-{t.punto_expedicion} · {t.timbrado} · próxima {proxDe(t)}
+                      {t.modo_prueba !== false ? " (prueba)" : ""}
                     </option>
                   ))}
                 </select>
@@ -380,8 +383,14 @@ export default function EmitirNRPage() {
                 <p className="py-2 text-sm text-slate-700">
                   {timbrados[0].establecimiento}-{timbrados[0].punto_expedicion} · {timbrados[0].timbrado}
                   <span className="block text-xs text-slate-500">
-                    Sale como {timbrados[0].establecimiento}-{timbrados[0].punto_expedicion}-{String(timbrados[0].proximo_numero).padStart(7, "0")}
+                    Sale como {timbrados[0].establecimiento}-{timbrados[0].punto_expedicion}-{proxDe(timbrados[0])}
                   </span>
+                </p>
+              )}
+              {(timbrados.find((t) => t.id === timbradoId) ?? timbrados[0])?.modo_prueba !== false && (
+                <p className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                  Este timbrado está en <strong>modo prueba</strong>: la nota sale marcada PRUEBA · SIN VALOR, usa el
+                  contador de prueba (no gasta números reales) y al aprobarla no mueve stock.
                 </p>
               )}
             </Field>

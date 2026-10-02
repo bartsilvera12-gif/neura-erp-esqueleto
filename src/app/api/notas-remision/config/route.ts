@@ -5,7 +5,8 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
 import { esUuid } from "@/lib/comex/server";
 
-const COLS = "id, timbrado, establecimiento, punto_expedicion, vigencia_desde, vigencia_hasta, proximo_numero, activo";
+const COLS =
+  "id, timbrado, establecimiento, punto_expedicion, vigencia_desde, vigencia_hasta, proximo_numero, activo, modo_prueba, proximo_numero_prueba";
 
 /** GET — los timbrados de notas de remisión que autorizó la DNIT. */
 export async function GET(request: NextRequest) {
@@ -32,6 +33,7 @@ function datos(b: Record<string, unknown>): { datos: Record<string, unknown> } |
   const est = String(b.establecimiento ?? "").trim().padStart(3, "0");
   const punto = String(b.punto_expedicion ?? "").trim().padStart(3, "0");
   const prox = Math.floor(Number(b.proximo_numero));
+  const proxPrueba = Math.max(1, Math.floor(Number(b.proximo_numero_prueba)) || 1);
   const fecha = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v ?? "")) ? String(v) : null);
   if (!/^\d{6,10}$/.test(timbrado)) return { error: "El timbrado son solo números (8 dígitos)." };
   if (!/^\d{3}$/.test(est) || !/^\d{3}$/.test(punto)) return { error: "Establecimiento y punto son de 3 dígitos (ej. 001 y 004)." };
@@ -44,6 +46,8 @@ function datos(b: Record<string, unknown>): { datos: Record<string, unknown> } |
       vigencia_desde: fecha(b.vigencia_desde),
       vigencia_hasta: fecha(b.vigencia_hasta),
       proximo_numero: prox,
+      proximo_numero_prueba: proxPrueba,
+      modo_prueba: b.modo_prueba === undefined ? true : b.modo_prueba === true,
       activo: b.activo === undefined ? true : b.activo === true,
       updated_at: new Date().toISOString(),
     },

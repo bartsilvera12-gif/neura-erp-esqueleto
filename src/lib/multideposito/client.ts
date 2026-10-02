@@ -58,6 +58,8 @@ export type NotaRemision = {
   marca_vehiculo?: string | null;
   /** Timbrado de la DNIT con el que se emitió (vacío en las remisiones internas viejas). */
   timbrado?: string | null;
+  /** Emitida con el timbrado en modo prueba: no vale y no mueve stock. */
+  prueba?: boolean;
   documento_origen?: string | null;
   cliente_documento?: string | null;
   fecha_inicio_traslado: string | null;

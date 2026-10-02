@@ -58,6 +58,7 @@ export async function GET(request: NextRequest, p: { params: Promise<{ id: strin
     extra: `<div style="font-size:10px">RUC.: ${esc(EMPRESA_DOC.ruc)}</div>`,
   })}
   ${nr.timbrado ? `<div style="text-align:right;font-size:10px;margin:-1px 0 3px">Timbrado Nº ${esc(nr.timbrado)}</div>` : ""}
+  ${nr.prueba ? `<div style="border:2px solid #b45309;color:#b45309;font-weight:bold;text-align:center;padding:5px;margin-bottom:3px;letter-spacing:2px">PRUEBA · SIN VALOR</div>` : ""}
   <div class="box pad">
     <div class="fila"><span class="l" style="flex-basis:170px">Nombre / Razon Social:</span><span>${esc(destinatario.toUpperCase())}</span></div>
     <div class="fila"><span class="l" style="flex-basis:170px">Dir. Punto de Partida:</span><span>${esc(origen)}</span></div>
