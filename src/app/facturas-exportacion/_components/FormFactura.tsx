@@ -130,7 +130,8 @@ export default function FormFactura() {
   /** Carga de los productos desde un Excel: no guarda nada, llena la tabla. */
   const archivoRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
-  const [resultadoExcel, setResultadoExcel] = useState<{ ok: number; avisos: string[]; errores: string[] } | null>(null);
+  const [resultadoExcel, setResultadoExcel] = useState<{ ok: number; avisos: string[]; errores: string[]; sinVincular: string[] } | null>(null);
+  const [verDetalleExcel, setVerDetalleExcel] = useState(false);
 
   async function importarExcel(file: File) {
     if (!tipo) return;
@@ -152,7 +153,13 @@ export default function FormFactura() {
         const conDatos = prev.filter((x) => x.descripcion.trim() || x.producto_id);
         return [...conDatos, ...nuevos];
       });
-      setResultadoExcel({ ok: nuevos.length, avisos: j.data?.avisos ?? [], errores: j.data?.errores ?? [] });
+      setResultadoExcel({
+        ok: nuevos.length,
+        avisos: j.data?.avisos ?? [],
+        errores: j.data?.errores ?? [],
+        sinVincular: (j.data?.sin_vincular ?? []) as string[],
+      });
+      setVerDetalleExcel(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo leer el archivo.");
     } finally {
@@ -971,12 +978,39 @@ export default function FormFactura() {
         </div>
         {resultadoExcel && (
           <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-xs">
-            <p className="font-semibold text-emerald-900">Se cargaron {resultadoExcel.ok} producto(s) del Excel. Revisalos antes de emitir.</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-emerald-900">Se cargaron {resultadoExcel.ok} producto(s) del Excel. Revisalos antes de emitir.</p>
+              <button type="button" onClick={() => setResultadoExcel(null)} className="text-slate-500 hover:underline">
+                Cerrar
+              </button>
+            </div>
+
+            {/* Lo que no se cargó: va completo, porque hay que corregirlo. */}
             {resultadoExcel.errores.length > 0 && (
-              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-rose-700">
-                {resultadoExcel.errores.map((x) => <li key={x}>{x}</li>)}
+              <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-rose-700">
+                {resultadoExcel.errores.slice(0, 10).map((x) => <li key={x}>{x}</li>)}
+                {resultadoExcel.errores.length > 10 && <li>y {resultadoExcel.errores.length - 10} fila(s) más con problemas.</li>}
               </ul>
             )}
+
+            {/* Códigos que no están en el inventario: resumidos en una línea. */}
+            {resultadoExcel.sinVincular.length > 0 && (
+              <p className="mt-1.5 text-amber-800">
+                {resultadoExcel.sinVincular.length === 1
+                  ? `El código ${resultadoExcel.sinVincular[0]} no está en el inventario: se cargó igual, sin vincular.`
+                  : `${resultadoExcel.sinVincular.length} códigos no están en el inventario: se cargaron igual, sin vincular.`}{" "}
+                <button type="button" onClick={() => setVerDetalleExcel((v) => !v)} className="font-semibold underline">
+                  {verDetalleExcel ? "Ocultar" : "Ver cuáles"}
+                </button>
+              </p>
+            )}
+            {verDetalleExcel && resultadoExcel.sinVincular.length > 0 && (
+              <p className="mt-1 max-h-24 overflow-y-auto rounded bg-white/70 p-2 font-mono text-[11px] text-amber-900">
+                {resultadoExcel.sinVincular.join(" · ")}
+              </p>
+            )}
+
+            {/* Cualquier otro aviso que no sea de códigos. */}
             {resultadoExcel.avisos.length > 0 && (
               <ul className="mt-1 list-disc space-y-0.5 pl-5 text-amber-800">
                 {resultadoExcel.avisos.map((x) => <li key={x}>{x}</li>)}

@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
     const items: Record<string, unknown>[] = [];
     const avisos: string[] = [];
     const errores: string[] = [];
+    // Los códigos que no están en el inventario se devuelven aparte: en pantalla
+    // se resumen en una línea, para no tapar los errores de verdad.
+    const sinVincular: string[] = [];
 
     let ejemplos = 0;
     filas.forEach((f, i) => {
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
         errores.push(`Fila ${linea} (${descripcion}): el precio unitario tiene que ser mayor a 0.`);
         return;
       }
-      if (codigo && !p) avisos.push(`Fila ${linea}: el código "${codigo}" no está en el inventario. Se carga igual, sin vincular.`);
+      if (codigo && !p) sinVincular.push(codigo);
 
       items.push({
         producto_id: p?.id ?? "",
@@ -104,7 +107,7 @@ export async function POST(request: NextRequest) {
     if (!items.length)
       return NextResponse.json(errorResponse(`No se pudo cargar ninguna fila. ${errores.slice(0, 3).join(" ")}`), { status: 400 });
 
-    return NextResponse.json(successResponse({ items, avisos, errores, total_filas: filas.length - ejemplos }));
+    return NextResponse.json(successResponse({ items, avisos, errores, sin_vincular: sinVincular, total_filas: filas.length - ejemplos }));
   } catch (err) {
     console.error("[/api/facturas-exportacion/items/importar]", err);
     return NextResponse.json(errorResponse("No se pudo leer el archivo."), { status: 500 });
