@@ -6,17 +6,21 @@ import { ArrowLeft, CheckCircle2, Circle } from "lucide-react";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import type { EstadoImportacion, Importacion, ImportacionItem, ImportacionRecepcion } from "@/lib/importaciones/types";
 import type { Contenedor, Incidencia } from "@/lib/comex/types";
+import { totalesGastos, type GastoComex } from "@/lib/comex/gastos";
 import { ESTADO_IMPORTACION_LABEL, FLUJO_IMPORTACION, anteriorImportacion, incidenciaAbierta } from "@/lib/comex/estados";
 import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaHora, inputClass, jsonInit, labelClass } from "@/components/comex/ui";
 import IncidenciasPanel from "@/components/comex/IncidenciasPanel";
 import AdjuntosPanel from "@/components/comex/AdjuntosPanel";
+import GastosPanel from "@/components/comex/GastosPanel";
 import HistorialPanel from "@/components/comex/HistorialPanel";
 import ContenedoresPanel from "@/components/comex/ContenedoresPanel";
 import FichaForm, { fichaAPayload, type Ficha } from "../_components/FichaForm";
 import MercaderiaTab from "./_components/MercaderiaTab";
 import RecepcionTab from "./_components/RecepcionTab";
 
-type Tab = "datos" | "mercaderia" | "contenedores" | "recepcion" | "incidencias" | "documentos" | "historial";
+type Tab = "datos" | "mercaderia" | "contenedores" | "recepcion" | "gastos" | "incidencias" | "documentos" | "historial";
+
+const gs = (n: number) => `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
 
 const aFicha = (i: Importacion): Ficha => ({
   proveedor_id: i.proveedor_id,
@@ -42,6 +46,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
   const [contenedores, setContenedores] = useState<Contenedor[]>([]);
   const [recepciones, setRecepciones] = useState<ImportacionRecepcion[]>([]);
   const [incAbiertas, setIncAbiertas] = useState(0);
+  const [gastos, setGastos] = useState<GastoComex[]>([]);
   const [tab, setTab] = useState<Tab>("datos");
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const fichaServidor = useRef<string | null>(null);
@@ -53,12 +58,14 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
 
   const load = useCallback(async () => {
     try {
-      const [d, it, co, re, inc] = await Promise.all([
+      const [d, it, co, re, inc, ga] = await Promise.all([
         api<{ importacion: Importacion; siguiente: EstadoImportacion | null; faltantes: string[] }>(`/api/importaciones/${id}`),
         api<{ items: ImportacionItem[] }>(`/api/importaciones/${id}/items`),
         api<{ contenedores: Contenedor[] }>(`/api/importaciones/${id}/contenedores`),
         api<{ recepciones: ImportacionRecepcion[] }>(`/api/importaciones/${id}/recepciones`),
         api<{ incidencias: Incidencia[] }>(`/api/comex/incidencias?origen_tipo=IMPORTACION&origen_id=${id}`),
+        // Los gastos no son críticos: si fallan, la ficha se muestra igual.
+        api<{ gastos: GastoComex[] }>(`/api/comex/gastos?origen_tipo=IMPORTACION&origen_id=${id}`).catch(() => ({ gastos: [] })),
       ]);
       setImp(d.importacion);
       // Si hay cambios sin guardar en Datos, no se pisan al recargar por otra pestaña.
@@ -71,6 +78,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
       setContenedores(co.contenedores);
       setRecepciones(re.recepciones);
       setIncAbiertas(inc.incidencias.filter((i) => incidenciaAbierta(i.estado)).length);
+      setGastos(ga.gastos);
       setRecargaHist((n) => n + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error de red");
@@ -144,6 +152,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
     { k: "mercaderia", label: "Mercadería", badge: items.length },
     { k: "contenedores", label: "Contenedores", badge: contenedores.length },
     { k: "recepcion", label: "Recepción" },
+    { k: "gastos", label: "Gastos", badge: gastos.length },
     { k: "incidencias", label: "Incidencias", badge: incAbiertas },
     { k: "documentos", label: "Documentos" },
     { k: "historial", label: "Historial" },
@@ -165,6 +174,14 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
             Origen {imp.pais_origen || "—"} · Responsable {imp.responsable_nombre ?? "sin asignar"} · Creada por {imp.created_by_nombre ?? "—"} el{" "}
             {fechaHora(imp.created_at)}
           </p>
+          {gastos.length > 0 && (
+            <p className="text-sm text-slate-600">
+              Gastos incurridos <strong className="text-slate-900">{gs(totalesGastos(gastos).total)}</strong>
+              {totalesGastos(gastos).pendiente > 0 && (
+                <span className="text-amber-700"> · {gs(totalesGastos(gastos).pendiente)} sin pagar</span>
+              )}
+            </p>
+          )}
         </div>
       </header>
 
@@ -280,6 +297,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
         />
       )}
       {tab === "recepcion" && <RecepcionTab imp={imp} items={items} recepciones={recepciones} onCambio={() => void load()} />}
+      {tab === "gastos" && <GastosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "incidencias" && <IncidenciasPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "documentos" && <AdjuntosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} />}
       {tab === "historial" && <HistorialPanel origenTipo="IMPORTACION" origenId={id} recarga={recargaHist} />}

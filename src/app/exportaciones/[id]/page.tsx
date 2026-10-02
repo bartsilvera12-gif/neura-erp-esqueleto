@@ -6,10 +6,12 @@ import { ArrowLeft, CheckCircle2, Circle } from "lucide-react";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import type { EstadoExportacion, Exportacion, ExportacionItem, VinculoFactura, VinculoRemision } from "@/lib/exportaciones/types";
 import type { Contenedor, Incidencia } from "@/lib/comex/types";
+import { totalesGastos, type GastoComex } from "@/lib/comex/gastos";
 import { ESTADO_EXPORTACION_LABEL, FLUJO_EXPORTACION, anteriorExportacion, incidenciaAbierta } from "@/lib/comex/estados";
 import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaHora, inputClass, jsonInit, labelClass } from "@/components/comex/ui";
 import IncidenciasPanel from "@/components/comex/IncidenciasPanel";
 import AdjuntosPanel from "@/components/comex/AdjuntosPanel";
+import GastosPanel from "@/components/comex/GastosPanel";
 import HistorialPanel from "@/components/comex/HistorialPanel";
 import ContenedoresPanel from "@/components/comex/ContenedoresPanel";
 import ExpFichaForm, { expFichaAPayload, type ExpFicha } from "../_components/ExpFichaForm";
@@ -17,7 +19,9 @@ import VinculosCard from "./_components/VinculosCard";
 import ProductosTab from "./_components/ProductosTab";
 import ChecklistTab from "./_components/ChecklistTab";
 
-type Tab = "datos" | "productos" | "contenedores" | "documentos" | "checklist" | "incidencias" | "historial";
+type Tab = "datos" | "productos" | "contenedores" | "documentos" | "checklist" | "gastos" | "incidencias" | "historial";
+
+const gs = (n: number) => `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
 
 const aFicha = (e: Exportacion): ExpFicha => ({
   cliente_id: e.cliente_id,
@@ -52,6 +56,7 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
   const [items, setItems] = useState<ExportacionItem[]>([]);
   const [contenedores, setContenedores] = useState<Contenedor[]>([]);
   const [incAbiertas, setIncAbiertas] = useState(0);
+  const [gastos, setGastos] = useState<GastoComex[]>([]);
   const [tab, setTab] = useState<Tab>("datos");
   const [ficha, setFicha] = useState<ExpFicha | null>(null);
   const fichaServidor = useRef<string | null>(null);
@@ -64,13 +69,15 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
 
   const load = useCallback(async () => {
     try {
-      const [d, it, co, inc] = await Promise.all([
+      const [d, it, co, inc, ga] = await Promise.all([
         api<{ exportacion: Exportacion; siguiente: EstadoExportacion | null; faltantes: string[]; factura: VinculoFactura | null; remision: VinculoRemision | null }>(
           `/api/exportaciones/${id}`
         ),
         api<{ items: ExportacionItem[] }>(`/api/exportaciones/${id}/items`),
         api<{ contenedores: Contenedor[] }>(`/api/exportaciones/${id}/contenedores`),
         api<{ incidencias: Incidencia[] }>(`/api/comex/incidencias?origen_tipo=EXPORTACION&origen_id=${id}`),
+        // Los gastos no son críticos: si fallan, la ficha se muestra igual.
+        api<{ gastos: GastoComex[] }>(`/api/comex/gastos?origen_tipo=EXPORTACION&origen_id=${id}`).catch(() => ({ gastos: [] })),
       ]);
       setExp(d.exportacion);
       // Si hay cambios sin guardar en Datos, no se pisan al recargar por otra pestaña.
@@ -84,6 +91,7 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
       setItems(it.items);
       setContenedores(co.contenedores);
       setIncAbiertas(inc.incidencias.filter((i) => incidenciaAbierta(i.estado)).length);
+      setGastos(ga.gastos);
       setRecargaHist((n) => n + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error de red");
@@ -153,6 +161,7 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
     { k: "contenedores", label: "Contenedores", badge: contenedores.length },
     { k: "documentos", label: "Documentos" },
     { k: "checklist", label: "Control de despacho" },
+    { k: "gastos", label: "Gastos", badge: gastos.length },
     { k: "incidencias", label: "Incidencias", badge: incAbiertas, alerta: true },
     { k: "historial", label: "Historial" },
   ];
@@ -172,6 +181,14 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
           Destino {exp.pais_destino} · Responsable {exp.responsable_nombre} · {exp.requiere_proforma ? "Lleva proforma" : `Sin proforma (${exp.motivo_sin_proforma ?? "—"})`} ·
           Creada por {exp.created_by_nombre ?? "—"} el {fechaHora(exp.created_at)}
         </p>
+        {gastos.length > 0 && (
+          <p className="text-sm text-slate-600">
+            Gastos incurridos <strong className="text-slate-900">{gs(totalesGastos(gastos).total)}</strong>
+            {totalesGastos(gastos).pendiente > 0 && (
+              <span className="text-amber-700"> · {gs(totalesGastos(gastos).pendiente)} sin pagar</span>
+            )}
+          </p>
+        )}
         {exp.aprobada_por_nombre && (
           <p className="text-xs text-emerald-700">
             Despacho aprobado por {exp.aprobada_por_nombre} el {fechaHora(exp.aprobada_at)}
@@ -306,6 +323,7 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
         </div>
       )}
       {tab === "checklist" && <ChecklistTab exp={exp} onCambio={() => void load()} />}
+      {tab === "gastos" && <GastosPanel origenTipo="EXPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "incidencias" && <IncidenciasPanel origenTipo="EXPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "historial" && <HistorialPanel origenTipo="EXPORTACION" origenId={id} recarga={recargaHist} />}
 
