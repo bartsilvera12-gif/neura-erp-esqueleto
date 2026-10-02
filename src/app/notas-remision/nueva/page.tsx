@@ -49,7 +49,9 @@ export default function EmitirNRPage() {
   const [docOrigen, setDocOrigen] = useState("");
   /** Id de la factura de la que salió, para dejarlas vinculadas. */
   const [facturaId, setFacturaId] = useState("");
-  const [avisoDoc, setAvisoDoc] = useState<string[]>([]);
+  /** Resultado de traer un documento: agrupado, para no llenar la pantalla. */
+  const [resDoc, setResDoc] = useState<{ ok: number; sinStock: string[]; sinVincular: string[]; parciales: string[] } | null>(null);
+  const [verDetalleDoc, setVerDetalleDoc] = useState(false);
   /** Timbrados activos: con cuál sale la nota. */
   type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean };
   const [timbrados, setTimbrados] = useState<TimbradoNR[]>([]);
@@ -133,7 +135,8 @@ export default function EmitirNRPage() {
   /** Trae cliente y productos de una factura o compromiso de venta, para no tipearlos. */
   async function traerDe(valor: string) {
     setDocElegido(valor);
-    setAvisoDoc([]);
+    setResDoc(null);
+    setVerDetalleDoc(false);
     if (!valor) { setDocOrigen(""); setFacturaId(""); return; }
     const [tipo, id] = valor.split(":");
     setFacturaId(tipo === "factura" ? id : "");
@@ -151,19 +154,21 @@ export default function EmitirNRPage() {
     const enStock = new Map(stockOrigen.map((p) => [p.producto_id, p]));
     const ids: string[] = [];
     const cants: Record<string, number> = {};
-    const avisos: string[] = [];
+    const sinStock: string[] = [];
+    const sinVincular: string[] = [];
+    const parciales: string[] = [];
     for (const it of d.items) {
       const p = it.producto_id ? enStock.get(it.producto_id) : undefined;
-      if (!it.producto_id) { avisos.push(`“${it.descripcion}” no está vinculado a un producto del inventario: no se pudo traer.`); continue; }
-      if (!p) { avisos.push(`“${it.descripcion}” no tiene stock en ${nombreUbic(origen)}: no se pudo traer.`); continue; }
+      if (!it.producto_id) { sinVincular.push(it.descripcion); continue; }
+      if (!p) { sinStock.push(it.descripcion); continue; }
       const cant = (cants[it.producto_id] ?? 0) + it.cantidad;
-      if (cant > p.stock) avisos.push(`“${p.nombre}”: el documento pide ${fmt(cant)} y en ${nombreUbic(origen)} hay ${fmt(p.stock)}. Se cargó lo que hay.`);
+      if (cant > p.stock) parciales.push(`${p.nombre}: pide ${fmt(cant)} y hay ${fmt(p.stock)}`);
       cants[it.producto_id] = Math.min(cant, p.stock);
       if (!ids.includes(it.producto_id)) ids.push(it.producto_id);
     }
     setProductosAgregados(ids);
     setCantidades(cants);
-    setAvisoDoc(avisos);
+    setResDoc({ ok: ids.length, sinStock, sinVincular, parciales });
   }
 
   /** Alta rápida: el cliente recién creado queda seleccionado al instante. */
@@ -182,6 +187,16 @@ export default function EmitirNRPage() {
   }, []);
 
   useEffect(() => { if (origen) cargarStock(origen); }, [origen, cargarStock]);
+
+  // Si ya se eligió un documento y se cambia el depósito, se vuelve a traer:
+  // lo que no había en un depósito puede estar en el otro.
+  const origenPrevio = useRef("");
+  useEffect(() => {
+    if (!docElegido || !origen || stockOrigen.length === 0) return;
+    if (origenPrevio.current && origenPrevio.current !== origen) void traerDe(docElegido);
+    origenPrevio.current = origen;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origen, stockOrigen]);
 
   const total = useMemo(
     () => Object.values(cantidades).reduce((s, n) => s + (n || 0), 0),
@@ -432,10 +447,44 @@ export default function EmitirNRPage() {
               )}
             </select>
             <p className="mt-1 text-xs text-slate-500">Trae el cliente y los productos con sus cantidades. Después se pueden corregir.</p>
-            {avisoDoc.length > 0 && (
-              <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-amber-800">
-                {avisoDoc.map((a) => <li key={a}>{a}</li>)}
-              </ul>
+            {resDoc && (
+              <div className="mt-2 space-y-1 text-xs">
+                <p className={resDoc.ok ? "font-medium text-emerald-800" : "font-medium text-rose-700"}>
+                  {resDoc.ok
+                    ? `Se trajeron ${resDoc.ok} producto(s).`
+                    : "No se pudo traer ningún producto de ese documento."}
+                </p>
+                {resDoc.sinStock.length > 0 && (
+                  <p className="text-amber-800">
+                    {resDoc.sinStock.length} producto(s) no tienen stock en <strong>{nombreUbic(origen)}</strong>.
+                    {" "}Probá cambiando el depósito de origen.
+                  </p>
+                )}
+                {resDoc.sinVincular.length > 0 && (
+                  <p className="text-amber-800">
+                    {resDoc.sinVincular.length} producto(s) de la factura no están en el inventario, así que no se pueden remitir.
+                  </p>
+                )}
+                {resDoc.parciales.length > 0 && (
+                  <p className="text-amber-800">
+                    {resDoc.parciales.length} producto(s) se cargaron con menos cantidad, porque no hay tanto en el depósito.
+                  </p>
+                )}
+                {(resDoc.sinStock.length > 0 || resDoc.sinVincular.length > 0 || resDoc.parciales.length > 0) && (
+                  <>
+                    <button type="button" onClick={() => setVerDetalleDoc((v) => !v)} className="font-semibold text-amber-900 underline">
+                      {verDetalleDoc ? "Ocultar detalle" : "Ver cuáles"}
+                    </button>
+                    {verDetalleDoc && (
+                      <div className="max-h-32 overflow-y-auto rounded bg-white/70 p-2 text-[11px] text-amber-900">
+                        {resDoc.sinStock.length > 0 && <p><strong>Sin stock acá:</strong> {resDoc.sinStock.join(" · ")}</p>}
+                        {resDoc.sinVincular.length > 0 && <p className="mt-1"><strong>Fuera del inventario:</strong> {resDoc.sinVincular.join(" · ")}</p>}
+                        {resDoc.parciales.length > 0 && <p className="mt-1"><strong>Cantidad recortada:</strong> {resDoc.parciales.join(" · ")}</p>}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center justify-between mb-3">
