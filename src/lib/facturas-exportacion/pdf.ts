@@ -212,11 +212,12 @@ export async function buildFacturaExportacionPdf(
   }
 
   // ── Tabla de ítems ──────────────────────────────────────────────────────
-  const colW = [52, 0, 64, 64, 46, 60];
-  colW[1] = CW - colW.reduce((a, b) => a + b, 0);
+  // Cantidad y unidad van en columnas separadas: el contador las lee por separado.
+  const colW = [40, 36, 0, 64, 64, 46, 60];
+  colW[2] = CW - colW.reduce((a, b) => a + b, 0);
   const colX: number[] = [];
   colW.reduce((x, w, i) => ((colX[i] = x), x + w), MX);
-  const heads = ["CANT.", "DESCRIPCIÓN", "PRECIO UNITARIO", "EXENTAS", "5%", "10%"];
+  const heads = ["CANT.", "UNIDAD", "DESCRIPCIÓN", "PRECIO UNITARIO", "EXENTAS", "5%", "10%"];
   const rowH = 13;
   // Última página: deja lugar para subtotales y totales. Páginas intermedias: hasta el pie.
   const bottomLimit = H - 205;
@@ -226,7 +227,7 @@ export async function buildFacturaExportacionPdf(
     c.page.drawRectangle({ x: MX, y: Y(top + 20), width: CW, height: 20, color: FONDO, borderColor: BORDE, borderWidth: 0.8 });
     heads.forEach((h, i) => {
       const w = reg.widthOfTextAtSize(h, 7);
-      text(c, h, i === 1 ? colX[i] + 8 : colX[i] + (colW[i] - w) / 2, top + 13, 7, reg, GRIS);
+      text(c, h, i === 2 ? colX[i] + 8 : colX[i] + (colW[i] - w) / 2, top + 13, 7, reg, GRIS);
     });
     return top + 20;
   };
@@ -256,14 +257,19 @@ export async function buildFacturaExportacionPdf(
     const base = y + 9;
     const iva = it.iva_tipo ?? "EXENTA";
     const cant = (Number(it.cantidad) || 0).toLocaleString("es-PY", { minimumFractionDigits: esExpo ? 2 : 0, maximumFractionDigits: 2 });
-    textRight(c, it.unidad ? `${cant} ${it.unidad}` : cant, colX[0] + colW[0] - 6, base, it.unidad ? 7.5 : 8.5);
+    textRight(c, cant, colX[0] + colW[0] - 6, base, 8.5);
+    const uni = (it.unidad ?? "").toUpperCase();
+    if (uni) {
+      const wu = reg.widthOfTextAtSize(uni, 7.5);
+      text(c, uni, colX[1] + (colW[1] - wu) / 2, base, 7.5, reg, TINTA, colW[1] - 4);
+    }
     const desc = `${it.codigo ? `${it.codigo}  ` : ""}${it.descripcion}`.toUpperCase();
-    text(c, desc, colX[1] + 6, base, 8, reg, TINTA, colW[1] - 10);
-    if (extra) text(c, extra, colX[1] + 6, base + 9, 6.8, reg, GRIS, colW[1] - 10);
-    textRight(c, num(it.precio_unitario), colX[2] + colW[2] - 6, base, 8.5);
-    textRight(c, num(iva === "EXENTA" ? it.subtotal : 0), colX[3] + colW[3] - 6, base, 8.5);
-    textRight(c, num(iva === "5" ? it.subtotal : 0), colX[4] + colW[4] - 6, base, 8.5);
-    textRight(c, num(iva === "10" ? it.subtotal : 0), colX[5] + colW[5] - 6, base, 8.5);
+    text(c, desc, colX[2] + 6, base, 8, reg, TINTA, colW[2] - 10);
+    if (extra) text(c, extra, colX[2] + 6, base + 9, 6.8, reg, GRIS, colW[2] - 10);
+    textRight(c, num(it.precio_unitario), colX[3] + colW[3] - 6, base, 8.5);
+    textRight(c, num(iva === "EXENTA" ? it.subtotal : 0), colX[4] + colW[4] - 6, base, 8.5);
+    textRight(c, num(iva === "5" ? it.subtotal : 0), colX[5] + colW[5] - 6, base, 8.5);
+    textRight(c, num(iva === "10" ? it.subtotal : 0), colX[6] + colW[6] - 6, base, 8.5);
     y += alto;
   });
   // La tabla local ocupa el alto disponible, como el talonario.
@@ -274,10 +280,10 @@ export async function buildFacturaExportacionPdf(
   t = tableBottom;
   c.page.drawRectangle({ x: MX, y: Y(t + 22), width: CW, height: 22, color: FONDO, borderColor: BORDE, borderWidth: 0.8 });
   text(c, "SUBTOTALES", MX + 10, t + 14.5, 8.5, bold);
-  if (esExpo) textRight(c, num(f.total), colX[2] + colW[2] - 6, t + 14.5, 9, bold);
-  textRight(c, num(f.total_exentas), colX[3] + colW[3] - 6, t + 14.5, 8.5);
-  textRight(c, num(f.total_gravado5), colX[4] + colW[4] - 6, t + 14.5, 8.5);
-  textRight(c, num(f.total_gravado10), colX[5] + colW[5] - 6, t + 14.5, 8.5);
+  if (esExpo) textRight(c, num(f.total), colX[3] + colW[3] - 6, t + 14.5, 9, bold);
+  textRight(c, num(f.total_exentas), colX[4] + colW[4] - 6, t + 14.5, 8.5);
+  textRight(c, num(f.total_gravado5), colX[5] + colW[5] - 6, t + 14.5, 8.5);
+  textRight(c, num(f.total_gravado10), colX[6] + colW[6] - 6, t + 14.5, 8.5);
   t += 28;
 
   // Total en letras + total + liquidación IVA

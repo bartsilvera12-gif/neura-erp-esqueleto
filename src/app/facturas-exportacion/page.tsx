@@ -46,6 +46,34 @@ export default function FacturasExportacionPage() {
   const [modo, setModo] = useState<"" | "prueba" | "real">("");
   const [modoPrueba, setModoPrueba] = useState<boolean | null>(null);
 
+  /** Columnas que se pueden ocultar, para que entren mejor las de la derecha. */
+  const COLUMNAS = [
+    { k: "tipo", label: "Tipo" },
+    { k: "fecha", label: "Fecha" },
+    { k: "cliente", label: "Cliente" },
+    { k: "pais", label: "País" },
+    { k: "total", label: "Total" },
+    { k: "estado", label: "Estado" },
+    { k: "emitida_por", label: "Emitida por" },
+  ] as const;
+  type ColKey = (typeof COLUMNAS)[number]["k"];
+  const [ocultas, setOcultas] = useState<ColKey[]>([]);
+  const [menuCol, setMenuCol] = useState(false);
+  const ve = (k: ColKey) => !ocultas.includes(k);
+  useEffect(() => {
+    try {
+      const g = localStorage.getItem("facturas_columnas_ocultas");
+      if (g) setOcultas(JSON.parse(g) as ColKey[]);
+    } catch { /* sin preferencia guardada */ }
+  }, []);
+  const alternar = (k: ColKey) =>
+    setOcultas((prev) => {
+      const next = prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k];
+      try { localStorage.setItem("facturas_columnas_ocultas", JSON.stringify(next)); } catch { /* noop */ }
+      return next;
+    });
+  const visibles = 2 + COLUMNAS.filter((c) => ve(c.k)).length;
+
   async function cargarModo() {
     const j = await fetch("/api/facturas-exportacion/config", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
@@ -375,51 +403,91 @@ export default function FacturasExportacionPage() {
 
         {error && <div className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
+        {/* Qué columnas se ven. Lo elegido queda guardado en este navegador. */}
+        <div className="relative mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setMenuCol((v) => !v)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Columnas{ocultas.length > 0 ? ` (${ocultas.length} ocultas)` : ""}
+          </button>
+          {menuCol && (
+            <>
+              <button type="button" aria-label="Cerrar" onClick={() => setMenuCol(false)} className="fixed inset-0 z-10 cursor-default border-0 bg-transparent p-0" />
+              <div className="absolute right-0 top-9 z-20 w-60 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+                <p className="px-2 pb-1 text-[11px] uppercase tracking-wide text-slate-400">Mostrar en la tabla</p>
+                {COLUMNAS.map((c) => (
+                  <label key={c.k} className="flex cursor-pointer select-none items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                    <input type="checkbox" checked={ve(c.k)} onChange={() => alternar(c.k)} className="h-4 w-4 rounded border-slate-300" />
+                    {c.label}
+                  </label>
+                ))}
+                <p className="px-2 pt-1 text-[11px] text-slate-400">Número y Acción siempre se ven.</p>
+                {ocultas.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setOcultas([]); try { localStorage.removeItem("facturas_columnas_ocultas"); } catch {} }}
+                    className="mt-1 w-full rounded px-2 py-1 text-left text-xs font-medium text-[#3F8E91] hover:bg-slate-50"
+                  >
+                    Mostrar todas
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-[11px] uppercase tracking-wide text-slate-500">
-                <th className="py-2 pr-3">Tipo</th>
+                {ve("tipo") && <th className="py-2 pr-3">Tipo</th>}
                 <th className="py-2 pr-3">Número</th>
-                <th className="py-2 pr-3">Fecha</th>
-                <th className="py-2 pr-3">Cliente</th>
-                <th className="py-2 pr-3">País</th>
-                <th className="py-2 pr-3 text-right">Total</th>
-                <th className="py-2 pr-3">Estado</th>
-                <th className="py-2 pr-3">Emitida por</th>
+                {ve("fecha") && <th className="py-2 pr-3">Fecha</th>}
+                {ve("cliente") && <th className="py-2 pr-3">Cliente</th>}
+                {ve("pais") && <th className="py-2 pr-3">País</th>}
+                {ve("total") && <th className="py-2 pr-3 text-right">Total</th>}
+                {ve("estado") && <th className="py-2 pr-3">Estado</th>}
+                {ve("emitida_por") && <th className="py-2 pr-3">Emitida por</th>}
                 <th className="py-2 pr-3 text-right">Acción</th>
               </tr>
             </thead>
             <tbody>
               {cargando && (
-                <tr><td colSpan={9} className="py-8 text-center text-slate-400">Cargando…</td></tr>
+                <tr><td colSpan={visibles} className="py-8 text-center text-slate-400">Cargando…</td></tr>
               )}
               {!cargando && filas.length === 0 && (
-                <tr><td colSpan={9} className="py-8 text-center text-slate-400">No hay facturas con esos filtros.</td></tr>
+                <tr><td colSpan={visibles} className="py-8 text-center text-slate-400">No hay facturas con esos filtros.</td></tr>
               )}
               {filas.map((f) => (
                 <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50/70">
-                  <td className="py-2 pr-3 text-xs">
-                    <span className={`rounded-full px-2 py-0.5 font-semibold ${f.tipo === "LOCAL" ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}>
-                      {f.tipo === "LOCAL" ? "Local" : "Exportación"}
-                    </span>
-                  </td>
+                  {ve("tipo") && (
+                    <td className="py-2 pr-3 text-xs">
+                      <span className={`rounded-full px-2 py-0.5 font-semibold ${f.tipo === "LOCAL" ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}>
+                        {f.tipo === "LOCAL" ? "Local" : "Exportación"}
+                      </span>
+                    </td>
+                  )}
                   <td className="py-2 pr-3 font-mono text-slate-800">
                     {f.numero_formateado ?? <span className="font-sans text-xs text-slate-400">sin número</span>}
                     {f.prueba && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Prueba</span>}
                     {f.regularizacion_id && <span className="ml-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">Reemisión</span>}
                   </td>
-                  <td className="py-2 pr-3">
-                    {fechaES(f.fecha)}
-                    <div className="whitespace-nowrap text-[11px] text-slate-400">
-                      {f.estado === "BORRADOR"
-                        ? `Guardado ${fechaHora(f.updated_at ?? f.created_at)}`
-                        : `Emitida ${fechaHora(f.emitida_at ?? f.created_at)}`}
-                    </div>
-                  </td>
-                  <td className="py-2 pr-3">{f.cliente_nombre}</td>
-                  <td className="py-2 pr-3">{f.cliente_pais}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{fmt(f.total, f.moneda)}</td>
+                  {ve("fecha") && (
+                    <td className="py-2 pr-3">
+                      {fechaES(f.fecha)}
+                      <div className="whitespace-nowrap text-[11px] text-slate-400">
+                        {f.estado === "BORRADOR"
+                          ? `Guardado ${fechaHora(f.updated_at ?? f.created_at)}`
+                          : `Emitida ${fechaHora(f.emitida_at ?? f.created_at)}`}
+                      </div>
+                    </td>
+                  )}
+                  {ve("cliente") && <td className="py-2 pr-3">{f.cliente_nombre}</td>}
+                  {ve("pais") && <td className="py-2 pr-3">{f.cliente_pais}</td>}
+                  {ve("total") && <td className="py-2 pr-3 text-right tabular-nums">{fmt(f.total, f.moneda)}</td>}
+                  {ve("estado") && (
                   <td className="py-2 pr-3">
                     {f.estado === "ANULADA" ? (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Anulada</span>
@@ -429,7 +497,8 @@ export default function FacturasExportacionPage() {
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Emitida</span>
                     )}
                   </td>
-                  <td className="py-2 pr-3 text-xs text-slate-500">{f.created_by_nombre ?? "—"}</td>
+                  )}
+                  {ve("emitida_por") && <td className="py-2 pr-3 text-xs text-slate-500">{f.created_by_nombre ?? "—"}</td>}
                   <td className="py-2 pr-3 text-right">
                     <div className="inline-flex gap-2">
                       {f.estado === "BORRADOR" ? (
