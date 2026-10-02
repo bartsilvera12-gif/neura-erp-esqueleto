@@ -469,10 +469,18 @@ export default function FacturasExportacionPage() {
                       </span>
                     </td>
                   )}
-                  <td className="py-2 pr-3 font-mono text-slate-800">
-                    {f.numero_formateado ?? <span className="font-sans text-xs text-slate-400">sin número</span>}
-                    {f.prueba && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Prueba</span>}
-                    {f.regularizacion_id && <span className="ml-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">Reemisión</span>}
+                  {/* El número en su renglón, sin partirse, y las etiquetas debajo:
+                      así todas las filas se ven igual. */}
+                  <td className="py-2 pr-3 align-top">
+                    <div className="whitespace-nowrap font-mono text-slate-800">
+                      {f.numero_formateado ?? <span className="font-sans text-xs text-slate-400">sin número</span>}
+                    </div>
+                    {(f.prueba || f.regularizacion_id) && (
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {f.prueba && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Prueba</span>}
+                        {f.regularizacion_id && <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">Reemisión</span>}
+                      </div>
+                    )}
                   </td>
                   {ve("fecha") && (
                     <td className="py-2 pr-3">
