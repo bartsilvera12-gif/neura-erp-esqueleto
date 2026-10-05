@@ -213,7 +213,10 @@ export async function buildFacturaExportacionPdf(
 
   // ── Tabla de ítems ──────────────────────────────────────────────────────
   // Cantidad y unidad van en columnas separadas: el contador las lee por separado.
-  const colW = [40, 36, 0, 64, 64, 46, 60];
+  // Excepción "Aduanas": esas facturas ya se presentaron sin la columna UNIDAD y
+  // sin el código del artículo, así que la reimpresión las omite.
+  const sinUnidad = f.formato_aduana === true;
+  const colW = [40, sinUnidad ? 0 : 36, 0, 64, 64, 46, 60];
   colW[2] = CW - colW.reduce((a, b) => a + b, 0);
   const colX: number[] = [];
   colW.reduce((x, w, i) => ((colX[i] = x), x + w), MX);
@@ -226,6 +229,7 @@ export async function buildFacturaExportacionPdf(
   const drawHead = (top: number) => {
     c.page.drawRectangle({ x: MX, y: Y(top + 20), width: CW, height: 20, color: FONDO, borderColor: BORDE, borderWidth: 0.8 });
     heads.forEach((h, i) => {
+      if (sinUnidad && i === 1) return;
       const w = reg.widthOfTextAtSize(h, 7);
       text(c, h, i === 2 ? colX[i] + 8 : colX[i] + (colW[i] - w) / 2, top + 13, 7, reg, GRIS);
     });
@@ -233,8 +237,10 @@ export async function buildFacturaExportacionPdf(
   };
   const drawBody = (top: number, bottom: number) => {
     c.page.drawRectangle({ x: MX, y: Y(bottom), width: CW, height: bottom - top, borderColor: BORDE, borderWidth: 0.8 });
-    for (let i = 1; i < colX.length; i++)
+    for (let i = 1; i < colX.length; i++) {
+      if (sinUnidad && i === 1) continue;
       c.page.drawLine({ start: { x: colX[i], y: Y(top) }, end: { x: colX[i], y: Y(bottom) }, thickness: 0.5, color: BORDE });
+    }
   };
 
   let tableTop = t;
@@ -258,12 +264,12 @@ export async function buildFacturaExportacionPdf(
     const iva = it.iva_tipo ?? "EXENTA";
     const cant = (Number(it.cantidad) || 0).toLocaleString("es-PY", { minimumFractionDigits: esExpo ? 2 : 0, maximumFractionDigits: 2 });
     textRight(c, cant, colX[0] + colW[0] - 6, base, 8.5);
-    const uni = (it.unidad ?? "").toUpperCase();
+    const uni = sinUnidad ? "" : (it.unidad ?? "").toUpperCase();
     if (uni) {
       const wu = reg.widthOfTextAtSize(uni, 7.5);
       text(c, uni, colX[1] + (colW[1] - wu) / 2, base, 7.5, reg, TINTA, colW[1] - 4);
     }
-    const desc = `${it.codigo ? `${it.codigo}  ` : ""}${it.descripcion}`.toUpperCase();
+    const desc = `${!sinUnidad && it.codigo ? `${it.codigo}  ` : ""}${it.descripcion}`.toUpperCase();
     text(c, desc, colX[2] + 6, base, 8, reg, TINTA, colW[2] - 10);
     if (extra) text(c, extra, colX[2] + 6, base + 9, 6.8, reg, GRIS, colW[2] - 10);
     textRight(c, num(it.precio_unitario), colX[3] + colW[3] - 6, base, 8.5);

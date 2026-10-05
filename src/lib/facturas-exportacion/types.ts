@@ -62,6 +62,8 @@ export interface FacturaExportacion {
   anulada_por_nombre?: string | null;
   regularizacion?: boolean;
   prueba?: boolean;
+  /** Solo impresión: formato excepcional de las facturas presentadas ante Aduanas. */
+  formato_aduana?: boolean;
   regularizacion_id?: string | null;
   emitida_at?: string | null;
   created_at: string;
