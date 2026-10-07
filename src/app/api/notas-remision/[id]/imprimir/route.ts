@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { cabeceraDoc, esc, fechaDoc, filasVacias, paginaDoc } from "@/lib/documentos/formato";
 import { EMPRESA_DOC } from "@/lib/documentos/membrete";
+import { EMPRESA_FACTURA } from "@/lib/facturas-exportacion/config";
 
 /**
  * GET /api/notas-remision/[id]/imprimir?auto=1
@@ -20,6 +21,18 @@ export async function GET(request: NextRequest, p: { params: Promise<{ id: strin
   const { data, error } = await ctx.supabase.from("notas_remision").select("*").eq("empresa_id", emp).eq("id", id).maybeSingle();
   if (error || !data) return new NextResponse("Nota de remisión no encontrada", { status: 404 });
   const nr = data as Record<string, unknown>;
+
+  // Vigencia del timbrado: por el timbrado elegido al emitir; si la nota es vieja
+  // y no quedó vinculada, se busca por el número de timbrado impreso.
+  type VigenciaTimbrado = { vigencia_desde: string | null; vigencia_hasta: string | null };
+  let cfgTimbrado: VigenciaTimbrado | null = null;
+  if (nr.timbrado_config_id || nr.timbrado) {
+    const q = ctx.supabase.from("notas_remision_config").select("vigencia_desde, vigencia_hasta").eq("empresa_id", emp);
+    const { data: cfg } = await (nr.timbrado_config_id
+      ? q.eq("id", String(nr.timbrado_config_id)).maybeSingle()
+      : q.eq("timbrado", String(nr.timbrado)).limit(1).maybeSingle());
+    cfgTimbrado = (cfg ?? null) as VigenciaTimbrado | null;
+  }
 
   // El documento de origen se rotula "Fact. de Exportación" solo si realmente lo es.
   const nroOrigen = String(nr.documento_origen ?? "").replace(/^factura\s*/i, "").trim();
@@ -48,9 +61,9 @@ export async function GET(request: NextRequest, p: { params: Promise<{ id: strin
   const nombreUb = new Map(((ubs.data ?? []) as { id: string; nombre: string }[]).map((u) => [u.id, u.nombre]));
 
   const prods = items.length
-    ? (await ctx.supabase.from("productos").select("id, nombre").eq("empresa_id", emp).in("id", items.map((i) => i.producto_id))).data ?? []
+    ? (await ctx.supabase.from("productos").select("id, nombre, sku, unidad_medida").eq("empresa_id", emp).in("id", items.map((i) => i.producto_id))).data ?? []
     : [];
-  const porId = new Map((prods as { id: string; nombre: string }[]).map((p) => [p.id, p]));
+  const porId = new Map((prods as { id: string; nombre: string; sku: string | null; unidad_medida: string | null }[]).map((p) => [p.id, p]));
 
   const c = (cli.data ?? null) as Record<string, unknown> | null;
   const aCliente = (nr.destino_tipo ?? "deposito") === "cliente";
@@ -64,13 +77,23 @@ export async function GET(request: NextRequest, p: { params: Promise<{ id: strin
       : "";
   const cant = (n: unknown) => Number(n || 0).toLocaleString("es-PY");
 
+  const vigencia =
+    cfgTimbrado && (cfgTimbrado.vigencia_desde || cfgTimbrado.vigencia_hasta)
+      ? `${fechaDoc(cfgTimbrado.vigencia_desde)} - ${fechaDoc(cfgTimbrado.vigencia_hasta)}`
+      : "";
+
   const cuerpo = `
   ${cabeceraDoc({
     titulo: "NOTA DE REMISION",
     numero: String(nr.numero ?? ""),
-    extra: `<div style="font-size:10px">RUC.: ${esc(EMPRESA_DOC.ruc)}</div>`,
+    // Mismo bloque de datos que la factura de exportación.
+    fiscales: [
+      ["RUC", EMPRESA_DOC.ruc],
+      ...(nr.timbrado ? ([["TIMBRADO", String(nr.timbrado)]] as [string, string][]) : []),
+      ...(vigencia ? ([["VIGENCIA", vigencia]] as [string, string][]) : []),
+      ["AUTOIMPRESOR", EMPRESA_FACTURA.autoimpresorNro],
+    ],
   })}
-  ${nr.timbrado ? `<div style="text-align:right;font-size:10px;margin:-1px 0 3px">Timbrado Nº ${esc(nr.timbrado)}</div>` : ""}
   ${nr.prueba ? `<div style="border:2px solid #b45309;color:#b45309;font-weight:bold;text-align:center;padding:5px;margin-bottom:3px;letter-spacing:2px">PRUEBA · SIN VALOR</div>` : ""}
   <div class="box pad">
     <div class="fila"><span class="l" style="flex-basis:170px">Nombre / Razon Social:</span><span>${esc(destinatario.toUpperCase())}</span></div>
@@ -96,12 +119,15 @@ export async function GET(request: NextRequest, p: { params: Promise<{ id: strin
     }
   </div>
   <table class="g">
-    <thead><tr><th style="width:18%">Cantidad</th><th>Descripcion de articulo</th></tr></thead>
+    <thead><tr><th style="width:18%">Cantidad</th><th style="width:16%">Unidad de medida</th><th>Descripcion de articulo</th></tr></thead>
     <tbody>
       ${items
-        .map((i) => `<tr><td class="c">${cant(i.cantidad)}</td><td>${esc(porId.get(i.producto_id)?.nombre ?? "")}</td></tr>`)
+        .map((i) => {
+          const p = porId.get(i.producto_id);
+          return `<tr><td class="c">${cant(i.cantidad)}</td><td class="c">${esc((p?.unidad_medida ?? "").toUpperCase())}</td><td>${esc([p?.sku, p?.nombre].filter(Boolean).join(" "))}</td></tr>`;
+        })
         .join("")}
-      ${filasVacias(Math.max(1, FILAS_MIN - items.length), 2)}
+      ${filasVacias(Math.max(1, FILAS_MIN - items.length), 3)}
     </tbody>
   </table>
   ${nr.observaciones ? `<div class="box pad" style="margin-top:3px">Observaciones: ${esc(nr.observaciones)}</div>` : ""}

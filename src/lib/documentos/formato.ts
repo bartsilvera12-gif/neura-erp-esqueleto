@@ -27,8 +27,12 @@ export const CSS_DOC = `
   .cab .logo{flex:0 0 38%;display:flex;align-items:center;justify-content:center}
   .cab .logo img{max-width:100%;max-height:80px;object-fit:contain}
   .cab .emp{flex:1;text-align:center;font-size:11px;line-height:1.35}
-  .cab .tit{flex:0 0 27%;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:10px}
+  .cab .tit{flex:0 0 27%;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:6px}
   .cab .tit .t{font-size:15px;line-height:1.2}
+  .cab .tit .nro{font-size:15px;font-weight:bold;letter-spacing:.5px}
+  .cab .tit .fisc{margin-top:4px;text-align:left;font-size:8.5px;line-height:1.55}
+  .cab .tit .fisc div{display:flex;gap:4px;white-space:nowrap}
+  .cab .tit .fisc .k{flex:0 0 36%;color:#444;text-transform:uppercase;font-size:7px;letter-spacing:.2px;align-self:center}
   .fila{display:flex;gap:8px;padding:3px 0}
   .fila .l{flex:0 0 130px}
   .dos{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
@@ -49,7 +53,15 @@ export const CSS_DOC = `
 `;
 
 /** Cabecera: [logo] [datos de la empresa] [título + número]. */
-export function cabeceraDoc(o: { titulo: string; numero: string; conLogo?: boolean; conActividad?: boolean; extra?: string }): string {
+export function cabeceraDoc(o: {
+  titulo: string;
+  numero: string;
+  conLogo?: boolean;
+  conActividad?: boolean;
+  extra?: string;
+  /** Datos fiscales bajo el número (RUC, timbrado, vigencia…), como en la factura. */
+  fiscales?: [string, string][];
+}): string {
   const e = EMPRESA_DOC;
   const datos = [
     ...(o.conActividad === false ? [] : e.actividad.map((a) => a.toUpperCase())),
@@ -59,7 +71,13 @@ export function cabeceraDoc(o: { titulo: string; numero: string; conLogo?: boole
   return `<div class="cab">
     ${o.conLogo === false ? "" : `<div class="logo"><img src="${esc(e.logoUrl)}" alt="${esc(e.nombre)}"></div>`}
     <div class="emp">${datos.map((d) => `<div>${esc(d)}</div>`).join("")}</div>
-    <div class="tit">${o.extra ?? ""}<div class="t">${esc(o.titulo)}</div><div>${esc(o.numero)}</div></div>
+    <div class="tit">${o.extra ?? ""}<div class="t">${esc(o.titulo)}</div><div class="nro">${esc(o.numero)}</div>${
+      o.fiscales?.length
+        ? `<div class="fisc">${o.fiscales
+            .map(([k, v]) => `<div><span class="k">${esc(k)}</span><span>${esc(v)}</span></div>`)
+            .join("")}</div>`
+        : ""
+    }</div>
   </div>`;
 }
 
