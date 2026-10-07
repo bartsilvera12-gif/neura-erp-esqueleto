@@ -44,6 +44,20 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
       if (saldo === null && r.origen === "venta_contado") saldo = 0;
     }
   }
+  // Recibo suelto (sin venta ni cuenta): el saldo es lo que el cliente sigue
+  // debiendo en total, que es lo que pidió ver la clienta en el recibo.
+  if (saldo === null && r.cliente_id) {
+    const ctas = await ctx.supabase
+      .from("cuentas_por_cobrar")
+      .select("saldo")
+      .eq("empresa_id", emp)
+      .eq("cliente_id", String(r.cliente_id));
+    const filas = (ctas.data ?? []) as { saldo: number | null }[];
+    if (filas.length) saldo = filas.reduce((a, c) => a + (Number(c.saldo) || 0), 0);
+  }
+  // Sin nada a qué referirse, el recibo se cobra entero: total = monto, saldo 0.
+  if (totalFactura === null) totalFactura = monto;
+  if (saldo === null) saldo = 0;
   const telQ = r.cliente_id ? await ctx.supabase.from("clientes").select("telefono").eq("empresa_id", emp).eq("id", String(r.cliente_id)).maybeSingle() : null;
   const telefono = (telQ?.data as { telefono?: string | null } | null)?.telefono ?? "";
 
@@ -72,9 +86,9 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
         <div class="fila"><span class="l" style="flex-basis:100px">Fecha Emisión:</span><span>${fechaDoc(r.fecha)}</span></div>
       </div>
       <div>
-        ${totalFactura !== null ? `<div class="fila"><span class="l" style="flex-basis:100px">Total Factura:</span><span>${num(totalFactura, moneda)}</span></div>` : ""}
+        <div class="fila"><span class="l" style="flex-basis:100px">Total Factura:</span><span>${num(totalFactura, moneda)}</span></div>
         <div class="fila"><span class="l" style="flex-basis:100px">Cobrado:</span><span>${num(monto, moneda)}</span></div>
-        ${saldo !== null ? `<div class="fila"><span class="l" style="flex-basis:100px">Saldo:</span><span>${num(saldo, moneda)}</span></div>` : ""}
+        <div class="fila"><span class="l" style="flex-basis:100px">Saldo:</span><span>${num(saldo, moneda)}</span></div>
       </div>
     </div>
   </div>

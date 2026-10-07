@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
   const p = pq.data as Record<string, unknown>;
   const itq = await ctx.supabase
     .from("presupuesto_items")
-    .select("producto_nombre, sku, cantidad, precio_unitario, total")
+    .select("producto_nombre, sku, cantidad, unidad_medida, precio_unitario, total")
     .eq("empresa_id", emp)
     .eq("presupuesto_id", id)
     .order("created_at", { ascending: true });
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
   const numero = `CV -   ${String(p.numero_control ?? "").replace(/\D/g, "").padStart(7, "0")}`;
 
   const cuerpo = `
-  ${cabeceraDoc({ titulo: "COMPROMISO DE VENTAS", numero, conLogo: false })}
+  ${cabeceraDoc({ titulo: "COMPROMISO DE VENTAS", numero })}
   <div class="box pad dos">
     <div>
       <div class="fila"><span class="l" style="flex-basis:80px">Fecha:</span><span>${fechaDoc(p.fecha)}</span></div>
@@ -58,12 +58,19 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
     </div>
   </div>
   <table class="g">
-    <thead><tr><th style="width:90px">Código</th><th style="width:70px">Cantidad</th><th>Descripción</th><th style="width:90px">Unitario</th><th style="width:95px">Total</th></tr></thead>
+    <thead><tr><th style="width:90px">Código</th><th style="width:70px">Cantidad</th><th style="width:80px">Unidad</th><th>Descripción</th><th style="width:90px">Unitario</th><th style="width:95px">Total</th></tr></thead>
     <tbody>
-      ${items.map((it) => `<tr><td class="c">${esc(it.sku)}</td><td class="c">${num(it.cantidad)}</td><td>${esc(it.producto_nombre)}</td><td class="r">${num(it.precio_unitario)}</td><td class="r">${num(it.total)}</td></tr>`).join("")}
-      ${filasVacias(Math.max(1, 26 - items.length), 5)}
+      ${items
+        .map(
+          (it) =>
+            `<tr><td class="c">${esc(it.sku)}</td><td class="c">${num(it.cantidad)}</td><td class="c">${esc(
+              String(it.unidad_medida ?? "UN").toUpperCase()
+            )}</td><td>${esc(it.producto_nombre)}</td><td class="r">${num(it.precio_unitario)}</td><td class="r">${num(it.total)}</td></tr>`
+        )
+        .join("")}
+      ${filasVacias(Math.max(1, 26 - items.length), 6)}
     </tbody>
-    <tfoot><tr><th style="text-align:left">Total</th><th colspan="3" style="text-align:left;text-transform:uppercase">&nbsp;&nbsp;${esc(numeroALetras(Number(p.total) || 0))}</th><th class="r" style="text-align:right">${num(p.total)}</th></tr></tfoot>
+    <tfoot><tr><th style="text-align:left">Total</th><th colspan="4" style="text-align:left;text-transform:uppercase">&nbsp;&nbsp;${esc(numeroALetras(Number(p.total) || 0))}</th><th class="r" style="text-align:right">${num(p.total)}</th></tr></tfoot>
   </table>
   ${p.observaciones ? `<div class="box pad" style="margin-top:3px">Observaciones: ${esc(p.observaciones)}</div>` : ""}
   <div class="box firmas" style="margin-top:6px;padding-top:44px">
