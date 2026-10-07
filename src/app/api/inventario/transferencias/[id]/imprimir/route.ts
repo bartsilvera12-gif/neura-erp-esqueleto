@@ -31,8 +31,16 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
   const unidad = new Map(((pr.data ?? []) as { id: string; unidad_medida: string | null }[]).map((p) => [p.id, p.unidad_medida ?? ""]));
   const cant = (n: unknown) => (Number(n) || 0).toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  // Quién la hizo: el movimiento no siempre guarda el nombre, pero sí quién lo creó.
+  let usuario = String(cab.usuario_nombre ?? "");
+  if (!usuario && cab.created_by) {
+    const uq = await ctx.supabase.from("usuarios").select("nombre, email").eq("id", String(cab.created_by)).maybeSingle();
+    const u = (uq.data ?? null) as { nombre?: string | null; email?: string | null } | null;
+    usuario = u?.nombre?.trim() || u?.email || "";
+  }
+
   const cuerpo = `
-  ${cabeceraDoc({ titulo: "TRANSFERENCIA ENTRE DEPÓSITOS", numero: `Nro. de comprobante  ${String(cab.referencia ?? "").replace(/^TRANSF-/, "")}`, conLogo: false })}
+  ${cabeceraDoc({ titulo: "TRANSFERENCIA ENTRE DEPÓSITOS", numero: `Nro. de comprobante  ${String(cab.referencia ?? "").replace(/^TRANSF-/, "")}` })}
   <div class="box pad dos">
     <div>
       <div class="fila"><span class="l" style="flex-basis:80px">FECHA:</span><span>${fechaDoc(cab.fecha ?? cab.created_at)}</span></div>
@@ -40,7 +48,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
     </div>
     <div>
       <div class="fila"><span class="l">TIPO:</span><span>TRASLADO</span></div>
-      <div class="fila"><span class="l">USUARIO:</span><span>${esc(cab.usuario_nombre)}</span></div>
+      <div class="fila"><span class="l">USUARIO:</span><span>${esc(usuario)}</span></div>
       <div class="fila"><span class="l">DEPOSITO ORIGEN:</span><span>${esc(origenId ? (nombre.get(origenId) ?? "") : "").toUpperCase()}</span></div>
       <div class="fila"><span class="l">DEPOSITO DESTINO:</span><span>${esc(destinoId ? (nombre.get(destinoId) ?? "") : "").toUpperCase()}</span></div>
     </div>
