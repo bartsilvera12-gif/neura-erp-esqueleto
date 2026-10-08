@@ -7,6 +7,8 @@ export interface CrearReciboInput {
   venta_id?: string | null;
   cobro_cliente_id?: string | null;
   observaciones?: string | null;
+  /** Compromiso de venta que se está cobrando (anticipo o pago total). */
+  presupuesto_id?: string | null;
   /** Solo para `origen: "manual"`. */
   manual?: {
     cliente_id?: string | null;
@@ -30,7 +32,7 @@ export class ReciboError extends Error {
 
 const RECIBO_COLS =
   "id, numero_recibo, cliente_id, cliente_nombre, cliente_documento, origen, venta_id, " +
-  "cuenta_por_cobrar_id, cobro_cliente_id, fecha, moneda, monto, metodo_pago, referencia, concepto, observaciones, usuario_nombre, anulado";
+  "cuenta_por_cobrar_id, cobro_cliente_id, presupuesto_id, fecha, moneda, monto, metodo_pago, referencia, concepto, observaciones, usuario_nombre, anulado";
 
 async function siguienteNumero(sb: AppSupabaseClient, empresaId: string): Promise<string> {
   const { data, error } = await sb
@@ -197,6 +199,68 @@ export async function crearOReusarRecibo(
     });
   }
 
+  // ── Cobro de un compromiso de venta (anticipo o pago total) ─────────────
+  if (input.origen === "manual" && input.presupuesto_id) {
+    const m = input.manual;
+    const monto = Number(m?.monto);
+    if (!Number.isFinite(monto) || monto <= 0) throw new ReciboError("El monto debe ser mayor a 0.");
+
+    const pq = await sb
+      .from("presupuestos")
+      .select("id, numero_control, cliente_id, cliente_nombre, cliente_ruc, moneda, total")
+      .eq("empresa_id", empresaId)
+      .eq("id", input.presupuesto_id)
+      .maybeSingle();
+    if (pq.error) throw new ReciboError(pq.error.message, 500);
+    const pre = pq.data as unknown as {
+      id: string; numero_control: string | null; cliente_id: string | null;
+      cliente_nombre: string | null; cliente_ruc: string | null; moneda: string | null; total: number | null;
+    } | null;
+    if (!pre) throw new ReciboError("El compromiso de venta no existe.", 404);
+
+    // Lo ya cobrado no se puede volver a cobrar.
+    const prev = await sb
+      .from("recibos_dinero")
+      .select("monto")
+      .eq("empresa_id", empresaId)
+      .eq("presupuesto_id", pre.id)
+      .eq("anulado", false);
+    if (prev.error) throw new ReciboError(prev.error.message, 500);
+    const cobrado = ((prev.data ?? []) as { monto: number | null }[]).reduce((a, r) => a + (Number(r.monto) || 0), 0);
+    const totalCompromiso = Number(pre.total) || 0;
+    const saldo = Math.max(0, totalCompromiso - cobrado);
+    if (saldo <= 0) throw new ReciboError("El compromiso ya está cobrado por completo.");
+    if (monto > saldo + 0.001)
+      throw new ReciboError(`El monto supera el saldo del compromiso (${saldo.toLocaleString("es-PY")}).`);
+
+    const clienteId = pre.cliente_id ? String(pre.cliente_id) : null;
+    const { nombre, documento } = clienteId
+      ? await nombreYDoc(sb, empresaId, clienteId)
+      : { nombre: pre.cliente_nombre?.trim() || "Consumidor final", documento: pre.cliente_ruc ?? null };
+    const esTotal = monto >= saldo - 0.001;
+    const numero = pre.numero_control ?? "";
+
+    return await insertarRecibo(sb, empresaId, usuario, {
+      cliente_id: clienteId,
+      cliente_nombre: nombre,
+      cliente_documento: documento,
+      origen: "manual",
+      venta_id: null,
+      cuenta_por_cobrar_id: null,
+      cobro_cliente_id: null,
+      presupuesto_id: pre.id,
+      moneda: pre.moneda === "USD" ? "USD" : "PYG",
+      monto,
+      metodo_pago: (m?.metodo_pago ?? "efectivo").trim() || "efectivo",
+      entidad_bancaria_id: null,
+      referencia: m?.referencia?.trim() || null,
+      concepto:
+        m?.concepto?.trim() ||
+        `${esTotal && cobrado === 0 ? "Pago total" : esTotal ? "Saldo" : "Anticipo"} del compromiso de venta ${numero}`.trim(),
+      observaciones: input.observaciones ?? null,
+    });
+  }
+
   // ── Recibo manual (no atado a una venta ni a un cobro) ──────────────────
   if (input.origen === "manual") {
     const m = input.manual;
@@ -280,6 +344,7 @@ export async function listarRecibos(
     origen?: OrigenRecibo | null;
     buscar?: string | null;
     incluirAnulados?: boolean;
+    presupuestoId?: string | null;
   }
 ): Promise<Record<string, unknown>[]> {
   let q = sb
@@ -292,6 +357,7 @@ export async function listarRecibos(
   if (filtros.desde) q = q.gte("fecha", filtros.desde);
   if (filtros.hasta) q = q.lte("fecha", filtros.hasta);
   if (filtros.origen) q = q.eq("origen", filtros.origen);
+  if (filtros.presupuestoId) q = q.eq("presupuesto_id", filtros.presupuestoId);
   if (!filtros.incluirAnulados) q = q.eq("anulado", false);
   const b = filtros.buscar?.trim();
   if (b) q = q.or(`numero_recibo.ilike.%${b}%,cliente_nombre.ilike.%${b}%,concepto.ilike.%${b}%`);
@@ -309,6 +375,7 @@ type InsertData = {
   venta_id: string | null;
   cuenta_por_cobrar_id: string | null;
   cobro_cliente_id: string | null;
+  presupuesto_id?: string | null;
   moneda: string;
   monto: number;
   metodo_pago: string | null;

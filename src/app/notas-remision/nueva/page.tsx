@@ -144,7 +144,7 @@ export default function EmitirNRPage() {
     setFacturaId(tipo === "factura" ? id : "");
     const j = await fetch(`/api/notas-remision/origenes?tipo=${tipo}&id=${id}`, { credentials: "include", cache: "no-store" }).then((r) => r.json()).catch(() => null);
     if (!j?.success) { setError(j?.error ?? "No se pudo traer el documento."); return; }
-    const d = j.data as { documento: string; cliente: { id: string | null; nombre: string | null; direccion: string | null; ciudad: string | null }; items: { producto_id: string | null; descripcion: string; cantidad: number }[] };
+    const d = j.data as { documento: string; ubicacion_id?: string | null; cliente: { id: string | null; nombre: string | null; direccion: string | null; ciudad: string | null }; items: { producto_id: string | null; descripcion: string; cantidad: number }[] };
     setDocOrigen(d.documento);
     // La mercadería va al cliente del documento.
     setDestinoTipo("cliente");
@@ -153,7 +153,18 @@ export default function EmitirNRPage() {
     setDestNombre(d.cliente.nombre ?? "");
     setDestDireccion(d.cliente.direccion ?? "");
     setDestCiudad(d.cliente.ciudad ?? "");
-    const enStock = new Map(stockOrigen.map((p) => [p.producto_id, p]));
+    // El compromiso de venta dice de qué almacén sale: la nota arranca en ese.
+    let stock = stockOrigen;
+    if (d.ubicacion_id && d.ubicacion_id !== origen) {
+      setOrigen(d.ubicacion_id);
+      origenPrevio.current = d.ubicacion_id;
+      const r = await fetchStockDeposito(d.ubicacion_id, { soloConStock: true });
+      if (r.ok) {
+        stock = r.data.items;
+        setStockOrigen(stock);
+      }
+    }
+    const enStock = new Map(stock.map((p) => [p.producto_id, p]));
     const ids: string[] = [];
     const cants: Record<string, number> = {};
     const sinStock: string[] = [];
@@ -463,10 +474,23 @@ export default function EmitirNRPage() {
                     ? `Se trajeron ${resDoc.ok} producto(s).`
                     : "No se pudo traer ningún producto de ese documento."}
                 </p>
-                {resDoc.sinStock.length > 0 && (
+                {(resDoc.sinStock.length > 0 || resDoc.parciales.length > 0) && (
                   <p className="text-amber-800">
-                    {resDoc.sinStock.length} producto(s) no tienen stock en <strong>{nombreUbic(origen)}</strong>.
-                    {" "}Probá cambiando el depósito de origen.
+                    {resDoc.sinStock.length > 0 && (
+                      <>
+                        {resDoc.sinStock.length} producto(s) no tienen stock en <strong>{nombreUbic(origen)}</strong>.{" "}
+                      </>
+                    )}
+                    Probá cambiando el depósito de origen, o{" "}
+                    <a
+                      href="/inventario/transferencias"
+                      target="_blank"
+                      rel="noopener"
+                      className="font-semibold text-amber-900 underline"
+                    >
+                      hacé un traspaso entre depósitos
+                    </a>{" "}
+                    para traer la mercadería acá.
                   </p>
                 )}
                 {resDoc.sinVincular.length > 0 && (
@@ -479,6 +503,7 @@ export default function EmitirNRPage() {
                     {resDoc.parciales.length} producto(s) se cargaron con menos cantidad, porque no hay tanto en el depósito.
                   </p>
                 )}
+
                 {(resDoc.sinStock.length > 0 || resDoc.sinVincular.length > 0 || resDoc.parciales.length > 0) && (
                   <>
                     <button type="button" onClick={() => setVerDetalleDoc((v) => !v)} className="font-semibold text-amber-900 underline">

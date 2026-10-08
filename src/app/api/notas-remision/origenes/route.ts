@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
     if (tipo === "compromiso" && id) {
       const [p, it] = await Promise.all([
-        supabase.from("presupuestos").select("id, numero_control, cliente_id, cliente_nombre, cliente_ruc, cliente_telefono, cliente_direccion, moneda").eq("empresa_id", emp).eq("id", id).maybeSingle(),
+        supabase.from("presupuestos").select("id, numero_control, cliente_id, cliente_nombre, cliente_ruc, cliente_telefono, cliente_direccion, moneda, ubicacion_id").eq("empresa_id", emp).eq("id", id).maybeSingle(),
         supabase.from("presupuesto_items").select("producto_id, producto_nombre, sku, cantidad, unidad_medida, precio_unitario, iva_tipo, descuento").eq("empresa_id", emp).eq("presupuesto_id", id),
       ]);
       if (p.error || it.error) throw new Error((p.error ?? it.error)?.message);
@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
         successResponse({
           documento: `Compromiso de venta ${c.numero_control ?? ""}`.trim(),
           moneda: c.moneda ?? "PYG",
+          // Almacén del que sale la mercadería, para que la remisión salga de ahí.
+          ubicacion_id: c.ubicacion_id ?? null,
           cliente: { id: c.cliente_id, nombre: c.cliente_nombre, documento: c.cliente_ruc, telefono: c.cliente_telefono, direccion: c.cliente_direccion, ciudad: null },
           items: ((it.data ?? []) as unknown as Record<string, unknown>[]).map((x) => ({
             producto_id: (x.producto_id as string) ?? null,

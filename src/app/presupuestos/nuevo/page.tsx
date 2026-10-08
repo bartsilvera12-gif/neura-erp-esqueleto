@@ -74,6 +74,9 @@ export default function NuevoPresupuestoPage() {
   const [formaPago, setFormaPago] = useState("");
   const [plazoEntrega, setPlazoEntrega] = useState("");
   const [observaciones, setObservaciones] = useState("");
+  // Almacén del que va a salir la mercadería: contra él se controla el stock.
+  const [depositos, setDepositos] = useState<{ id: string; nombre: string }[]>([]);
+  const [ubicacionId, setUbicacionId] = useState("");
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +117,20 @@ export default function NuevoPresupuestoPage() {
             }))
           );
         }
+      })
+      .catch(() => {});
+    fetchWithSupabaseSession("/api/depositos", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j?.success) return;
+        const list = ((j.data?.depositos ?? j.data ?? []) as Record<string, unknown>[])
+          .filter((d) => d.activo !== false)
+          .map((d) => ({ id: String(d.id), nombre: String(d.nombre ?? "") }));
+        setDepositos(list);
+        // Por defecto, el depósito de Asunción, que es de donde sale casi todo.
+        const guardado = typeof window !== "undefined" ? window.localStorage.getItem("compromiso_deposito") : null;
+        const asuncion = list.find((d) => d.nombre.toUpperCase().includes("ASUNCI"));
+        setUbicacionId((v) => v || (guardado && list.some((d) => d.id === guardado) ? guardado : asuncion?.id ?? ""));
       })
       .catch(() => {});
   }, []);
@@ -221,6 +238,7 @@ export default function NuevoPresupuestoPage() {
           forma_pago: formaPago.trim() || null,
           plazo_entrega: plazoEntrega.trim() || null,
           observaciones: observaciones.trim() || null,
+          ubicacion_id: ubicacionId || null,
           items: items.map((it) => ({
             producto_id: it.producto_id,
             producto_nombre: it.producto_nombre.trim(),
@@ -410,6 +428,27 @@ export default function NuevoPresupuestoPage() {
           <div>
             <label className={labelClass}>Plazo de entrega</label>
             <input value={plazoEntrega} onChange={(e) => setPlazoEntrega(e.target.value)} className={inputClass} placeholder="Ej: 5 días hábiles" />
+          </div>
+          <div>
+            <label className={labelClass}>Almacén de salida</label>
+            <select
+              value={ubicacionId}
+              onChange={(e) => {
+                setUbicacionId(e.target.value);
+                try {
+                  window.localStorage.setItem("compromiso_deposito", e.target.value);
+                } catch {}
+              }}
+              className={inputClass}
+            >
+              <option value="">— Sin elegir (controla el stock total) —</option>
+              {depositos.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nombre}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">De acá sale la mercadería; el stock se controla contra este almacén.</p>
           </div>
           <div className="sm:col-span-3">
             <label className={labelClass}>Observaciones</label>

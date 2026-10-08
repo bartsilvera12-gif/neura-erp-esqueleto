@@ -9,7 +9,7 @@ const PRESU_COLS =
   "id, cliente_id, cliente_nombre, cliente_ruc, cliente_telefono, cliente_direccion, " +
   "numero_control, estado, moneda, subtotal, monto_iva, descuento_total, total, validez_dias, " +
   "fecha, fecha_vencimiento, forma_pago, plazo_entrega, observaciones, " +
-  "convertido_pedido_id, convertido_venta_id, created_at, updated_at";
+  "convertido_pedido_id, convertido_venta_id, ubicacion_id, created_at, updated_at";
 
 const ITEM_COLS =
   "id, producto_id, producto_nombre, sku, cantidad, unidad_medida, precio_unitario, iva_tipo, subtotal, monto_iva, descuento, total";
@@ -137,7 +137,8 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
       const sinStock = await faltanteDeStock(
         ctx.supabase,
         ctx.auth.empresa_id,
-        rawItems.map((it) => ({ producto_id: it.producto_id ? String(it.producto_id) : null, cantidad: Number(it.cantidad) }))
+        rawItems.map((it) => ({ producto_id: it.producto_id ? String(it.producto_id) : null, cantidad: Number(it.cantidad) })),
+        body.ubicacion_id ? String(body.ubicacion_id) : null
       );
       if (sinStock) return NextResponse.json(errorResponse(sinStock), { status: 400 });
 
@@ -168,6 +169,7 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
         forma_pago: body.forma_pago ? String(body.forma_pago) : null,
         plazo_entrega: body.plazo_entrega ? String(body.plazo_entrega) : null,
         observaciones: body.observaciones ? String(body.observaciones).slice(0, 4000) : null,
+        ubicacion_id: body.ubicacion_id ? String(body.ubicacion_id) : null,
         updated_at: new Date().toISOString(),
       })
         .eq("empresa_id", ctx.auth.empresa_id)

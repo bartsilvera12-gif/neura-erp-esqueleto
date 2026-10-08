@@ -24,6 +24,8 @@ export interface CrearPresupuestoInput {
   forma_pago: string | null;
   plazo_entrega: string | null;
   observaciones: string | null;
+  /** Almacén del que va a salir la mercadería. */
+  ubicacion_id: string | null;
   items: PresupuestoItemInput[];
 }
 
@@ -133,6 +135,7 @@ export async function crearPresupuesto(
       forma_pago: input.forma_pago?.trim() || null,
       plazo_entrega: input.plazo_entrega?.trim() || null,
       observaciones: input.observaciones?.trim() || null,
+      ubicacion_id: input.ubicacion_id || null,
       created_by_user_id: createdByUserId,
     })
     .select("id, numero_control")

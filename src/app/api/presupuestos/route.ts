@@ -10,7 +10,7 @@ const PRESU_COLS =
   "id, cliente_id, cliente_nombre, cliente_ruc, cliente_telefono, cliente_direccion, " +
   "numero_control, estado, moneda, subtotal, monto_iva, descuento_total, total, validez_dias, " +
   "fecha, fecha_vencimiento, forma_pago, plazo_entrega, observaciones, " +
-  "convertido_pedido_id, convertido_venta_id, created_by_user_id, created_at, updated_at";
+  "convertido_pedido_id, convertido_venta_id, created_by_user_id, ubicacion_id, created_at, updated_at";
 
 function asIva(v: unknown): "EXENTA" | "5%" | "10%" {
   return v === "EXENTA" || v === "5%" || v === "10%" ? v : "10%";
@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse("El nombre del cliente es obligatorio."), { status: 400 });
     }
     // No se compromete mercadería que no hay en el almacén.
-    const sinStock = await faltanteDeStock(ctx.supabase, ctx.auth.empresa_id, items);
+    const ubicacionId = body.ubicacion_id ? String(body.ubicacion_id) : null;
+    const sinStock = await faltanteDeStock(ctx.supabase, ctx.auth.empresa_id, items, ubicacionId);
     if (sinStock) return NextResponse.json(errorResponse(sinStock), { status: 400 });
     const validezRaw = body.validez_dias;
     const validez =
@@ -154,6 +155,7 @@ export async function POST(request: NextRequest) {
       forma_pago: body.forma_pago ? String(body.forma_pago) : null,
       plazo_entrega: body.plazo_entrega ? String(body.plazo_entrega) : null,
       observaciones: body.observaciones ? String(body.observaciones).slice(0, 4000) : null,
+      ubicacion_id: ubicacionId,
       items,
     }, ctx.auth.usuarioCatalogId ?? null);
 

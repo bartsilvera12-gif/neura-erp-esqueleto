@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       origen,
       buscar: searchParams.get("buscar"),
       incluirAnulados: searchParams.get("incluir_anulados") === "1",
+      presupuestoId: searchParams.get("presupuesto_id"),
     });
     return NextResponse.json(successResponse({ recibos }));
   } catch (err) {
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
         origen,
         venta_id: body.venta_id ? String(body.venta_id) : null,
         cobro_cliente_id: body.cobro_cliente_id ? String(body.cobro_cliente_id) : null,
+        presupuesto_id: body.presupuesto_id ? String(body.presupuesto_id) : null,
         observaciones: body.observaciones ? String(body.observaciones).slice(0, 2000) : null,
         manual:
           origen === "manual"

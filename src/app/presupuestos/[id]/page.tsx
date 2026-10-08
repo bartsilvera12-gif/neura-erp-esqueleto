@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileText, ArrowLeft, Loader2, Download, FileCheck2, Pencil } from "lucide-react";
+import { FileText, ArrowLeft, Loader2, Download, FileCheck2, Pencil, Wallet } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { ESTADO_LABEL, type EstadoPresupuesto } from "@/lib/presupuestos/types";
 
@@ -27,7 +27,9 @@ type Presu = {
   plazo_entrega: string | null;
   observaciones: string | null;
   convertido_pedido_id: string | null;
+  ubicacion_id: string | null;
 };
+type ReciboRow = { id: string; numero_recibo: string; fecha: string; monto: number | string; anulado: boolean };
 type ItemRow = {
   id: string;
   producto_nombre: string;
@@ -80,6 +82,12 @@ export default function PresupuestoDetallePage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
+  // Cobros del compromiso: anticipo o pago total.
+  const [recibos, setRecibos] = useState<ReciboRow[]>([]);
+  const [deposito, setDeposito] = useState<string>("");
+  const [cobrando, setCobrando] = useState(false);
+  const [montoCobro, setMontoCobro] = useState("");
+  const [metodoCobro, setMetodoCobro] = useState("efectivo");
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -90,8 +98,21 @@ export default function PresupuestoDetallePage() {
         setError(body?.error ?? "No se pudo cargar el presupuesto.");
         return;
       }
-      setPresu(body.data.presupuesto as Presu);
+      const p = body.data.presupuesto as Presu;
+      setPresu(p);
       setItems((body.data.items ?? []) as ItemRow[]);
+      // Cobros ya hechos sobre este compromiso.
+      const rr = await fetchWithSupabaseSession(`/api/recibos-dinero?presupuesto_id=${id}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .catch(() => null);
+      setRecibos(((rr?.data?.recibos ?? []) as ReciboRow[]).filter((x) => !x.anulado));
+      if (p.ubicacion_id) {
+        const dd = await fetchWithSupabaseSession("/api/depositos", { cache: "no-store" })
+          .then((r) => r.json())
+          .catch(() => null);
+        const lista = (dd?.data?.depositos ?? dd?.data ?? []) as Record<string, unknown>[];
+        setDeposito(String(lista.find((d) => String(d.id) === p.ubicacion_id)?.nombre ?? ""));
+      }
     } catch {
       setError("Error de red.");
     } finally {
@@ -102,6 +123,39 @@ export default function PresupuestoDetallePage() {
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  const totalPresu = Number(presu?.total) || 0;
+  const cobrado = recibos.reduce((a, r) => a + (Number(r.monto) || 0), 0);
+  const saldo = Math.max(0, totalPresu - cobrado);
+
+  /** Cobra el compromiso: el recibo queda atado y descuenta del saldo. */
+  async function cobrar() {
+    const monto = Number(montoCobro);
+    if (!(monto > 0)) {
+      setError("Poné cuánto se cobró.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetchWithSupabaseSession("/api/recibos-dinero", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origen: "manual", presupuesto_id: id, manual: { monto, metodo_pago: metodoCobro } }),
+      });
+      const body = await res.json();
+      if (!res.ok || body?.success === false) throw new Error(body?.error ?? "No se pudo generar el recibo.");
+      setOk("Recibo generado.");
+      setCobrando(false);
+      setMontoCobro("");
+      await cargar();
+      window.open(`/api/recibos-dinero/${body.data.recibo.id}/pdf?auto=1`, "_blank", "noopener");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function cambiarEstado(nuevo: EstadoPresupuesto) {
     if (busy) return;
@@ -256,7 +310,86 @@ export default function PresupuestoDetallePage() {
           {presu.validez_dias != null && <p className="text-sm text-gray-600">Validez: {presu.validez_dias} día(s){presu.fecha_vencimiento ? ` (vence ${fmtFecha(presu.fecha_vencimiento)})` : ""}</p>}
           {presu.forma_pago && <p className="text-sm text-gray-600">Forma de pago: {presu.forma_pago}</p>}
           {presu.plazo_entrega && <p className="text-sm text-gray-600">Plazo de entrega: {presu.plazo_entrega}</p>}
+          {deposito && <p className="text-sm text-gray-600">Almacén de salida: {deposito}</p>}
         </div>
+      </div>
+
+      {/* Cobros del compromiso */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xs uppercase tracking-wide text-gray-500">Cobros</h3>
+            <p className="text-sm text-gray-700">
+              Total {fmtGs(totalPresu, presu.moneda)} · Cobrado {fmtGs(cobrado, presu.moneda)} ·{" "}
+              <strong className={saldo > 0 ? "text-amber-700" : "text-emerald-700"}>Saldo {fmtGs(saldo, presu.moneda)}</strong>
+            </p>
+          </div>
+          {saldo > 0 && !cobrando && (
+            <button
+              onClick={() => {
+                setCobrando(true);
+                setMontoCobro(String(saldo));
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#4FAEB2] px-4 py-2 text-sm font-medium text-white hover:bg-[#3F8E91]"
+            >
+              <Wallet className="h-4 w-4" /> Cobrar
+            </button>
+          )}
+        </div>
+
+        {cobrando && (
+          <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Monto</label>
+              <input
+                type="number"
+                min="0"
+                value={montoCobro}
+                onChange={(e) => setMontoCobro(e.target.value)}
+                className="w-40 rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Forma de pago</label>
+              <select value={metodoCobro} onChange={(e) => setMetodoCobro(e.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="cheque">Cheque</option>
+              </select>
+            </div>
+            <button type="button" onClick={() => setMontoCobro(String(saldo))} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+              Pago total
+            </button>
+            <button onClick={() => void cobrar()} disabled={busy} className="rounded-md bg-[#4FAEB2] px-4 py-2 text-sm font-medium text-white hover:bg-[#3F8E91] disabled:opacity-50">
+              {busy ? "Generando…" : "Generar recibo"}
+            </button>
+            <button onClick={() => setCobrando(false)} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+              Cancelar
+            </button>
+          </div>
+        )}
+
+        {recibos.length > 0 && (
+          <ul className="mt-3 divide-y divide-slate-100 text-sm">
+            {recibos.map((r) => (
+              <li key={r.id} className="flex items-center justify-between py-2">
+                <span className="text-gray-700">
+                  {r.numero_recibo} · {fmtFecha(r.fecha)}
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="tabular-nums font-medium">{fmtGs(r.monto, presu.moneda)}</span>
+                  <button
+                    onClick={() => window.open(`/api/recibos-dinero/${r.id}/pdf?auto=1`, "_blank", "noopener")}
+                    className="text-xs font-medium text-[#4FAEB2] hover:underline"
+                  >
+                    Ver recibo
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Items */}

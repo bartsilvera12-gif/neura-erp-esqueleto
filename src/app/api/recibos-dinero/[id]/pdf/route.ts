@@ -44,6 +44,19 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
       if (saldo === null && r.origen === "venta_contado") saldo = 0;
     }
   }
+  // Cobro de un compromiso de venta: total del compromiso y lo que queda.
+  if (r.presupuesto_id) {
+    const [pq, rq2] = await Promise.all([
+      ctx.supabase.from("presupuestos").select("total").eq("empresa_id", emp).eq("id", String(r.presupuesto_id)).maybeSingle(),
+      ctx.supabase.from("recibos_dinero").select("monto, fecha, created_at").eq("empresa_id", emp).eq("presupuesto_id", String(r.presupuesto_id)).eq("anulado", false),
+    ]);
+    const t = Number((pq.data as { total?: number } | null)?.total);
+    if (Number.isFinite(t) && t > 0) {
+      totalFactura = t;
+      const cobrado = ((rq2.data ?? []) as { monto: number | null }[]).reduce((a, x) => a + (Number(x.monto) || 0), 0);
+      saldo = Math.max(0, t - cobrado);
+    }
+  }
   // Recibo suelto (sin venta ni cuenta): el saldo es lo que el cliente sigue
   // debiendo en total, que es lo que pidió ver la clienta en el recibo.
   if (saldo === null && r.cliente_id) {

@@ -37,6 +37,13 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
     celVendedor = String(u?.telefono ?? u?.celular ?? "");
   }
 
+  // Almacén del que sale la mercadería.
+  let almacen = "";
+  if (p.ubicacion_id) {
+    const uq = await ctx.supabase.from("inventario_ubicaciones").select("nombre").eq("empresa_id", emp).eq("id", String(p.ubicacion_id)).maybeSingle();
+    almacen = String((uq.data as { nombre?: string } | null)?.nombre ?? "");
+  }
+
   const moneda = String(p.moneda ?? "PYG");
   const num = (n: unknown) => (Number(n) || 0).toLocaleString("es-PY", { maximumFractionDigits: moneda === "PYG" ? 0 : 2 });
   const numero = `CV -   ${String(p.numero_control ?? "").replace(/\D/g, "").padStart(7, "0")}`;
@@ -55,6 +62,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
       <div class="fila"><span class="l">Cel. Vendedor:</span><span>${esc(celVendedor)}</span></div>
       <div class="fila"><span class="l">Plazo de entrega:</span><span>${esc(p.plazo_entrega)}</span></div>
       <div class="fila"><span class="l">Moneda:</span><span>${esc(NOMBRE_MONEDA[moneda] ?? moneda)}</span></div>
+      ${almacen ? `<div class="fila"><span class="l">Almacén de salida:</span><span>${esc(almacen.toUpperCase())}</span></div>` : ""}
     </div>
   </div>
   <table class="g">
