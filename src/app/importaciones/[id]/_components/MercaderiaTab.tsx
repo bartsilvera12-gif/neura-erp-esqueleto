@@ -93,6 +93,7 @@ export default function MercaderiaTab({
               <th className="px-4 py-3">Código</th>
               <th className="px-4 py-3">Producto</th>
               <th className="px-4 py-3">Unidad</th>
+              <th className="px-4 py-3 text-right">Precio</th>
               <th className="px-4 py-3 text-right">Pedido</th>
               <th className="px-4 py-3 text-right">Recibido</th>
               <th className="px-4 py-3">Contenedor</th>
@@ -119,6 +120,7 @@ export default function MercaderiaTab({
                     {!it.producto_id && <div className="text-xs font-semibold text-rose-600">sin vincular</div>}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-700">{it.unidad || "—"}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{Number(it.precio_unitario) ? Number(it.precio_unitario).toLocaleString("es-PY", { maximumFractionDigits: 2 }) : "—"}</td>
                   <td className="px-4 py-3 text-right">{cant(it.cantidad)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className={hayRecepcion && dif !== 0 ? "font-semibold text-rose-700" : "text-slate-700"}>{cant(it.cantidad_recibida)}</div>
@@ -215,6 +217,8 @@ function ModalProducto({
     item?.producto_id ? { id: item.producto_id, nombre: item.producto_nombre, sku: item.sku } : null
   );
   const [cantidad, setCantidad] = useState(item ? String(item.cantidad) : "");
+  // Precio del proveedor: con él se calcula el costo real en la pestaña Costo.
+  const [precio, setPrecio] = useState(item && Number(item.precio_unitario) ? String(item.precio_unitario) : "");
   const [contenedor, setContenedor] = useState(item?.contenedor_id ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -229,6 +233,7 @@ function ModalProducto({
     const body = {
       producto_id: producto.id,
       cantidad: Number(cantidad),
+      precio_unitario: Number(precio) || 0,
       contenedor_id: contenedor || null,
     };
     try {
@@ -256,6 +261,11 @@ function ModalProducto({
           <div>
             <label className={labelClass}>Cantidad *</label>
             <input type="number" step="any" min={0} value={cantidad} onWheel={noRueda} onChange={(e) => setCantidad(e.target.value)} className={num} />
+          </div>
+          <div>
+            <label className={labelClass}>Precio unitario ({imp.moneda ?? "USD"})</label>
+            <input type="number" step="any" min={0} value={precio} onWheel={noRueda} onChange={(e) => setPrecio(e.target.value)} className={num} />
+            <p className="mt-1 text-xs text-slate-500">Lo que cobra el proveedor. Con esto se calcula el costo real.</p>
           </div>
         </div>
         {contenedores.length > 0 && (

@@ -5,7 +5,7 @@ import { getComexCtx, esUuid, estadoOperacion, nombreUsuario, operacionCerrada, 
 import { MONEDAS_COMEX, TIPOS_GASTO_COMEX } from "@/lib/comex/gastos";
 
 const COLS =
-  "id, origen_tipo, origen_id, fecha, tipo, descripcion, proveedor_nombre, comprobante, monto, moneda, tipo_cambio, pagado, usuario_nombre, created_at";
+  "id, origen_tipo, origen_id, fecha, tipo, descripcion, proveedor_nombre, comprobante, monto, moneda, tipo_cambio, pagado, cuenta_codigo, usuario_nombre, created_at";
 
 /** Solo importación y exportación tienen gastos propios. */
 const ORIGENES_GASTO = new Set(["IMPORTACION", "EXPORTACION"]);
@@ -31,6 +31,7 @@ function datosGasto(b: Record<string, unknown>): { datos: Record<string, unknown
       descripcion: texto(b.descripcion, 300),
       proveedor_nombre: texto(b.proveedor_nombre, 200),
       comprobante: texto(b.comprobante, 60),
+      cuenta_codigo: texto(b.cuenta_codigo, 40),
       monto,
       moneda,
       tipo_cambio: tipoCambio,

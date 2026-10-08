@@ -19,8 +19,11 @@ const vacio = {
   monto: "",
   moneda: "PYG",
   tipo_cambio: "",
+  cuenta_codigo: "",
   pagado: false,
 };
+
+type CuentaPlan = { cuenta: string; denominacion: string; asentable?: boolean | null; activo?: boolean | null };
 
 /**
  * Gastos incurridos de una importación o exportación: flete, seguro,
@@ -45,6 +48,9 @@ export default function GastosPanel({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quitar, setQuitar] = useState<GastoComex | null>(null);
+  // Plan de cuentas, para enlazar el gasto con contabilidad. Si la empresa
+  // todavía no lo cargó, el campo no se muestra.
+  const [cuentas, setCuentas] = useState<CuentaPlan[]>([]);
 
   const cargar = useCallback(async () => {
     try {
@@ -57,6 +63,12 @@ export default function GastosPanel({
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  useEffect(() => {
+    api<{ cuentas: CuentaPlan[] }>("/api/configuracion/plan-cuentas")
+      .then((d) => setCuentas((d.cuentas ?? []).filter((c) => c.activo !== false && c.asentable !== false)))
+      .catch(() => setCuentas([]));
+  }, []);
 
   const t = useMemo(() => totalesGastos(lista), [lista]);
 
@@ -210,6 +222,19 @@ export default function GastosPanel({
               <label className={labelClass}>Comprobante</label>
               <input value={f.comprobante} onChange={(e) => setF({ ...f, comprobante: e.target.value })} placeholder="Nº factura o recibo" className={inputClass} />
             </div>
+            {cuentas.length > 0 && (
+              <div>
+                <label className={labelClass}>Cuenta contable</label>
+                <select value={f.cuenta_codigo} onChange={(e) => setF({ ...f, cuenta_codigo: e.target.value })} className={inputClass}>
+                  <option value="">— Sin cuenta —</option>
+                  {cuentas.map((c) => (
+                    <option key={c.cuenta} value={c.cuenta}>
+                      {c.cuenta} · {c.denominacion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="sm:col-span-2 lg:col-span-2">
               <label className={labelClass}>Detalle</label>
               <input value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })} className={inputClass} />
@@ -253,6 +278,7 @@ export default function GastosPanel({
               <th className="px-4 py-2">Concepto</th>
               <th className="px-4 py-2">Proveedor</th>
               <th className="px-4 py-2">Comprobante</th>
+              <th className="px-4 py-2">Cuenta</th>
               <th className="px-4 py-2 text-right">Monto</th>
               <th className="px-4 py-2 text-right">En Gs.</th>
               <th className="px-4 py-2">Pago</th>
@@ -262,7 +288,7 @@ export default function GastosPanel({
           <tbody>
             {lista.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-500">
+                <td colSpan={9} className="px-4 py-6 text-center text-sm text-slate-500">
                   Todavía no hay gastos cargados en esta operación.
                 </td>
               </tr>
@@ -276,6 +302,7 @@ export default function GastosPanel({
                 </td>
                 <td className="px-4 py-2 text-slate-600">{g.proveedor_nombre ?? "—"}</td>
                 <td className="px-4 py-2 font-mono text-xs text-slate-600">{g.comprobante ?? "—"}</td>
+                <td className="px-4 py-2 font-mono text-xs text-slate-600">{g.cuenta_codigo ?? "—"}</td>
                 <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{monto(g.monto, g.moneda)}</td>
                 <td className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-900">{gs(gastoEnGuaranies(g))}</td>
                 <td className="px-4 py-2">
@@ -307,7 +334,7 @@ export default function GastosPanel({
           {lista.length > 0 && (
             <tfoot>
               <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-900">
-                <td colSpan={5} className="px-4 py-2 text-right">
+                <td colSpan={6} className="px-4 py-2 text-right">
                   Total
                 </td>
                 <td className="whitespace-nowrap px-4 py-2 text-right">{gs(t.total)}</td>

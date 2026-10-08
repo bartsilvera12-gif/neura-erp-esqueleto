@@ -28,6 +28,8 @@ export interface GastoComex {
   moneda: string;
   tipo_cambio: number;
   pagado: boolean;
+  /** Cuenta del plan de cuentas, para que el gasto llegue a contabilidad. */
+  cuenta_codigo: string | null;
   usuario_nombre: string | null;
   created_at: string;
 }

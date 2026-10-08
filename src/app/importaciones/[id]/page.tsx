@@ -17,8 +17,9 @@ import ContenedoresPanel from "@/components/comex/ContenedoresPanel";
 import FichaForm, { fichaAPayload, type Ficha } from "../_components/FichaForm";
 import MercaderiaTab from "./_components/MercaderiaTab";
 import RecepcionTab from "./_components/RecepcionTab";
+import CosteoTab from "./_components/CosteoTab";
 
-type Tab = "datos" | "mercaderia" | "contenedores" | "recepcion" | "gastos" | "incidencias" | "documentos" | "historial";
+type Tab = "datos" | "mercaderia" | "contenedores" | "recepcion" | "gastos" | "costeo" | "incidencias" | "documentos" | "historial";
 
 const gs = (n: number) => `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
 
@@ -153,6 +154,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
     { k: "contenedores", label: "Contenedores", badge: contenedores.length },
     { k: "recepcion", label: "Recepción" },
     { k: "gastos", label: "Gastos", badge: gastos.length },
+    { k: "costeo", label: "Costo" },
     { k: "incidencias", label: "Incidencias", badge: incAbiertas },
     { k: "documentos", label: "Documentos" },
     { k: "historial", label: "Historial" },
@@ -298,6 +300,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
       )}
       {tab === "recepcion" && <RecepcionTab imp={imp} items={items} recepciones={recepciones} onCambio={() => void load()} />}
       {tab === "gastos" && <GastosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
+      {tab === "costeo" && <CosteoTab impId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "incidencias" && <IncidenciasPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "documentos" && <AdjuntosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} />}
       {tab === "historial" && <HistorialPanel origenTipo="IMPORTACION" origenId={id} recarga={recargaHist} />}
