@@ -317,6 +317,7 @@ export default function EditarPresupuestoPage() {
               value={selProd || null}
               onChange={(v) => setSelProd(v ?? "")}
               placeholder="— Buscá un producto por nombre o SKU —"
+              buscable
               options={productos.filter((p) => !items.some((it) => it.producto_id === p.id))
                 .map((p) => ({ id: p.id, label: p.nombre, sublabel: p.sku || undefined }))}
             />
@@ -349,7 +350,7 @@ export default function EditarPresupuestoPage() {
                 {items.map((it, i) => {
                   const t = itemTotals(it);
                   return (
-                    <tr key={i}>
+                    <tr key={i} className="align-top">
                       <td className="py-2 pr-2">
                         <input value={it.producto_nombre} onChange={(e) => updItem(i, { producto_nombre: e.target.value })} className={inputClass} placeholder="Descripción" />
                       </td>
@@ -358,17 +359,20 @@ export default function EditarPresupuestoPage() {
                       </td>
                       <td className="py-2 px-2">
                         <input type="number" min="0" step="1" value={it.precio_unitario || ""} onChange={(e) => updItem(i, { precio_unitario: Number(e.target.value) })} className={inputClass} />
+                        <span className="mt-0.5 block h-4" aria-hidden />
                       </td>
                       <td className="py-2 px-2">
                         <select value={it.iva_tipo} onChange={(e) => updItem(i, { iva_tipo: e.target.value as IvaTipoPresupuesto })} className={`${inputClass} bg-white`}>
                           {IVAS.map((iv) => <option key={iv} value={iv}>{iv}</option>)}
                         </select>
+                        <span className="mt-0.5 block h-4" aria-hidden />
                       </td>
                       <td className="py-2 px-2">
                         <input type="number" min="0" step="1" value={it.descuento || ""} onChange={(e) => updItem(i, { descuento: Number(e.target.value) })} className={inputClass} />
+                        <span className="mt-0.5 block h-4" aria-hidden />
                       </td>
-                      <td className="py-2 px-2 text-right tabular-nums font-medium">{fmtGs(t.total)}</td>
-                      <td className="py-2 pl-2 text-right">
+                      <td className="py-2 px-2 pt-4 text-right tabular-nums font-medium">{fmtGs(t.total)}</td>
+                      <td className="py-2 pl-2 pt-3.5 text-right">
                         <button onClick={() => delItem(i)} className="text-red-600 hover:text-red-700" aria-label="Eliminar"><Trash2 className="h-4 w-4" /></button>
                       </td>
                     </tr>

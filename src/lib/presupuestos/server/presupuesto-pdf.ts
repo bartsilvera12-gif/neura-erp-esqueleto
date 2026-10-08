@@ -6,6 +6,7 @@
  *
  * Documento NO fiscal. No toca SIFEN ni stock.
  */
+import { EMPRESA_DOC } from "@/lib/documentos/membrete";
 import fs from "node:fs";
 import path from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type PDFImage } from "pdf-lib";
@@ -101,10 +102,14 @@ function wrap(t: string, f: PDFFont, size: number, max: number): string[] {
 
 /** Logo de la instancia. Devuelve los bytes y el formato para embeberlo. */
 function logoBytes(): { bytes: Uint8Array; tipo: "png" | "jpg" } | null {
+  // Primero el logo del cliente (el mismo del resto de los impresos); el de
+  // Zentra queda solo como último recurso.
+  const delCliente = EMPRESA_DOC.logoUrl.replace(/^\/?brand\//, "").replace(/^\//, "");
   const candidatos: { archivo: string; tipo: "png" | "jpg" }[] = [
-    { archivo: "zentra-logo-official.png", tipo: "png" },
+    { archivo: delCliente, tipo: delCliente.endsWith(".jpg") || delCliente.endsWith(".jpeg") ? "jpg" : "png" },
     { archivo: "esqueleto-logo.png", tipo: "png" },
     { archivo: "esqueleto-logo.jpeg", tipo: "jpg" },
+    { archivo: "zentra-logo-official.png", tipo: "png" },
   ];
   for (const c of candidatos) {
     try {
