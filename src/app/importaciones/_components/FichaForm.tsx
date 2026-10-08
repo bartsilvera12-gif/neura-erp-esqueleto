@@ -3,16 +3,31 @@
 import { useEffect, useState } from "react";
 import PaisSelect from "@/components/ui/PaisSelect";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
-import { ResponsableSelect, hoyPY, inputClass, labelClass, useUsuarios } from "@/components/comex/ui";
+import { ResponsableSelect, hoyPY, inputClass, labelClass, noRueda, sinFlechas, useUsuarios } from "@/components/comex/ui";
+
+/** Monedas que maneja Comercio Exterior (igual que la API). */
+export const MONEDAS_FICHA: { valor: "PYG" | "USD" | "BOB"; label: string }[] = [
+  { valor: "USD", label: "USD · Dólares" },
+  { valor: "BOB", label: "BOB · Bolivianos" },
+  { valor: "PYG", label: "PYG · Guaraníes" },
+];
+
+/** Incoterms más usados; EXW es el habitual de Living Room. */
+export const INCOTERMS = ["EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"];
 
 export interface Ficha {
   proveedor_id: string | null;
   proveedor_nombre: string;
   pais_origen: string;
+  incoterm: string;
+  moneda: "PYG" | "USD" | "BOB";
+  tipo_cambio: string;
+  monto_estimado: string;
   fecha_pedido: string;
   fecha_embarque: string;
   fecha_arribo: string;
   fecha_nacionalizacion: string;
+  ubicacion_exterior_id: string;
   ubicacion_destino_py_id: string;
   responsable_id: string | null;
   responsable_nombre: string | null;
@@ -23,23 +38,36 @@ export const fichaVacia = (): Ficha => ({
   proveedor_id: null,
   proveedor_nombre: "",
   pais_origen: "",
+  incoterm: "",
+  moneda: "USD",
+  tipo_cambio: "",
+  monto_estimado: "",
   fecha_pedido: hoyPY(),
   fecha_embarque: "",
   fecha_arribo: "",
   fecha_nacionalizacion: "",
+  ubicacion_exterior_id: "",
   ubicacion_destino_py_id: "",
   responsable_id: null,
   responsable_nombre: null,
   observaciones: "",
 });
 
-/** Cuerpo para la API: números como número y vacíos como null. */
+/**
+ * Cuerpo para la API: números como número y vacíos como null.
+ * `monto_estimado` y `tipo_cambio` son NOT NULL en la base: si están vacíos se
+ * omiten (quedan como estaban; en el alta toman su default 0 y 1).
+ */
 export const fichaAPayload = (f: Ficha) => ({
   ...f,
+  incoterm: f.incoterm.trim() || null,
+  tipo_cambio: f.tipo_cambio.trim() ? Number(f.tipo_cambio) : undefined,
+  monto_estimado: f.monto_estimado.trim() ? Number(f.monto_estimado) : undefined,
   fecha_pedido: f.fecha_pedido || null,
   fecha_embarque: f.fecha_embarque || null,
   fecha_arribo: f.fecha_arribo || null,
   fecha_nacionalizacion: f.fecha_nacionalizacion || null,
+  ubicacion_exterior_id: f.ubicacion_exterior_id || null,
   ubicacion_destino_py_id: f.ubicacion_destino_py_id || null,
   observaciones: f.observaciones.trim() || null,
 });
@@ -76,6 +104,7 @@ export default function FichaForm({
   }, []);
 
   const ubicPY = ubicaciones.filter((u) => (u.pais ?? "PY") === "PY");
+  const ubicExterior = ubicaciones.filter((u) => (u.pais ?? "PY") !== "PY");
   const proveedorConocido = !ficha.proveedor_id || proveedores.some((p) => p.id === ficha.proveedor_id);
 
   return (
@@ -117,6 +146,18 @@ export default function FichaForm({
         <PaisSelect value={ficha.pais_origen} onChange={(v) => set("pais_origen", v)} className={inputClass} />
       </div>
       <div>
+        <label className={labelClass}>Depósito en el exterior (origen)</label>
+        <select value={ficha.ubicacion_exterior_id} onChange={(e) => set("ubicacion_exterior_id", e.target.value)} className={inputClass}>
+          <option value="">— Elegir —</option>
+          {ubicExterior.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.nombre}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-[11px] text-slate-400">Dónde está la mercadería antes de entrar a Paraguay.</p>
+      </div>
+      <div>
         <label className={labelClass}>Depósito de destino (Paraguay)</label>
         <select value={ficha.ubicacion_destino_py_id} onChange={(e) => set("ubicacion_destino_py_id", e.target.value)} className={inputClass}>
           <option value="">— Elegir —</option>
@@ -126,6 +167,56 @@ export default function FichaForm({
             </option>
           ))}
         </select>
+      </div>
+      <div>
+        <label className={labelClass}>Incoterm</label>
+        <select value={ficha.incoterm} onChange={(e) => set("incoterm", e.target.value)} className={inputClass}>
+          <option value="">— Elegir —</option>
+          {INCOTERMS.map((i) => (
+            <option key={i} value={i}>
+              {i}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelClass}>Moneda</label>
+          <select value={ficha.moneda} onChange={(e) => set("moneda", e.target.value as Ficha["moneda"])} className={inputClass}>
+            {MONEDAS_FICHA.map((m) => (
+              <option key={m.valor} value={m.valor}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {ficha.moneda !== "PYG" && (
+          <div>
+            <label className={labelClass}>Tipo de cambio a Gs.</label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={ficha.tipo_cambio}
+              onWheel={noRueda}
+              onChange={(e) => set("tipo_cambio", e.target.value)}
+              className={`${inputClass} ${sinFlechas}`}
+            />
+          </div>
+        )}
+      </div>
+      <div>
+        <label className={labelClass}>Monto estimado ({ficha.moneda})</label>
+        <input
+          type="number"
+          min="0"
+          step="any"
+          value={ficha.monto_estimado}
+          onWheel={noRueda}
+          onChange={(e) => set("monto_estimado", e.target.value)}
+          className={`${inputClass} ${sinFlechas}`}
+        />
+        <p className="mt-1 text-[11px] text-slate-400">Valor aproximado de la compra, como referencia.</p>
       </div>
       <div className={mostrarFechasLogisticas ? "grid grid-cols-2 gap-3 sm:col-span-2 lg:grid-cols-4" : "grid grid-cols-2 gap-3 sm:col-span-2"}>
         <div>

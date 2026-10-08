@@ -18,8 +18,9 @@ import FichaForm, { fichaAPayload, type Ficha } from "../_components/FichaForm";
 import MercaderiaTab from "./_components/MercaderiaTab";
 import RecepcionTab from "./_components/RecepcionTab";
 import CosteoTab from "./_components/CosteoTab";
+import CajaTab from "./_components/CajaTab";
 
-type Tab = "datos" | "mercaderia" | "contenedores" | "recepcion" | "gastos" | "costeo" | "incidencias" | "documentos" | "historial";
+type Tab = "datos" | "mercaderia" | "contenedores" | "recepcion" | "gastos" | "costeo" | "caja" | "incidencias" | "documentos" | "historial";
 
 const gs = (n: number) => `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
 
@@ -27,10 +28,15 @@ const aFicha = (i: Importacion): Ficha => ({
   proveedor_id: i.proveedor_id,
   proveedor_nombre: i.proveedor_nombre ?? "",
   pais_origen: i.pais_origen ?? "",
+  incoterm: i.incoterm ?? "",
+  moneda: i.moneda ?? "USD",
+  tipo_cambio: i.tipo_cambio && Number(i.tipo_cambio) > 1 ? String(i.tipo_cambio) : "",
+  monto_estimado: Number(i.monto_estimado) > 0 ? String(i.monto_estimado) : "",
   fecha_pedido: i.fecha_pedido ?? "",
   fecha_embarque: i.fecha_embarque ?? "",
   fecha_arribo: i.fecha_arribo ?? "",
   fecha_nacionalizacion: i.fecha_nacionalizacion ?? "",
+  ubicacion_exterior_id: i.ubicacion_exterior_id ?? "",
   ubicacion_destino_py_id: i.ubicacion_destino_py_id ?? "",
   responsable_id: i.responsable_id,
   responsable_nombre: i.responsable_nombre,
@@ -48,6 +54,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
   const [recepciones, setRecepciones] = useState<ImportacionRecepcion[]>([]);
   const [incAbiertas, setIncAbiertas] = useState(0);
   const [gastos, setGastos] = useState<GastoComex[]>([]);
+  const [cajaCount, setCajaCount] = useState(0);
   const [tab, setTab] = useState<Tab>("datos");
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const fichaServidor = useRef<string | null>(null);
@@ -59,14 +66,15 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
 
   const load = useCallback(async () => {
     try {
-      const [d, it, co, re, inc, ga] = await Promise.all([
+      const [d, it, co, re, inc, ga, ca] = await Promise.all([
         api<{ importacion: Importacion; siguiente: EstadoImportacion | null; faltantes: string[] }>(`/api/importaciones/${id}`),
         api<{ items: ImportacionItem[] }>(`/api/importaciones/${id}/items`),
         api<{ contenedores: Contenedor[] }>(`/api/importaciones/${id}/contenedores`),
         api<{ recepciones: ImportacionRecepcion[] }>(`/api/importaciones/${id}/recepciones`),
         api<{ incidencias: Incidencia[] }>(`/api/comex/incidencias?origen_tipo=IMPORTACION&origen_id=${id}`),
-        // Los gastos no son críticos: si fallan, la ficha se muestra igual.
+        // Los gastos y la caja no son críticos: si fallan, la ficha se muestra igual.
         api<{ gastos: GastoComex[] }>(`/api/comex/gastos?origen_tipo=IMPORTACION&origen_id=${id}`).catch(() => ({ gastos: [] })),
+        api<{ movimientos: unknown[] }>(`/api/importaciones/${id}/caja`).catch(() => ({ movimientos: [] })),
       ]);
       setImp(d.importacion);
       // Si hay cambios sin guardar en Datos, no se pisan al recargar por otra pestaña.
@@ -80,6 +88,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
       setRecepciones(re.recepciones);
       setIncAbiertas(inc.incidencias.filter((i) => incidenciaAbierta(i.estado)).length);
       setGastos(ga.gastos);
+      setCajaCount(ca.movimientos.length);
       setRecargaHist((n) => n + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error de red");
@@ -155,6 +164,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
     { k: "recepcion", label: "Recepción" },
     { k: "gastos", label: "Gastos", badge: gastos.length },
     { k: "costeo", label: "Costo" },
+    { k: "caja", label: "Caja", badge: cajaCount },
     { k: "incidencias", label: "Incidencias", badge: incAbiertas },
     { k: "documentos", label: "Documentos" },
     { k: "historial", label: "Historial" },
@@ -301,6 +311,7 @@ export default function ImportacionDetallePage({ params }: { params: Promise<{ i
       {tab === "recepcion" && <RecepcionTab imp={imp} items={items} recepciones={recepciones} onCambio={() => void load()} />}
       {tab === "gastos" && <GastosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "costeo" && <CosteoTab impId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
+      {tab === "caja" && <CajaTab impId={id} moneda={imp.moneda} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "incidencias" && <IncidenciasPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "documentos" && <AdjuntosPanel origenTipo="IMPORTACION" origenId={id} bloqueado={bloqueada} />}
       {tab === "historial" && <HistorialPanel origenTipo="IMPORTACION" origenId={id} recarga={recargaHist} />}
