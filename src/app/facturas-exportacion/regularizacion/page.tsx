@@ -1,5 +1,6 @@
 "use client";
 
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
@@ -53,6 +54,7 @@ export default function RegularizacionPage() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [pdfNuevo, setPdfNuevo] = useState<File | null>(null);
+  const [aBorrar, setABorrar] = useState<FacturaRegularizacion | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [subiendoId, setSubiendoId] = useState<string | null>(null);
 
@@ -107,6 +109,20 @@ export default function RegularizacionPage() {
     } finally {
       setGuardando(false);
     }
+  }
+
+  /** Borra una regularización cargada por error, con su PDF. */
+  async function borrar() {
+    if (!aBorrar) return;
+    const j = await fetch(`/api/facturas-regularizacion/${aBorrar.id}`, { method: "DELETE", credentials: "include" })
+      .then((res) => res.json())
+      .catch(() => null);
+    setABorrar(null);
+    if (!j?.success) {
+      setError(j?.error ?? "No se pudo borrar.");
+      return;
+    }
+    void cargar();
   }
 
   async function cambiarEstado(r: FacturaRegularizacion, estado: RegularizacionEstado) {
@@ -365,24 +381,25 @@ export default function RegularizacionPage() {
                   </td>
                   <td className="py-2 pr-3 text-right">
                     <div className="inline-flex flex-wrap justify-end gap-2">
-                      {r.pdf_path ? (
+                      {r.pdf_path && (
                         <a href={`/api/facturas-regularizacion/${r.id}/pdf`} target="_blank" rel="noopener" className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
                           PDF original
                         </a>
-                      ) : (
-                        <label className="cursor-pointer rounded border border-dashed border-slate-300 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50">
-                          {subiendoId === r.id ? "Subiendo…" : "Adjuntar PDF"}
-                          <input
-                            type="file"
-                            accept="application/pdf"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const f = e.target.files?.[0];
-                              if (f) { await subirPdf(r.id, f); void cargar(); }
-                            }}
-                          />
-                        </label>
                       )}
+                      {/* Siempre se puede volver a subir: el nuevo PDF reemplaza al anterior. */}
+                      <label className="cursor-pointer rounded border border-dashed border-slate-300 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50">
+                        {subiendoId === r.id ? "Subiendo…" : r.pdf_path ? "Cambiar PDF" : "Adjuntar PDF"}
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (f) { await subirPdf(r.id, f); void cargar(); }
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
                       {r.factura_vinculada_id && (
                         <a
                           href={`/api/facturas-exportacion/${r.factura_vinculada_id}/pdf`}
@@ -402,6 +419,16 @@ export default function RegularizacionPage() {
                           Reemitir
                         </Link>
                       )}
+                      {r.estado !== "REEMITIDA" && !r.factura_vinculada_id && (
+                        <button
+                          type="button"
+                          onClick={() => setABorrar(r)}
+                          title="Borra esta regularización y su PDF, para volver a cargarla bien"
+                          className="rounded border border-rose-200 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                        >
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -410,6 +437,16 @@ export default function RegularizacionPage() {
           </table>
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!aBorrar}
+        title="Eliminar la regularización"
+        message={`¿Borrar la regularización de ${aBorrar?.numero_original ?? ""}? Se borra también el PDF adjunto, y después la podés volver a cargar bien.`}
+        confirmLabel="Eliminar"
+        tone="danger"
+        onConfirm={() => void borrar()}
+        onCancel={() => setABorrar(null)}
+      />
     </div>
   );
 }

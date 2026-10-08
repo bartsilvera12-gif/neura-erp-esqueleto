@@ -104,12 +104,15 @@ export async function fetchNRs(filtros?: {
   origen?: string;
   destino?: string;
   buscar?: string;
+  /** "real" deja afuera las de prueba; "prueba" muestra solo esas. */
+  modo?: "" | "real" | "prueba";
 }): Promise<Result<{ notas_remision: NotaRemision[] }>> {
   const p = new URLSearchParams();
   if (filtros?.estado) p.set("estado", filtros.estado);
   if (filtros?.origen) p.set("origen", filtros.origen);
   if (filtros?.destino) p.set("destino", filtros.destino);
   if (filtros?.buscar) p.set("buscar", filtros.buscar);
+  if (filtros?.modo) p.set("modo", filtros.modo);
   const qs = p.toString();
   return unwrap(await fetch(`/api/notas-remision${qs ? "?" + qs : ""}`, { cache: "no-store" }));
 }

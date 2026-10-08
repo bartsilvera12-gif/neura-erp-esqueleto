@@ -22,6 +22,7 @@ export default function HistorialNRPage() {
   const [filtroEstado, setFiltroEstado] = useState<"" | NotaRemisionEstado>("");
   const [filtroOrigen, setFiltroOrigen] = useState("");
   const [filtroDestino, setFiltroDestino] = useState("");
+  const [filtroModo, setFiltroModo] = useState<"" | "real" | "prueba">("");
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +41,11 @@ export default function HistorialNRPage() {
 
   const cargar = useCallback(async () => {
     setCargando(true);
-    const r = await fetchNRs({ estado: filtroEstado, origen: filtroOrigen, destino: filtroDestino, buscar: busqueda });
+    const r = await fetchNRs({ estado: filtroEstado, origen: filtroOrigen, destino: filtroDestino, buscar: busqueda, modo: filtroModo });
     if (!r.ok) { setError(r.error); setCargando(false); return; }
     setNrs(r.data.notas_remision);
     setCargando(false);
-  }, [filtroEstado, filtroOrigen, filtroDestino, busqueda]);
+  }, [filtroEstado, filtroOrigen, filtroDestino, busqueda, filtroModo]);
 
   useEffect(() => { fetchDepositos().then((r) => { if (r.ok) setDepositos(r.data.depositos); }); }, []);
   useEffect(() => { cargar(); }, [cargar]);
@@ -124,7 +125,7 @@ export default function HistorialNRPage() {
       </div>
 
       <div className="zx-surface">
-        <div className="border-b border-slate-100 px-5 py-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="border-b border-slate-100 px-5 py-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Estado</label>
             <Select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)} className="zx-surface mt-1 w-full rounded-md border-slate-300 px-3 py-2 text-sm">
@@ -132,6 +133,14 @@ export default function HistorialNRPage() {
               <option value="pendiente">Pendientes</option>
               <option value="aprobada">Aprobadas</option>
               <option value="rechazada">Rechazadas</option>
+            </Select>
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Prueba / real</label>
+            <Select value={filtroModo} onChange={(e) => setFiltroModo(e.target.value as typeof filtroModo)} className="zx-surface mt-1 w-full rounded-md border-slate-300 px-3 py-2 text-sm">
+              <option value="">Todas</option>
+              <option value="real">Reales</option>
+              <option value="prueba">De prueba</option>
             </Select>
           </div>
           <div>

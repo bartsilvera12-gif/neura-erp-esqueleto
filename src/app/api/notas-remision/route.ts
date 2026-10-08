@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
     if (origen) q = q.eq("ubicacion_origen_id", origen);
     const destino = searchParams.get("destino");
     if (destino) q = q.eq("ubicacion_destino_id", destino);
+    // Las notas de prueba no son documentos reales: se pueden dejar afuera.
+    const modo = searchParams.get("modo");
+    if (modo === "real") q = q.eq("prueba", false);
+    if (modo === "prueba") q = q.eq("prueba", true);
     const buscar = (searchParams.get("buscar") ?? "").trim();
     if (buscar) q = q.or(`numero.ilike.%${buscar}%,emisor.ilike.%${buscar}%`);
 

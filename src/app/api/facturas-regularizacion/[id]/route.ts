@@ -3,6 +3,7 @@ import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
+import { REGULARIZACION_BUCKET } from "@/lib/facturas-exportacion/regularizacion-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -70,5 +71,46 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
   } catch (err) {
     console.error("[/api/facturas-regularizacion/[id] PATCH]", err instanceof Error ? err.message : err);
     return NextResponse.json(errorResponse("No se pudo actualizar."), { status: 500 });
+  }
+}
+
+/**
+ * DELETE — borra la regularización, con su PDF adjunto.
+ * Solo admin, y solo mientras no haya una factura emitida colgando de ella:
+ * una reemitida ya tiene número fiscal y no se puede deshacer por acá.
+ */
+export async function DELETE(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await ctxParams.params;
+    const ctx = await getTenantSupabaseFromAuthWithRol(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    const { auth, supabase } = ctx;
+    if (!esRolAdminEmpresaOGlobal(auth.rol))
+      return NextResponse.json(errorResponse("Solo un administrador puede borrar regularizaciones."), { status: 403 });
+
+    const q = await supabase
+      .from("facturas_regularizacion")
+      .select("estado, numero_original, pdf_path, factura_vinculada_id")
+      .eq("empresa_id", auth.empresa_id)
+      .eq("id", id)
+      .maybeSingle();
+    if (q.error) throw new Error(q.error.message);
+    const reg = q.data as unknown as { estado: string; numero_original: string; pdf_path: string | null; factura_vinculada_id: string | null } | null;
+    if (!reg) return NextResponse.json(errorResponse(API_ERRORS.NOT_FOUND), { status: 404 });
+    if (reg.estado === "REEMITIDA" || reg.factura_vinculada_id)
+      return NextResponse.json(
+        errorResponse("Esta regularización ya tiene una factura emitida: anulá esa factura antes de borrarla."),
+        { status: 400 }
+      );
+
+    if (reg.pdf_path) {
+      await supabase.storage.from(REGULARIZACION_BUCKET).remove([reg.pdf_path]).catch(() => undefined);
+    }
+    const del = await supabase.from("facturas_regularizacion").delete().eq("empresa_id", auth.empresa_id).eq("id", id);
+    if (del.error) throw new Error(del.error.message);
+    return NextResponse.json(successResponse({ id, numero_original: reg.numero_original }));
+  } catch (err) {
+    console.error("[/api/facturas-regularizacion/[id] DELETE]", err instanceof Error ? err.message : err);
+    return NextResponse.json(errorResponse("No se pudo borrar la regularización."), { status: 500 });
   }
 }
