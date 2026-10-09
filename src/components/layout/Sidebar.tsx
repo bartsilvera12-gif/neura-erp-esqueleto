@@ -812,7 +812,7 @@ export default function Sidebar() {
       >
       {/* Logo: dos assets distintos segun estado.
           - Expandido: /brand/zentra-logo-official.png (logo + texto ZENTRA)
-          - Colapsado: /brand/zentralogo.png (solo icono Z) -> queda nitido en 44x44
+          - Colapsado: /brand/zentra-isotipo.png (solo el icono Z) -> queda nitido en 44x44
           Header con justify-center porque el toggle ahora es una pestania
           flotante en el borde derecho (estilo Coolify/acai-house). */}
       <div className="flex h-[7.25rem] shrink-0 items-center justify-center gap-2 border-b border-[color:var(--zentra-sidebar-border)] bg-[color:var(--zentra-sidebar-elevated)]/35 px-3 py-2.5">
@@ -821,7 +821,7 @@ export default function Sidebar() {
             className={`relative flex items-center justify-center ${collapsed ? "h-11 w-11" : "h-[4.5rem] w-full max-w-[200px]"}`}
           >
             <Image
-              src={collapsed ? "/brand/zentralogo.png" : "/brand/zentra-logo-official.png"}
+              src={collapsed ? "/brand/zentra-isotipo.png" : "/brand/zentra-logo-official.png"}
               alt="ZENTRA"
               width={400}
               height={220}
