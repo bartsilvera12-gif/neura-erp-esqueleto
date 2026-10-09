@@ -29,6 +29,8 @@ export interface ProductoParsed {
   stock_minimo: number;
   metodo_valuacion: "CPP" | "FIFO" | "LIFO";
   activo: boolean;
+  /** URL opcional para descargar la imagen del producto (se procesa en commit). */
+  imagen_url: string;
   errors: string[];
   warnings: string[];
   match_id?: string | null;
@@ -64,6 +66,8 @@ export function parseProductosRows(rows: Record<string, string>[]): ProductoPars
       stock_minimo: pickNumber(r, "STOCK_MINIMO"),
       metodo_valuacion,
       activo: pickBool(r, "ACTIVO"),
+      // URL de imagen: NO normalizar a mayúsculas (las URLs distinguen mayúsculas).
+      imagen_url: pick(r, "IMAGEN_URL", "IMAGEN", "URL_IMAGEN", "IMAGEN_LINK", "LINK_IMAGEN"),
       errors,
       warnings,
     };
@@ -195,6 +199,7 @@ export function buildPreview(parsed: ProductoParsed[], maps: ResolverMaps): Prev
         COSTO: p.costo_promedio, PRECIO: p.precio_venta, STOCK: p.stock_actual,
         STOCK_ANTERIOR: stockAnterior ?? "",
         MOVIMIENTO: stockMov,
+        IMAGEN: p.imagen_url ? "sí (link)" : "",
       },
     };
   });
@@ -213,8 +218,16 @@ export function buildPreview(parsed: ProductoParsed[], maps: ResolverMaps): Prev
       unidades_salida: totalSalida,
     },
     rows,
-    headers: ["NOMBRE","SKU","CODIGO_BARRAS","CATEGORIA","PROVEEDOR_PRINCIPAL","UBICACION_PRINCIPAL","UNIDAD_MEDIDA","COSTO_PROMEDIO","PRECIO_VENTA","STOCK_ACTUAL","STOCK_MINIMO","METODO_VALUACION","ACTIVO"],
+    headers: ["NOMBRE","SKU","CODIGO_BARRAS","CATEGORIA","PROVEEDOR_PRINCIPAL","UBICACION_PRINCIPAL","UNIDAD_MEDIDA","COSTO_PROMEDIO","PRECIO_VENTA","STOCK_ACTUAL","STOCK_MINIMO","METODO_VALUACION","ACTIVO","IMAGEN_URL"],
   };
+}
+
+/** Imagen pendiente de descargar+asociar (se procesa en el route con el cliente Storage). */
+export interface ImagenImport {
+  producto_id: string;
+  nombre: string;
+  sku: string;
+  url: string;
 }
 
 export interface CommitOutcome {
@@ -228,6 +241,8 @@ export interface CommitOutcome {
   unidades_salida: number;
   errorMessages: string[];
   warningMessages: string[];
+  /** Productos con URL de imagen para descargar y asociar luego. */
+  imagenes: ImagenImport[];
 }
 
 export interface CommitContext {
@@ -259,7 +274,7 @@ export async function commitProductos(
   const out: CommitOutcome = {
     inserted: 0, updated: 0, skipped: 0, errors: 0, warnings: 0,
     movimientos_generados: 0, unidades_entrada: 0, unidades_salida: 0,
-    errorMessages: [], warningMessages: [],
+    errorMessages: [], warningMessages: [], imagenes: [],
   };
 
   async function registrarMovimiento(
@@ -355,6 +370,7 @@ export async function commitProductos(
              categoriaId, proveedorId, ubicacionId, p.match_id, empresaId]
           );
           out.updated++;
+          if (p.imagen_url) out.imagenes.push({ producto_id: p.match_id, nombre: p.nombre, sku: p.sku, url: p.imagen_url });
           // Movimiento por delta (ajuste_manual + ENTRADA/SALIDA segun signo)
           const delta = p.stock_actual - stockAnterior;
           if (delta !== 0) {
@@ -394,6 +410,9 @@ export async function commitProductos(
              p.metodo_valuacion, p.activo, categoriaId, proveedorId, ubicacionId]
           );
           out.inserted++;
+          if (p.imagen_url && inserted.rows[0]?.id) {
+            out.imagenes.push({ producto_id: inserted.rows[0].id, nombre: p.nombre, sku: p.sku, url: p.imagen_url });
+          }
           // Movimiento de inventario inicial si stock > 0
           if (p.stock_actual > 0 && inserted.rows[0]?.id) {
             await registrarMovimiento(
@@ -434,6 +453,7 @@ export const PRODUCTOS_TEMPLATE_ROW = {
   STOCK_MINIMO: 2,
   METODO_VALUACION: "CPP",
   ACTIVO: "SI",
+  IMAGEN_URL: "",
 };
 // Util para detectar uso por linter
 export const _unused = normalizeUpperNullable;

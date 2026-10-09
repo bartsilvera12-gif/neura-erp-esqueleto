@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { leerArchivoYAuth } from "@/lib/imports/import-helpers";
 import { parseProductosRows, buildResolverMaps, buildPreview, commitProductos } from "@/lib/imports/productos-importer";
 import { registrarImportAudit } from "@/lib/excel/imports-audit-pg";
+import { fetchAndStoreProductoImagenFromUrl } from "@/lib/inventario/imagen-storage";
 
 export async function POST(request: NextRequest) {
   const res = await leerArchivoYAuth(request);
@@ -16,6 +17,30 @@ export async function POST(request: NextRequest) {
       createdBy: res.ctx.usuarioCatalogId,
       usuarioNombre: res.ctx.usuarioNombre,
     });
+
+    // Imágenes por URL: descargar y asociar a cada producto (una por una).
+    let imagenesOk = 0;
+    let imagenesError = 0;
+    for (const img of out.imagenes) {
+      const r = await fetchAndStoreProductoImagenFromUrl(res.ctx.supabase, res.ctx.empresaId, img.producto_id, img.url);
+      if (!r.ok) {
+        imagenesError++;
+        out.warningMessages.push(`Imagen ${img.sku || img.nombre}: ${r.error}`);
+        continue;
+      }
+      const upd = await res.ctx.supabase
+        .from("productos")
+        .update({ imagen_path: r.path, imagen_url: null })
+        .eq("empresa_id", res.ctx.empresaId)
+        .eq("id", img.producto_id);
+      if (upd.error) {
+        imagenesError++;
+        out.warningMessages.push(`Imagen ${img.sku || img.nombre}: subida pero no asociada (${upd.error.message.slice(0, 80)})`);
+      } else {
+        imagenesOk++;
+      }
+    }
+
     const auditWarnings = [
       ...out.warningMessages,
       `Movimientos generados: ${out.movimientos_generados} (entrada=${out.unidades_entrada}, salida=${out.unidades_salida})`,
@@ -34,6 +59,8 @@ export async function POST(request: NextRequest) {
         movimientos_generados: out.movimientos_generados,
         unidades_entrada: out.unidades_entrada,
         unidades_salida: out.unidades_salida,
+        imagenes_ok: imagenesOk,
+        imagenes_error: imagenesError,
       },
       warnings: out.warningMessages,
       errors: out.errorMessages,

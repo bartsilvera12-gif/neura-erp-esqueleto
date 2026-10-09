@@ -66,25 +66,27 @@ export async function GET(request: NextRequest) {
       [empresaId]
     );
 
+    // Columnas alineadas al IMPORTADOR de productos: así el archivo exportado
+    // se puede volver a subir sin errores (export ↔ import round-trip).
     const buf = buildXlsxBuffer<Row>(rows, [
-      { header: "N'", value: (_r, i) => i + 1, width: 6 },
-      { header: "ALMACEN", value: (r) => r.ubicacion_pais || "PY", width: 12 },
-      { header: "DESCRIPCION", value: (r) => r.nombre, width: 38 },
-      { header: "CODIGO", value: (r) => r.sku, width: 18 },
-      { header: "CANTIDAD DE IMPORTACION Y CANTIDAD FISICA", value: (r) => Number(r.cantidad_importacion ?? 0), width: 16 },
-      { header: "CANTIDAD EN FISICO ALMACEN PY", value: (r) => Number(r.stock_actual ?? 0), width: 16 },
-      { header: "VENDIDO", value: (r) => Number(r.vendido ?? 0), width: 10 },
-      { header: "SHOW ROOM", value: (r) => Number(r.show_room ?? 0), width: 10 },
-      { header: "EXPORTACION BOLIVIA", value: (r) => Number(r.exportacion_bolivia ?? 0), width: 16 },
-      {
-        // Misma fórmula que el Excel de Living Room.
-        header: "SALDO FINAL",
-        value: (r) => Number(r.cantidad_importacion ?? 0) - Number(r.vendido ?? 0) - Number(r.exportacion_bolivia ?? 0),
-        width: 12,
-      },
-      { header: "OBSERVACIONES", value: (r) => r.observaciones ?? "", width: 30 },
-      { header: "POSIBLE SOLUCION", value: (r) => r.posible_solucion ?? "", width: 30 },
-    ], { sheetName: "Stock" });
+      { header: "NOMBRE", value: (r) => r.nombre, width: 38 },
+      { header: "SKU", value: (r) => r.sku, width: 18 },
+      // Si el código es interno (INT-...), se exporta vacío: el importador lo
+      // rechaza por ser prefijo reservado y lo regenera solo.
+      { header: "CODIGO_BARRAS", value: (r) => (r.codigo_barras_interno ? "" : r.codigo_barras ?? ""), width: 18 },
+      { header: "CATEGORIA", value: (r) => r.categoria_nombre ?? "", width: 18 },
+      { header: "PROVEEDOR_PRINCIPAL", value: (r) => r.proveedor_nombre ?? "", width: 20 },
+      { header: "UBICACION_PRINCIPAL", value: (r) => r.ubicacion_nombre ?? "", width: 20 },
+      { header: "UNIDAD_MEDIDA", value: (r) => r.unidad_medida || "UNIDAD", width: 14 },
+      { header: "COSTO_PROMEDIO", value: (r) => Number(r.costo_promedio ?? 0), width: 14 },
+      { header: "PRECIO_VENTA", value: (r) => Number(r.precio_venta ?? 0), width: 14 },
+      { header: "STOCK_ACTUAL", value: (r) => Number(r.stock_actual ?? 0), width: 12 },
+      { header: "STOCK_MINIMO", value: (r) => Number(r.stock_minimo ?? 0), width: 12 },
+      { header: "METODO_VALUACION", value: (r) => r.metodo_valuacion || "CPP", width: 16 },
+      { header: "ACTIVO", value: (r) => (r.activo ? "SI" : "NO"), width: 8 },
+      // Vacío a propósito: al re-importar no toca la imagen ya guardada.
+      { header: "IMAGEN_URL", value: () => "", width: 40 },
+    ], { sheetName: "Productos" });
 
     return new Response(new Uint8Array(buf), {
       status: 200,
