@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { PreviewResponse, CommitResponse } from "@/lib/excel/import-types";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Upload } from "lucide-react";
 
 interface Props {
   entidad: string;
@@ -82,12 +82,21 @@ export default function ExcelImportWizard({
                   Descargar plantilla
                 </a>
               </div>
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm"
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-medium text-white bg-[#0EA5E9] hover:bg-[#0284C7] px-4 py-2 rounded-lg transition-colors shadow-sm">
+                  <Upload className="h-4 w-4" aria-hidden />
+                  Seleccionar archivo
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="sr-only"
+                  />
+                </label>
+                <span className={`text-sm truncate max-w-xs ${file ? "text-slate-700 font-medium" : "text-slate-400"}`}>
+                  {file ? file.name : "Ningún archivo seleccionado"}
+                </span>
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg">Cancelar</button>
                 <button onClick={handleUpload} disabled={!file || busy}
@@ -155,6 +164,14 @@ export default function ExcelImportWizard({
                   <strong>Movimientos generados:</strong> {commit.summary.movimientos_generados} ·
                   +{commit.summary.unidades_entrada ?? 0} entrada(s) ·
                   −{commit.summary.unidades_salida ?? 0} salida(s)
+                </div>
+              )}
+              {((commit.summary.imagenes_ok ?? 0) > 0 || (commit.summary.imagenes_error ?? 0) > 0) && (
+                <div className="text-xs bg-sky-50 border border-sky-200 rounded p-2 text-sky-800">
+                  <strong>Imágenes:</strong> {commit.summary.imagenes_ok ?? 0} cargada(s) desde link
+                  {(commit.summary.imagenes_error ?? 0) > 0
+                    ? ` · ${commit.summary.imagenes_error} con error (ver advertencias)`
+                    : ""}
                 </div>
               )}
               {commit.errors.length > 0 && (

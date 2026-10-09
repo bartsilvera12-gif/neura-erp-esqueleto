@@ -40,6 +40,10 @@ export interface CommitResultSummary {
   movimientos_generados?: number;
   unidades_entrada?: number;
   unidades_salida?: number;
+  /** Solo productos: imágenes descargadas desde URL y asociadas correctamente. */
+  imagenes_ok?: number;
+  /** Solo productos: imágenes que no se pudieron descargar/asociar. */
+  imagenes_error?: number;
 }
 
 export interface CommitResponse {

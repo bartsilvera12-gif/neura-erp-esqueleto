@@ -8,6 +8,7 @@ import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
 import { getAuthWithRol, isAdmin } from "@/lib/middleware/auth";
 import { parseUploadFile } from "@/lib/excel/import";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
 
 export interface AuthCtx {
   empresaId: string;
@@ -17,6 +18,8 @@ export interface AuthCtx {
   filename: string;
   rows: Record<string, string>[];
   crearFaltantes: boolean;
+  /** Cliente tenant (Storage + PostgREST). Usado p.ej. para imágenes al importar. */
+  supabase: AppSupabaseClient;
 }
 
 /** Lee form-data, valida auth + admin, parsea xlsx/csv. */
@@ -58,6 +61,7 @@ export async function leerArchivoYAuth(request: Request): Promise<
       filename: file.name,
       rows: parsed.rows,
       crearFaltantes,
+      supabase: tenant.supabase,
     },
   };
 }
