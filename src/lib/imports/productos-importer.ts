@@ -17,6 +17,8 @@ interface ProductoExistente {
 export interface ProductoParsed {
   row_number: number;
   nombre: string;
+  nombre_importacion: string;
+  descripcion: string;
   sku: string;
   codigo_barras: string;
   categoria_nombre: string;
@@ -54,6 +56,9 @@ export function parseProductosRows(rows: Record<string, string>[]): ProductoPars
     return {
       row_number: idx + 2,
       nombre,
+      nombre_importacion: normalizeUpperText(pick(r, "NOMBRE_IMPORTACION", "NOMBREIMPORTACION")),
+      // Descripción: texto libre, NO normalizar a mayúsculas.
+      descripcion: pick(r, "DESCRIPCION"),
       sku,
       codigo_barras: codigo_barras_raw,
       categoria_nombre: normalizeUpperText(pick(r, "CATEGORIA", "CATEGORIA_PRINCIPAL")),
@@ -218,7 +223,7 @@ export function buildPreview(parsed: ProductoParsed[], maps: ResolverMaps): Prev
       unidades_salida: totalSalida,
     },
     rows,
-    headers: ["NOMBRE","SKU","CODIGO_BARRAS","CATEGORIA","PROVEEDOR_PRINCIPAL","UBICACION_PRINCIPAL","UNIDAD_MEDIDA","COSTO_PROMEDIO","PRECIO_VENTA","STOCK_ACTUAL","STOCK_MINIMO","METODO_VALUACION","ACTIVO","IMAGEN_URL"],
+    headers: ["NOMBRE","NOMBRE_IMPORTACION","DESCRIPCION","SKU","CODIGO_BARRAS","CATEGORIA","PROVEEDOR_PRINCIPAL","UBICACION_PRINCIPAL","UNIDAD_MEDIDA","COSTO_PROMEDIO","PRECIO_VENTA","STOCK_ACTUAL","STOCK_MINIMO","METODO_VALUACION","ACTIVO","IMAGEN_URL"],
   };
 }
 
@@ -363,11 +368,13 @@ export async function commitProductos(
                stock_actual=$7::numeric, stock_minimo=$8::numeric,
                metodo_valuacion=$9, activo=$10::boolean,
                categoria_principal_id=$11::uuid, proveedor_principal_id=$12::uuid, ubicacion_principal_id=$13::uuid,
+               nombre_importacion=NULLIF($16,''), descripcion=NULLIF($17,''),
                updated_at=now()
              WHERE id=$14::uuid AND empresa_id=$15::uuid`,
             [p.nombre, p.sku, p.codigo_barras, p.unidad_medida, p.costo_promedio, p.precio_venta,
              p.stock_actual, p.stock_minimo, p.metodo_valuacion, p.activo,
-             categoriaId, proveedorId, ubicacionId, p.match_id, empresaId]
+             categoriaId, proveedorId, ubicacionId, p.match_id, empresaId,
+             p.nombre_importacion, p.descripcion]
           );
           out.updated++;
           if (p.imagen_url) out.imagenes.push({ producto_id: p.match_id, nombre: p.nombre, sku: p.sku, url: p.imagen_url });
@@ -399,15 +406,18 @@ export async function commitProductos(
             `INSERT INTO ${tP} (
                empresa_id, nombre, sku, codigo_barras, codigo_barras_interno,
                unidad_medida, costo_promedio, precio_venta, stock_actual, stock_minimo,
-               metodo_valuacion, activo, categoria_principal_id, proveedor_principal_id, ubicacion_principal_id
+               metodo_valuacion, activo, categoria_principal_id, proveedor_principal_id, ubicacion_principal_id,
+               nombre_importacion, descripcion
              ) VALUES (
                $1::uuid, $2, NULLIF($3,''), NULLIF($4,''), $5::boolean,
                $6, $7::numeric, $8::numeric, $9::numeric, $10::numeric,
-               $11, $12::boolean, $13::uuid, $14::uuid, $15::uuid
+               $11, $12::boolean, $13::uuid, $14::uuid, $15::uuid,
+               NULLIF($16,''), NULLIF($17,'')
              ) RETURNING id`,
             [empresaId, p.nombre, p.sku, codigoBarras, codigoInterno,
              p.unidad_medida, p.costo_promedio, p.precio_venta, p.stock_actual, p.stock_minimo,
-             p.metodo_valuacion, p.activo, categoriaId, proveedorId, ubicacionId]
+             p.metodo_valuacion, p.activo, categoriaId, proveedorId, ubicacionId,
+             p.nombre_importacion, p.descripcion]
           );
           out.inserted++;
           if (p.imagen_url && inserted.rows[0]?.id) {
@@ -441,6 +451,8 @@ export async function commitProductos(
 /** Helper sin uso directo aqui pero util al exponer en templates */
 export const PRODUCTOS_TEMPLATE_ROW = {
   NOMBRE: "EJEMPLO PRODUCTO",
+  NOMBRE_IMPORTACION: "NOMBRE DEL PROVEEDOR",
+  DESCRIPCION: "Descripción opcional del producto",
   SKU: "EJ-001",
   CODIGO_BARRAS: "",
   CATEGORIA: "ELECTRICIDAD",

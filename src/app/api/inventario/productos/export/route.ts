@@ -11,6 +11,8 @@ import { buildXlsxBuffer, xlsxResponseHeaders, nowStamp } from "@/lib/excel/expo
  */
 interface Row {
   nombre: string;
+  nombre_importacion: string | null;
+  descripcion: string | null;
   sku: string;
   codigo_barras: string | null;
   codigo_barras_interno: boolean;
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const { rows } = await pool.query<Row>(
-      `SELECT p.nombre, p.sku, p.codigo_barras, p.codigo_barras_interno,
+      `SELECT p.nombre, p.nombre_importacion, p.descripcion, p.sku, p.codigo_barras, p.codigo_barras_interno,
               c.nombre AS categoria_nombre,
               pr.nombre AS proveedor_nombre,
               u.nombre AS ubicacion_nombre, u.tipo AS ubicacion_tipo, u.pais AS ubicacion_pais,
@@ -70,6 +72,8 @@ export async function GET(request: NextRequest) {
     // se puede volver a subir sin errores (export ↔ import round-trip).
     const buf = buildXlsxBuffer<Row>(rows, [
       { header: "NOMBRE", value: (r) => r.nombre, width: 38 },
+      { header: "NOMBRE_IMPORTACION", value: (r) => r.nombre_importacion ?? "", width: 38 },
+      { header: "DESCRIPCION", value: (r) => r.descripcion ?? "", width: 40 },
       { header: "SKU", value: (r) => r.sku, width: 18 },
       // Si el código es interno (INT-...), se exporta vacío: el importador lo
       // rechaza por ser prefijo reservado y lo regenera solo.
