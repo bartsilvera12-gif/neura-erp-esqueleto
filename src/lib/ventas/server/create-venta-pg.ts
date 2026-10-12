@@ -131,7 +131,7 @@ export async function createVentaTransaccionalPg(
   const ids = [...qtyByProduct.keys()];
   const prodQ = await sb
     .from("productos")
-    .select("id, stock_actual, costo_promedio, nombre, sku, controla_stock")
+    .select("id, stock_actual, costo_promedio, nombre, sku, controla_stock, ubicacion_principal_id")
     .eq("empresa_id", params.empresaId)
     .in("id", ids);
   if (prodQ.error) throw new Error(prodQ.error.message);
@@ -142,6 +142,7 @@ export async function createVentaTransaccionalPg(
     nombre: string;
     sku: string;
     controla_stock: boolean | null;
+    ubicacion_principal_id: string | null;
   }>;
 
   if (prodRows.length !== ids.length) {
@@ -152,7 +153,7 @@ export async function createVentaTransaccionalPg(
     );
   }
 
-  type ProdMeta = { stock: number; costo: number; nombre: string; sku: string; controlaStock: boolean };
+  type ProdMeta = { stock: number; costo: number; nombre: string; sku: string; controlaStock: boolean; ubicacionPrincipalId: string | null };
   const stockMap = new Map<string, ProdMeta>();
   for (const r of prodRows) {
     stockMap.set(r.id, {
@@ -161,6 +162,7 @@ export async function createVentaTransaccionalPg(
       nombre: r.nombre,
       sku: r.sku,
       controlaStock: r.controla_stock !== false,
+      ubicacionPrincipalId: r.ubicacion_principal_id ?? null,
     });
   }
 
@@ -253,12 +255,12 @@ export async function createVentaTransaccionalPg(
   // Helper de rollback best-effort
   // Lo que ya se descontó, para devolverlo si algo falla a mitad. Se anota el
   // depósito y el total por separado: puede haber salido uno y no el otro.
-  const descontado: { productoId: string; cantidad: number; deposito: boolean; total: boolean }[] = [];
+  const descontado: { productoId: string; cantidad: number; deposito: boolean; total: boolean; ubicacionId: string | null }[] = [];
   const rollback = async () => {
     for (const d of descontado) {
       try {
-        if (d.deposito && params.ubicacionId) {
-          await sumarStockDeposito(sb as unknown as AppSupabaseClient, params.empresaId, d.productoId, params.ubicacionId, d.cantidad);
+        if (d.deposito && d.ubicacionId) {
+          await sumarStockDeposito(sb as unknown as AppSupabaseClient, params.empresaId, d.productoId, d.ubicacionId, d.cantidad);
         }
         if (d.total) {
           const { data } = await sb.from("productos").select("stock_actual").eq("empresa_id", params.empresaId).eq("id", d.productoId).maybeSingle();
@@ -311,15 +313,17 @@ export async function createVentaTransaccionalPg(
       const p = stockMap.get(line.producto_id as string)!;
       if (!p.controlaStock) continue;
       const nuevoStock = p.stock - line.cantidad;
-      // El depósito se descuenta ANTES que el total: si el producto todavía no
-      // llevaba stock por depósito, la primera fila se arma con el total sin tocar.
+      // Depósito del que sale la mercadería: el elegido en la venta o, si no se
+      // indicó, el depósito principal del producto (así el stock por almacén
+      // queda exacto). El depósito se descuenta ANTES que el total.
       // Si el producto no tiene stock en ESE depósito, la venta no se frena: el
       // stock total igual baja y el desfase se corrige con un conteo físico.
-      const pendiente = { productoId: line.producto_id as string, cantidad: line.cantidad, deposito: false, total: false };
+      const ubicDeposito = params.ubicacionId ?? p.ubicacionPrincipalId;
+      const pendiente = { productoId: line.producto_id as string, cantidad: line.cantidad, deposito: false, total: false, ubicacionId: ubicDeposito };
       descontado.push(pendiente);
-      if (params.ubicacionId) {
+      if (ubicDeposito) {
         try {
-          await sumarStockDeposito(sb as unknown as AppSupabaseClient, params.empresaId, line.producto_id as string, params.ubicacionId, -line.cantidad);
+          await sumarStockDeposito(sb as unknown as AppSupabaseClient, params.empresaId, line.producto_id as string, ubicDeposito, -line.cantidad);
           pendiente.deposito = true;
         } catch {
           /* sin stock en ese depósito: se descuenta solo del total */
@@ -347,7 +351,7 @@ export async function createVentaTransaccionalPg(
         fecha: fechaIso,
         // Solo si de verdad se descontó de ese depósito: si no, al anular la
         // venta se devolvería stock a un depósito que nunca lo tuvo.
-        ubicacion_origen_id: pendiente.deposito ? params.ubicacionId ?? null : null,
+        ubicacion_origen_id: pendiente.deposito ? ubicDeposito : null,
         venta_id: ventaId,
         created_by: params.createdBy ?? null,
         usuario_nombre: params.usuarioNombre ?? null,
