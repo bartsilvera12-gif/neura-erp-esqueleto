@@ -13,6 +13,7 @@ interface ProductoRow {
   id: string;
   empresa_id: string;
   nombre: string;
+  nombre_importacion?: string | null;
   sku: string;
   costo_promedio: number;
   precio_venta: number;
@@ -72,6 +73,7 @@ function rowToProducto(row: ProductoRow): Producto {
   return {
     id: row.id,
     nombre: row.nombre,
+    nombre_importacion: row.nombre_importacion ?? null,
     sku: row.sku,
     costo_promedio: Number(row.costo_promedio),
     precio_venta: Number(row.precio_venta),
@@ -200,6 +202,7 @@ export async function saveProducto(
 ): Promise<Producto | null> {
   const body = {
     nombre: datos.nombre,
+    nombre_importacion: datos.nombre_importacion ?? null,
     sku: datos.sku,
     costo_promedio: datos.costo_promedio,
     precio_venta: datos.precio_venta,
@@ -281,6 +284,7 @@ export async function updateProducto(
 ): Promise<Producto | null> {
   const body: Record<string, unknown> = {};
   if (datos.nombre !== undefined) body.nombre = datos.nombre;
+  if (datos.nombre_importacion !== undefined) body.nombre_importacion = datos.nombre_importacion ?? null;
   if (datos.sku !== undefined) body.sku = datos.sku;
   if (datos.costo_promedio !== undefined) body.costo_promedio = datos.costo_promedio;
   if (datos.precio_venta !== undefined) body.precio_venta = datos.precio_venta;

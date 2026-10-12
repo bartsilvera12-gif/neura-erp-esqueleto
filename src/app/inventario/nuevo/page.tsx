@@ -28,6 +28,7 @@ export default function NuevoProductoPage() {
 
   const [form, setForm] = useState({
     nombre: "",
+    nombre_importacion: "",
     descripcion: "",
     sku: "",
     codigo_barras: "",
@@ -304,6 +305,7 @@ export default function NuevoProductoPage() {
       try {
         guardado = await saveProducto({
           nombre: form.nombre.trim().toUpperCase(),
+          nombre_importacion: form.nombre_importacion.trim().toUpperCase() || null,
           descripcion: form.descripcion.trim() || null,
           sku: form.sku.trim().toUpperCase(),
           costo_promedio: parseFloat(form.costo_promedio) || 0,
@@ -395,7 +397,7 @@ export default function NuevoProductoPage() {
     <div className="space-y-8">
 
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">Nuevo producto</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Añadir producto</h1>
       </div>
 
       <div className="zx-surface p-6 max-w-5xl">
@@ -427,7 +429,7 @@ export default function NuevoProductoPage() {
             </div>
           )}
 
-          {/* Nombre */}
+          {/* Nombre del producto (el que ve el cliente: proformas CRM + factura) */}
           <div>
             <label className={labelClass}>Nombre del producto</label>
             <input
@@ -435,10 +437,29 @@ export default function NuevoProductoPage() {
               name="nombre"
               value={form.nombre}
               onChange={handleChange}
-              placeholder="Ej: HAMBURGUESA CASERA"
+              placeholder="Ej: SOFA LEBLON 3 CUERPOS CARAMELO"
               className={`${inputClass} uppercase`}
               required
             />
+            <p className="mt-1 text-xs text-slate-400">
+              El que ve el cliente: va a las proformas del CRM y a la factura.
+            </p>
+          </div>
+
+          {/* Nombre de importación (el del proveedor: importaciones/exportaciones) */}
+          <div>
+            <label className={labelClass}>Nombre de importación</label>
+            <input
+              type="text"
+              name="nombre_importacion"
+              value={form.nombre_importacion}
+              onChange={handleChange}
+              placeholder="El nombre que da el proveedor (opcional)"
+              className={`${inputClass} uppercase`}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              El que otorga el proveedor; se usa en importaciones y exportaciones.
+            </p>
           </div>
 
           {/* Descripción */}
@@ -456,100 +477,38 @@ export default function NuevoProductoPage() {
             />
           </div>
 
-          {/* Inventario extendido (Living Room / muebles) */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Inventario extendido
-            </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <div>
-                <label className={labelClass}>Cantidad importación</label>
-                <input
-                  type="number"
-                  name="cantidad_importacion"
-                  value={form.cantidad_importacion}
-                  onChange={handleChange}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Vendido</label>
-                <input
-                  type="number"
-                  name="vendido"
-                  value={form.vendido}
-                  onChange={handleChange}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Show room</label>
-                <input
-                  type="number"
-                  name="show_room"
-                  value={form.show_room}
-                  onChange={handleChange}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Exportación Bolivia</label>
-                <input
-                  type="number"
-                  name="exportacion_bolivia"
-                  value={form.exportacion_bolivia}
-                  onChange={handleChange}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className={inputClass}
-                />
-              </div>
+          {/* Observaciones del inventario (los campos de importación/vendido/show room/
+              exportación se movieron a los reportes; acá quedan solo las notas). */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className={labelClass}>Observaciones</label>
+              <textarea
+                name="observaciones"
+                value={form.observaciones}
+                onChange={handleChange}
+                rows={2}
+                placeholder="Notas del inventario (si llegó dañado, etc.)"
+                className={inputClass}
+              />
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className={labelClass}>Observaciones</label>
-                <textarea
-                  name="observaciones"
-                  value={form.observaciones}
-                  onChange={handleChange}
-                  rows={2}
-                  placeholder="Notas del inventario"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Posible solución</label>
-                <textarea
-                  name="posible_solucion"
-                  value={form.posible_solucion}
-                  onChange={handleChange}
-                  rows={2}
-                  placeholder="Acción sugerida"
-                  className={inputClass}
-                />
-              </div>
+            <div>
+              <label className={labelClass}>Posible solución</label>
+              <textarea
+                name="posible_solucion"
+                value={form.posible_solucion}
+                onChange={handleChange}
+                rows={2}
+                placeholder="Acción sugerida"
+                className={inputClass}
+              />
             </div>
-            <p className="mt-3 text-xs text-slate-500">
-              La cantidad en físico es el <strong>Stock actual</strong> (más abajo). El saldo final se calcula solo:
-              importación − vendido − exportación Bolivia.
-            </p>
           </div>
 
           {/* SKU + Unidad de medida */}
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>
-                SKU
+                SKU / CÓDIGO
                 <button
                   type="button"
                   onClick={() => {

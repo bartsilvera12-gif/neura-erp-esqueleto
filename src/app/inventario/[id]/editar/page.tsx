@@ -46,6 +46,7 @@ export default function EditarProductoPage() {
   const [posibleSolucion, setPosibleSolucion] = useState("");
   const [form, setForm] = useState({
     nombre: "",
+    nombre_importacion: "",
     sku: "",
     codigo_barras: "",
     codigo_barras_interno: false,
@@ -148,6 +149,7 @@ export default function EditarProductoPage() {
       const markup = costo > 0 ? ((precio - costo) / costo) * 100 : 0;
       setForm({
         nombre: p.nombre,
+        nombre_importacion: p.nombre_importacion ?? "",
         sku: p.sku,
         codigo_barras: p.codigo_barras ?? "",
         codigo_barras_interno: p.codigo_barras_interno === true,
@@ -295,6 +297,7 @@ export default function EditarProductoPage() {
       const cambioCodigo = codigoIngresado !== (codigoOriginal ?? "");
       const updatePayload: Parameters<typeof updateProducto>[1] = {
         nombre: form.nombre.trim().toUpperCase(),
+        nombre_importacion: form.nombre_importacion.trim().toUpperCase() || null,
         sku: form.sku.trim().toUpperCase(),
         costo_promedio: parseFloat(form.costo_promedio) || 0,
         precio_venta: parseFloat(form.precio_venta) || 0,
@@ -412,6 +415,24 @@ export default function EditarProductoPage() {
               className={`${inputClass} uppercase`}
               required
             />
+            <p className="mt-1 text-xs text-slate-400">
+              El que ve el cliente: va a las proformas del CRM y a la factura.
+            </p>
+          </div>
+
+          <div>
+            <label className={labelClass}>Nombre de importación</label>
+            <input
+              type="text"
+              name="nombre_importacion"
+              value={form.nombre_importacion}
+              onChange={handleChange}
+              placeholder="El nombre que da el proveedor (opcional)"
+              className={`${inputClass} uppercase`}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              El que otorga el proveedor; se usa en importaciones y exportaciones.
+            </p>
           </div>
 
           <div>
@@ -432,93 +453,35 @@ export default function EditarProductoPage() {
             />
           </div>
 
-          {/* Inventario extendido (Living Room / muebles) */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Inventario extendido
-            </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <div>
-                <label className={labelClass}>Cantidad importación</label>
-                <input
-                  type="number"
-                  value={cantidadImportacion}
-                  onChange={(e) => setCantidadImportacion(e.target.value)}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Vendido</label>
-                <input
-                  type="number"
-                  value={vendido}
-                  onChange={(e) => setVendido(e.target.value)}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Show room</label>
-                <input
-                  type="number"
-                  value={showRoom}
-                  onChange={(e) => setShowRoom(e.target.value)}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Exportación Bolivia</label>
-                <input
-                  type="number"
-                  value={exportacionBolivia}
-                  onChange={(e) => setExportacionBolivia(e.target.value)}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className={inputClass}
-                />
-              </div>
+          {/* Observaciones del inventario (los campos de importación/vendido/show room/
+              exportación se movieron a los reportes; acá quedan solo las notas). */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className={labelClass}>Observaciones</label>
+              <textarea
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                rows={2}
+                placeholder="Notas del inventario (si llegó dañado, etc.)"
+                className={inputClass}
+              />
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className={labelClass}>Observaciones</label>
-                <textarea
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  rows={2}
-                  placeholder="Notas del inventario"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Posible solución</label>
-                <textarea
-                  value={posibleSolucion}
-                  onChange={(e) => setPosibleSolucion(e.target.value)}
-                  rows={2}
-                  placeholder="Acción sugerida"
-                  className={inputClass}
-                />
-              </div>
+            <div>
+              <label className={labelClass}>Posible solución</label>
+              <textarea
+                value={posibleSolucion}
+                onChange={(e) => setPosibleSolucion(e.target.value)}
+                rows={2}
+                placeholder="Acción sugerida"
+                className={inputClass}
+              />
             </div>
-            <p className="mt-3 text-xs text-slate-500">
-              La cantidad en físico es el <strong>Stock actual</strong> (más abajo). El saldo final se calcula solo:
-              importación − vendido − exportación Bolivia.
-            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className={labelClass}>
-                SKU{tipoGastro === "reventa" ? "" : <span className="text-xs font-normal text-gray-400 ml-1">(opcional)</span>}
+                SKU / CÓDIGO{tipoGastro === "reventa" ? "" : <span className="text-xs font-normal text-gray-400 ml-1">(opcional)</span>}
               </label>
               <input
                 type="text"

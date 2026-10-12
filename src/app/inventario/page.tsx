@@ -300,7 +300,7 @@ export default function InventarioPage() {
               href="/inventario/nuevo"
               className="rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[#4FAEB2]/25 transition-colors hover:bg-[#3F8E91] active:scale-95"
             >
-              Nuevo producto
+              Añadir producto
             </Link>
           </div>
         </div>
@@ -372,10 +372,10 @@ export default function InventarioPage() {
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">Almacén</label>
             <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+              {/* Solo almacenes de Paraguay: se sacó la opción BOL (pedido del cliente). */}
               {([
                 { id: "", label: "Todos" },
                 { id: "PY", label: "PY" },
-                { id: "BOL", label: "BOL" },
               ] as const).map((o) => (
                 <button
                   key={o.id || "todos"}

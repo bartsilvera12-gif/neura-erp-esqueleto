@@ -6,7 +6,7 @@ import { normalizeUpperText, normalizeUpperCodigoBarras } from "@/lib/text/norma
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 
 const PRODUCTO_COLS =
-  "id, empresa_id, nombre, sku, costo_promedio, precio_venta, stock_actual, stock_minimo, " +
+  "id, empresa_id, nombre, nombre_importacion, sku, costo_promedio, precio_venta, stock_actual, stock_minimo, " +
   "unidad_medida, metodo_valuacion, activo, created_at, updated_at, " +
   "codigo_barras, codigo_barras_interno, imagen_path, imagen_url, " +
   "categoria_principal_id, ubicacion_principal_id, proveedor_principal_id, " +
@@ -130,6 +130,7 @@ export async function PATCH(
 
     const patch: Record<string, unknown> = {};
     if (body.nombre !== undefined) patch.nombre = normalizeUpperText(body.nombre);
+    if (body.nombre_importacion !== undefined) patch.nombre_importacion = normalizeUpperText(body.nombre_importacion) || null;
     if (body.sku !== undefined) patch.sku = normalizeUpperText(body.sku);
     if (body.costo_promedio !== undefined) patch.costo_promedio = Number(body.costo_promedio) || 0;
     if (body.precio_venta !== undefined) patch.precio_venta = Number(body.precio_venta) || 0;

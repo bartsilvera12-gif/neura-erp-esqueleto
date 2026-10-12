@@ -11,7 +11,7 @@ import { signProductoImagen } from "@/lib/inventario/imagen-storage";
  */
 
 const PRODUCTO_COLS =
-  "id, empresa_id, nombre, sku, costo_promedio, precio_venta, stock_actual, stock_minimo, " +
+  "id, empresa_id, nombre, nombre_importacion, sku, costo_promedio, precio_venta, stock_actual, stock_minimo, " +
   "unidad_medida, metodo_valuacion, activo, created_at, updated_at, " +
   "codigo_barras, codigo_barras_interno, imagen_path, imagen_url, " +
   "categoria_principal_id, ubicacion_principal_id, proveedor_principal_id, " +
@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     const nombre = normalizeUpperText(body.nombre);
+    const nombreImportacion = normalizeUpperText(body.nombre_importacion) || null;
     const sku = normalizeUpperText(body.sku);
     if (!nombre) return NextResponse.json(errorResponse("El nombre es obligatorio."), { status: 400 });
     if (!sku) return NextResponse.json(errorResponse("El SKU es obligatorio."), { status: 400 });
@@ -159,6 +160,7 @@ export async function POST(request: NextRequest) {
     const insertPayload: Record<string, unknown> = {
       empresa_id: empresaId,
       nombre,
+      nombre_importacion: nombreImportacion,
       sku,
       costo_promedio: costoPromedio,
       precio_venta: precioVenta,
