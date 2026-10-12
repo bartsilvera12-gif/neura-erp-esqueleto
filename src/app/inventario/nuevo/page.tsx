@@ -11,6 +11,8 @@ import { productoExiste, saveProducto } from "@/lib/inventario/storage";
 import type { MetodoValuacion } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
 import { AlertTriangle } from "lucide-react";
+import ImportExcelButton from "@/components/ui/ImportExcelButton";
+import { useIsAdmin } from "@/lib/auth/use-is-admin";
 
 // Opciones estándar de unidad de medida para gastro
 const UNIDADES_OPCIONES = [
@@ -23,6 +25,7 @@ interface ProvRow { id: string; nombre: string }
 
 export default function NuevoProductoPage() {
   const router = useRouter();
+  const { isAdmin } = useIsAdmin();
   const [errorDuplicado, setErrorDuplicado] = useState<string | null>(null);
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
 
@@ -396,8 +399,20 @@ export default function NuevoProductoPage() {
   return (
     <div className="space-y-8">
 
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-800">Añadir producto</h1>
+        {/* Alta por lote: crea productos nuevos con stock, en el almacén por defecto. */}
+        <ImportExcelButton
+          entidad="Productos"
+          previewUrl="/api/inventario/productos/import/preview"
+          commitUrl="/api/inventario/productos/import/commit"
+          templateUrl="/api/inventario/productos/import/template"
+          modo="agregar"
+          label="Añadir por Excel"
+          titulo="Añadir productos desde Excel"
+          permiteCrearFaltantes
+          visible={isAdmin}
+        />
       </div>
 
       <div className="zx-surface p-6 max-w-5xl">

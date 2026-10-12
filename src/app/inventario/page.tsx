@@ -279,12 +279,15 @@ export default function InventarioPage() {
         </div>
         <div className="flex items-center gap-2 mt-1">
           <ExportExcelButton url="/api/inventario/productos/export" />
+          {/* Actualizar Producto: el Excel solo actualiza datos (SKU bloqueado, no toca stock). */}
           <ImportExcelButton
             entidad="Productos"
             previewUrl="/api/inventario/productos/import/preview"
             commitUrl="/api/inventario/productos/import/commit"
             templateUrl="/api/inventario/productos/import/template"
-            permiteCrearFaltantes
+            modo="actualizar"
+            label="Actualizar Producto"
+            titulo="Actualizar productos desde Excel"
             visible={isAdmin}
             onCompleted={() => setRefreshKey((k) => k + 1)}
           />

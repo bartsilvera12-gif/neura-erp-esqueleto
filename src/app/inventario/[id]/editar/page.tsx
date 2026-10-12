@@ -369,7 +369,6 @@ export default function EditarProductoPage() {
   }
 
   const summary = TIPO_SUMMARY[tipoGastro];
-  const showStock = tipoGastro === "reventa";
   const showPrecioVenta = tipoGastro !== "materia";
 
   return (
@@ -617,8 +616,9 @@ export default function EditarProductoPage() {
                   </Link>
                 </div>
               </div>
-              {/* Depósito principal: define de dónde sale el stock en remisiones, conteos y transferencias. */}
-              <div className="md:col-span-4 min-w-0">
+              {/* Depósito oculto en la ficha de edición: el stock se maneja por almacén
+                  (alta / movimientos / transferencias), no editando el producto. */}
+              <div className="hidden md:col-span-4 min-w-0">
                 <label className={labelClass}>Depósito / Ubicación</label>
                 <SelectFromList
                   value={ubicacionId}
@@ -794,7 +794,9 @@ export default function EditarProductoPage() {
             )}
           </div>
 
-          <div className={`grid grid-cols-2 gap-6 ${showStock ? "" : "hidden"}`}>
+          {/* Stock oculto en la ficha: el stock se maneja por almacén (alta /
+              movimientos), no editando el producto. */}
+          <div className="hidden">
             <div>
               <label className={labelClass}>Stock actual</label>
               <input
@@ -804,11 +806,7 @@ export default function EditarProductoPage() {
                 onChange={handleChange}
                 className={inputClass}
                 min={0}
-                required={showStock}
               />
-              <p className="mt-1 text-xs text-gray-400">
-                Para ajustes de stock, preferí registrar un <Link href="/inventario/movimientos/nuevo" className="underline">movimiento</Link>.
-              </p>
             </div>
             <div>
               <label className={labelClass}>Stock mínimo</label>
@@ -819,7 +817,6 @@ export default function EditarProductoPage() {
                 onChange={handleChange}
                 className={inputClass}
                 min={0}
-                required={showStock}
               />
             </div>
           </div>
