@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getBrowserSupabaseForEmpresaData } from "@/lib/supabase/browser-data-client";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import type {
   Producto,
   MovimientoInventario,
@@ -437,6 +438,35 @@ export async function saveMovimiento(
 
     if (updError) {
       console.error("[inventario] saveMovimiento (update stock):", updError.message);
+    }
+
+    // 3b. Living Room (instancia esqueletoerp): mantener el stock por depósito en
+    // sincronía aplicando el mismo delta al depósito principal del producto.
+    // Best-effort (no frena el movimiento). En otras instancias no se ejecuta.
+    if (esInstanciaLR() && producto.ubicacion_principal_id) {
+      try {
+        const ubic = producto.ubicacion_principal_id;
+        const { data: filaDep } = await supabase
+          .from("inventario_stock_ubicacion")
+          .select("id, stock_actual")
+          .eq("empresa_id", usuario.empresa_id)
+          .eq("producto_id", mov.producto_id)
+          .eq("ubicacion_id", ubic)
+          .maybeSingle();
+        if (filaDep) {
+          const actual = Number((filaDep as { stock_actual: number }).stock_actual) || 0;
+          await supabase
+            .from("inventario_stock_ubicacion")
+            .update({ stock_actual: actual + delta })
+            .eq("id", (filaDep as { id: string }).id);
+        } else {
+          await supabase
+            .from("inventario_stock_ubicacion")
+            .insert({ empresa_id: usuario.empresa_id, producto_id: mov.producto_id, ubicacion_id: ubic, stock_actual: nuevoStock, es_principal: true });
+        }
+      } catch (e) {
+        console.error("[inventario] saveMovimiento (stock por depósito):", e);
+      }
     }
   }
 

@@ -8,8 +8,19 @@
  * se comporta exactamente como antes (no selecciona ni escribe esas columnas),
  * garantizando que otros clientes no se vean afectados.
  */
+import { NEURA_CLIENT_SCHEMA } from "@/lib/supabase/schema";
+
 export const SCHEMA_LR = "esqueletoerp";
 
 export function soportaCamposLR(schema: string | null | undefined): boolean {
   return (schema ?? "") === SCHEMA_LR;
+}
+
+/**
+ * Esta instancia (deploy single_client) opera sobre esqueletoerp (Living Room).
+ * Isomórfico: en server usa NEURA_CLIENT_SCHEMA, en browser NEXT_PUBLIC_NEURA_CLIENT_SCHEMA.
+ * Úsese para gatear lógica LR en código compartido sin consultar la base.
+ */
+export function esInstanciaLR(): boolean {
+  return soportaCamposLR(NEURA_CLIENT_SCHEMA);
 }
