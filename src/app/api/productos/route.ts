@@ -5,19 +5,28 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { normalizeUpperText, normalizeUpperCodigoBarras } from "@/lib/text/normalize";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { signProductoImagen } from "@/lib/inventario/imagen-storage";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { soportaCamposLR } from "@/lib/inventario/campos-lr";
 
 /**
  * GET/POST de productos via PostgREST (sin pool PG directo) — compatible Hostinger.
  */
 
+// Base compartida por todos los tenants. `nombre_importacion` solo existe en
+// esqueletoerp (Living Room): se agrega aparte según el esquema (ver colsProducto).
 const PRODUCTO_COLS =
-  "id, empresa_id, nombre, nombre_importacion, sku, costo_promedio, precio_venta, stock_actual, stock_minimo, " +
+  "id, empresa_id, nombre, sku, costo_promedio, precio_venta, stock_actual, stock_minimo, " +
   "unidad_medida, metodo_valuacion, activo, created_at, updated_at, " +
   "codigo_barras, codigo_barras_interno, imagen_path, imagen_url, " +
   "categoria_principal_id, ubicacion_principal_id, proveedor_principal_id, " +
   "es_vendible, es_insumo, controla_stock, valorizado, unidad_compra, unidad_receta, " +
   "factor_compra_receta, tiempo_prep_minutos, descripcion, " +
   "cantidad_importacion, vendido, show_room, exportacion_bolivia, observaciones, posible_solucion";
+
+/** Columnas a seleccionar según el esquema: nombre_importacion solo en esqueletoerp. */
+function colsProducto(schema: string): string {
+  return soportaCamposLR(schema) ? `${PRODUCTO_COLS}, nombre_importacion` : PRODUCTO_COLS;
+}
 
 function toNumber(v: unknown): unknown {
   return typeof v === "string" ? Number(v) : v;
@@ -57,9 +66,10 @@ export async function GET(request: NextRequest) {
   try {
     const ctx = await getTenantSupabaseFromAuth(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    const schema = await fetchDataSchemaForEmpresaId(ctx.auth.empresa_id);
     const { data, error } = await ctx.supabase
       .from("productos")
-      .select(PRODUCTO_COLS)
+      .select(colsProducto(schema))
       .eq("empresa_id", ctx.auth.empresa_id)
       .eq("activo", true)
       .order("nombre");
@@ -90,6 +100,8 @@ export async function POST(request: NextRequest) {
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const empresaId = ctx.auth.empresa_id;
     const sb = ctx.supabase;
+    const schema = await fetchDataSchemaForEmpresaId(empresaId);
+    const esLR = soportaCamposLR(schema);
 
     let body: Record<string, unknown>;
     try {
@@ -160,7 +172,6 @@ export async function POST(request: NextRequest) {
     const insertPayload: Record<string, unknown> = {
       empresa_id: empresaId,
       nombre,
-      nombre_importacion: nombreImportacion,
       sku,
       costo_promedio: costoPromedio,
       precio_venta: precioVenta,
@@ -184,6 +195,8 @@ export async function POST(request: NextRequest) {
     if (tiempoPrepMinutos !== undefined) insertPayload.tiempo_prep_minutos = tiempoPrepMinutos;
     const descripcion = typeof body.descripcion === "string" ? body.descripcion.trim() || null : (body.descripcion === null ? null : undefined);
     if (descripcion !== undefined) insertPayload.descripcion = descripcion;
+    // nombre_importacion: solo esqueletoerp (Living Room). Otros tenants: no se toca.
+    if (esLR) insertPayload.nombre_importacion = nombreImportacion;
 
     // Living Room / muebles: campos de inventario extendido.
     const cantImp = Number(body.cantidad_importacion);
@@ -199,7 +212,7 @@ export async function POST(request: NextRequest) {
     const posSol = typeof body.posible_solucion === "string" ? body.posible_solucion.trim() || null : (body.posible_solucion === null ? null : undefined);
     if (posSol !== undefined) insertPayload.posible_solucion = posSol;
 
-    const ins = await sb.from("productos").insert(insertPayload).select(PRODUCTO_COLS).single();
+    const ins = await sb.from("productos").insert(insertPayload).select(colsProducto(schema)).single();
     if (ins.error) {
       const msg = ins.error.message ?? "";
       if (/duplicate key|unique|23505/i.test(msg)) {

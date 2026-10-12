@@ -6,6 +6,7 @@ import { assertAllowedChatDataSchema } from "@/lib/supabase/chat-data-schema";
 import { normalizeUpperText, normalizeUpperNullable } from "@/lib/text/normalize";
 import type { PreviewRow, PreviewResponse } from "@/lib/excel/import-types";
 import { pick, pickNumber, pickBool, chunked, type ModoImport } from "./import-helpers";
+import { soportaCamposLR } from "@/lib/inventario/campos-lr";
 
 interface ProductoExistente {
   id: string;
@@ -304,6 +305,9 @@ export async function commitProductos(
   modo: ModoImport = "ambos"
 ): Promise<CommitOutcome> {
   const schema = assertAllowedChatDataSchema(schemaRaw);
+  // nombre_importacion/descripcion solo existen/deben escribirse en esqueletoerp
+  // (Living Room). Para otros tenants el importador se comporta como antes.
+  const esLR = soportaCamposLR(schema);
   const poolMaybe = getChatPostgresPool();
   if (!poolMaybe) throw new Error("Pool no disponible.");
   const pool = poolMaybe;
@@ -399,19 +403,33 @@ export async function commitProductos(
         if (p.match_id && modo === "actualizar") {
           // Modo "Actualizar producto": solo características. NO toca SKU ni stock,
           // y no genera movimiento. Costo/precio/categoría solo si vienen cargados.
-          await pool.query(
-            `UPDATE ${tP} SET
-               nombre=$1,
-               nombre_importacion=NULLIF($2,''),
-               descripcion=NULLIF($3,''),
-               costo_promedio=CASE WHEN $4::numeric > 0 THEN $4::numeric ELSE costo_promedio END,
-               precio_venta=CASE WHEN $5::numeric > 0 THEN $5::numeric ELSE precio_venta END,
-               categoria_principal_id=COALESCE($6::uuid, categoria_principal_id),
-               updated_at=now()
-             WHERE id=$7::uuid AND empresa_id=$8::uuid`,
-            [p.nombre, p.nombre_importacion, p.descripcion, p.costo_promedio, p.precio_venta,
-             categoriaId, p.match_id, empresaId]
-          );
+          // nombre_importacion/descripcion solo en esqueletoerp (Living Room).
+          if (esLR) {
+            await pool.query(
+              `UPDATE ${tP} SET
+                 nombre=$1,
+                 nombre_importacion=NULLIF($2,''),
+                 descripcion=NULLIF($3,''),
+                 costo_promedio=CASE WHEN $4::numeric > 0 THEN $4::numeric ELSE costo_promedio END,
+                 precio_venta=CASE WHEN $5::numeric > 0 THEN $5::numeric ELSE precio_venta END,
+                 categoria_principal_id=COALESCE($6::uuid, categoria_principal_id),
+                 updated_at=now()
+               WHERE id=$7::uuid AND empresa_id=$8::uuid`,
+              [p.nombre, p.nombre_importacion, p.descripcion, p.costo_promedio, p.precio_venta,
+               categoriaId, p.match_id, empresaId]
+            );
+          } else {
+            await pool.query(
+              `UPDATE ${tP} SET
+                 nombre=$1,
+                 costo_promedio=CASE WHEN $2::numeric > 0 THEN $2::numeric ELSE costo_promedio END,
+                 precio_venta=CASE WHEN $3::numeric > 0 THEN $3::numeric ELSE precio_venta END,
+                 categoria_principal_id=COALESCE($4::uuid, categoria_principal_id),
+                 updated_at=now()
+               WHERE id=$5::uuid AND empresa_id=$6::uuid`,
+              [p.nombre, p.costo_promedio, p.precio_venta, categoriaId, p.match_id, empresaId]
+            );
+          }
           out.updated++;
           if (p.imagen_url) out.imagenes.push({ producto_id: p.match_id, nombre: p.nombre, sku: p.sku, url: p.imagen_url });
         } else if (p.match_id) {
@@ -421,6 +439,9 @@ export async function commitProductos(
             [p.match_id, empresaId]
           );
           const stockAnterior = Number(prevQ.rows[0]?.stock_actual ?? 0);
+          // nombre_importacion/descripcion ($16,$17) solo en esqueletoerp.
+          const setLR = esLR ? "nombre_importacion=NULLIF($16,''), descripcion=NULLIF($17,''), " : "";
+          const paramsLR = esLR ? [p.nombre_importacion, p.descripcion] : [];
           await pool.query(
             `UPDATE ${tP} SET
                nombre=$1, sku=$2, codigo_barras=NULLIF($3,''),
@@ -428,13 +449,12 @@ export async function commitProductos(
                stock_actual=$7::numeric, stock_minimo=$8::numeric,
                metodo_valuacion=$9, activo=$10::boolean,
                categoria_principal_id=$11::uuid, proveedor_principal_id=$12::uuid, ubicacion_principal_id=$13::uuid,
-               nombre_importacion=NULLIF($16,''), descripcion=NULLIF($17,''),
-               updated_at=now()
+               ${setLR}updated_at=now()
              WHERE id=$14::uuid AND empresa_id=$15::uuid`,
             [p.nombre, p.sku, p.codigo_barras, p.unidad_medida, p.costo_promedio, p.precio_venta,
              p.stock_actual, p.stock_minimo, p.metodo_valuacion, p.activo,
              categoriaId, proveedorId, ubicacionId, p.match_id, empresaId,
-             p.nombre_importacion, p.descripcion]
+             ...paramsLR]
           );
           out.updated++;
           if (p.imagen_url) out.imagenes.push({ producto_id: p.match_id, nombre: p.nombre, sku: p.sku, url: p.imagen_url });
@@ -464,22 +484,24 @@ export async function commitProductos(
               }
             } catch (e) { out.warningMessages.push(`Fila ${p.row_number}: no se pudo generar código interno (${(e as Error).message})`); }
           }
+          // nombre_importacion/descripcion ($16,$17) solo en esqueletoerp.
+          const colsLR = esLR ? ", nombre_importacion, descripcion" : "";
+          const valsLR = esLR ? ", NULLIF($16,''), NULLIF($17,'')" : "";
+          const paramsInsLR = esLR ? [p.nombre_importacion, p.descripcion] : [];
           const inserted = await pool.query<{ id: string }>(
             `INSERT INTO ${tP} (
                empresa_id, nombre, sku, codigo_barras, codigo_barras_interno,
                unidad_medida, costo_promedio, precio_venta, stock_actual, stock_minimo,
-               metodo_valuacion, activo, categoria_principal_id, proveedor_principal_id, ubicacion_principal_id,
-               nombre_importacion, descripcion
+               metodo_valuacion, activo, categoria_principal_id, proveedor_principal_id, ubicacion_principal_id${colsLR}
              ) VALUES (
                $1::uuid, $2, NULLIF($3,''), NULLIF($4,''), $5::boolean,
                $6, $7::numeric, $8::numeric, $9::numeric, $10::numeric,
-               $11, $12::boolean, $13::uuid, $14::uuid, $15::uuid,
-               NULLIF($16,''), NULLIF($17,'')
+               $11, $12::boolean, $13::uuid, $14::uuid, $15::uuid${valsLR}
              ) RETURNING id`,
             [empresaId, p.nombre, p.sku, codigoBarras, codigoInterno,
              p.unidad_medida, p.costo_promedio, p.precio_venta, p.stock_actual, p.stock_minimo,
              p.metodo_valuacion, p.activo, categoriaId, proveedorId, ubicacionFinal,
-             p.nombre_importacion, p.descripcion]
+             ...paramsInsLR]
           );
           out.inserted++;
           if (p.imagen_url && inserted.rows[0]?.id) {

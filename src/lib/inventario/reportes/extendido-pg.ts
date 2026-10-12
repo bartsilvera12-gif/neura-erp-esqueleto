@@ -1,6 +1,7 @@
 import "server-only";
 import { getChatPostgresPool, quoteSchemaTable } from "@/lib/supabase/chat-pg-pool";
 import { assertAllowedChatDataSchema } from "@/lib/supabase/chat-data-schema";
+import { soportaCamposLR } from "@/lib/inventario/campos-lr";
 
 /**
  * Reporte "Inventario extendido" (Living Room / muebles).
@@ -54,6 +55,8 @@ export async function listExtendido(
   filters: ExtendidoFilters = {}
 ): Promise<ExtendidoRow[]> {
   const schema = assertAllowedChatDataSchema(schemaRaw);
+  // Reporte de inventario extendido: solo Living Room (esqueletoerp). Otros tenants → vacío.
+  if (!soportaCamposLR(schema)) return [];
   const pool = getChatPostgresPool();
   if (!pool) throw new Error("Pool no disponible.");
   const tP = quoteSchemaTable(schema, "productos");

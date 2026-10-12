@@ -4,15 +4,23 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { normalizeUpperText, normalizeUpperCodigoBarras } from "@/lib/text/normalize";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { soportaCamposLR } from "@/lib/inventario/campos-lr";
 
+// Base compartida. `nombre_importacion` solo existe en esqueletoerp (Living Room);
+// se agrega según el esquema (ver colsProducto) para no afectar a otros tenants.
 const PRODUCTO_COLS =
-  "id, empresa_id, nombre, nombre_importacion, sku, costo_promedio, precio_venta, stock_actual, stock_minimo, " +
+  "id, empresa_id, nombre, sku, costo_promedio, precio_venta, stock_actual, stock_minimo, " +
   "unidad_medida, metodo_valuacion, activo, created_at, updated_at, " +
   "codigo_barras, codigo_barras_interno, imagen_path, imagen_url, " +
   "categoria_principal_id, ubicacion_principal_id, proveedor_principal_id, " +
   "es_vendible, es_insumo, controla_stock, valorizado, unidad_compra, unidad_receta, " +
   "factor_compra_receta, tiempo_prep_minutos, descripcion, " +
   "cantidad_importacion, vendido, show_room, exportacion_bolivia, observaciones, posible_solucion";
+
+function colsProducto(schema: string): string {
+  return soportaCamposLR(schema) ? `${PRODUCTO_COLS}, nombre_importacion` : PRODUCTO_COLS;
+}
 
 function toNumber(v: unknown): unknown {
   return typeof v === "string" ? Number(v) : v;
@@ -56,9 +64,10 @@ export async function GET(
     const { id } = await ctxParams.params;
     const ctx = await getTenantSupabaseFromAuth(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    const schema = await fetchDataSchemaForEmpresaId(ctx.auth.empresa_id);
     const { data, error } = await ctx.supabase
       .from("productos")
-      .select(PRODUCTO_COLS)
+      .select(colsProducto(schema))
       .eq("empresa_id", ctx.auth.empresa_id)
       .eq("id", id)
       .maybeSingle();
@@ -120,6 +129,8 @@ export async function PATCH(
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const empresaId = ctx.auth.empresa_id;
     const sb = ctx.supabase;
+    const schema = await fetchDataSchemaForEmpresaId(empresaId);
+    const esLR = soportaCamposLR(schema);
 
     let body: Record<string, unknown>;
     try {
@@ -130,7 +141,8 @@ export async function PATCH(
 
     const patch: Record<string, unknown> = {};
     if (body.nombre !== undefined) patch.nombre = normalizeUpperText(body.nombre);
-    if (body.nombre_importacion !== undefined) patch.nombre_importacion = normalizeUpperText(body.nombre_importacion) || null;
+    // nombre_importacion: solo esqueletoerp (Living Room). Otros tenants: no se toca.
+    if (esLR && body.nombre_importacion !== undefined) patch.nombre_importacion = normalizeUpperText(body.nombre_importacion) || null;
     if (body.sku !== undefined) patch.sku = normalizeUpperText(body.sku);
     if (body.costo_promedio !== undefined) patch.costo_promedio = Number(body.costo_promedio) || 0;
     if (body.precio_venta !== undefined) patch.precio_venta = Number(body.precio_venta) || 0;
@@ -217,7 +229,7 @@ export async function PATCH(
     if (Object.keys(patch).length === 0) {
       const { data: existing, error: errGet } = await sb
         .from("productos")
-        .select(PRODUCTO_COLS)
+        .select(colsProducto(schema))
         .eq("empresa_id", empresaId)
         .eq("id", id)
         .maybeSingle();
@@ -231,7 +243,7 @@ export async function PATCH(
       .update(patch)
       .eq("empresa_id", empresaId)
       .eq("id", id)
-      .select(PRODUCTO_COLS)
+      .select(colsProducto(schema))
       .maybeSingle();
     if (upd.error) {
       const msg = upd.error.message ?? "";

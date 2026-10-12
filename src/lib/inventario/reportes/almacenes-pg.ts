@@ -1,6 +1,7 @@
 import "server-only";
 import { getChatPostgresPool, quoteSchemaTable } from "@/lib/supabase/chat-pg-pool";
 import { assertAllowedChatDataSchema } from "@/lib/supabase/chat-data-schema";
+import { soportaCamposLR } from "@/lib/inventario/campos-lr";
 
 /**
  * Reporte por almacén (depósito). Por cada depósito activo:
@@ -35,6 +36,8 @@ export async function listAlmacenes(
   filters: AlmacenesFilters = {}
 ): Promise<AlmacenRow[]> {
   const schema = assertAllowedChatDataSchema(schemaRaw);
+  // Reporte por almacén: solo Living Room (esqueletoerp). Otros tenants → vacío.
+  if (!soportaCamposLR(schema)) return [];
   const pool = getChatPostgresPool();
   if (!pool) throw new Error("Pool no disponible.");
   const tU = quoteSchemaTable(schema, "inventario_ubicaciones");
