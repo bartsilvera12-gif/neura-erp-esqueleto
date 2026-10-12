@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const parsed = parseProductosRows(res.ctx.rows);
     const maps = await buildResolverMaps(res.ctx.schema, res.ctx.empresaId);
-    const preview = buildPreview(parsed, maps);
+    const preview = buildPreview(parsed, maps, res.ctx.modo);
     return NextResponse.json(successResponse(preview));
   } catch (e) {
     console.error("[productos/import/preview]", e instanceof Error ? e.message : e);

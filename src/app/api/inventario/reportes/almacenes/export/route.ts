@@ -1,0 +1,41 @@
+import { NextRequest } from "next/server";
+import { getAuthWithRol, isAdmin } from "@/lib/middleware/auth";
+import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { buildXlsxBuffer, xlsxResponseHeaders, nowStamp } from "@/lib/excel/export";
+import { listAlmacenes, totalAlmacenes, type AlmacenRow } from "@/lib/inventario/reportes/almacenes-pg";
+
+export const runtime = "nodejs";
+
+/** GET /api/inventario/reportes/almacenes/export — Excel del reporte por almacén. */
+export async function GET(request: NextRequest) {
+  const auth = await getAuthWithRol(request);
+  if (!auth) return new Response("No autenticado", { status: 401 });
+  if (!isAdmin(auth)) return new Response("Solo administradores", { status: 403 });
+  try {
+    const tenant = await getTenantSupabaseFromAuth(request);
+    if (!tenant) return new Response("No autenticado", { status: 401 });
+    const empresaId = tenant.auth.empresa_id;
+    const schema = await fetchDataSchemaForEmpresaId(empresaId);
+    const url = new URL(request.url);
+    const desde = url.searchParams.get("desde") || undefined;
+    const hasta = url.searchParams.get("hasta") || undefined;
+    const rows = await listAlmacenes(schema, empresaId, { desde, hasta });
+    const total = totalAlmacenes(rows);
+
+    const buf = buildXlsxBuffer<AlmacenRow>([...rows, total], [
+      { header: "ALMACEN", value: (r) => r.nombre, width: 28 },
+      { header: "CODIGO", value: (r) => r.codigo ?? "", width: 16 },
+      { header: "PRODUCTOS", value: (r) => r.productos, width: 12 },
+      { header: "FISICO", value: (r) => r.fisico, width: 12 },
+      { header: "ENTRADAS", value: (r) => r.entradas, width: 12 },
+      { header: "SALIDAS", value: (r) => r.salidas, width: 12 },
+      { header: "VENDIDO", value: (r) => r.vendido, width: 12 },
+    ], { sheetName: "Por almacén" });
+
+    return new Response(new Uint8Array(buf), { status: 200, headers: xlsxResponseHeaders(`inventario-almacenes-${nowStamp()}`) });
+  } catch (err) {
+    console.error("[/api/inventario/reportes/almacenes/export]", err instanceof Error ? err.message : err);
+    return new Response("No se pudo generar el Excel", { status: 500 });
+  }
+}

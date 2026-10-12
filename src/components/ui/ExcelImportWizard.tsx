@@ -11,12 +11,17 @@ interface Props {
   templateUrl: string;
   /** Si true, muestra checkbox "Crear faltantes" (categoria/proveedor/ubicacion). */
   permiteCrearFaltantes?: boolean;
+  /** Modo de importación de productos: "actualizar" | "agregar" | "ambos". */
+  modo?: "actualizar" | "agregar" | "ambos";
+  /** Título del modal (por defecto "Importar {entidad} desde Excel"). */
+  titulo?: string;
   onClose?: () => void;
   onCompleted?: () => void;
 }
 
 export default function ExcelImportWizard({
   entidad, previewUrl, commitUrl, templateUrl, permiteCrearFaltantes = false,
+  modo, titulo,
   onClose, onCompleted,
 }: Props) {
   const [step, setStep] = useState<"upload" | "preview" | "done">("upload");
@@ -32,6 +37,7 @@ export default function ExcelImportWizard({
     setBusy(true); setError(null);
     try {
       const fd = new FormData(); fd.append("file", file);
+      if (modo) fd.append("modo", modo);
       const r = await fetch(previewUrl, { method: "POST", credentials: "include", body: fd });
       const j = await r.json();
       if (!r.ok || !j?.success) { setError(j?.error ?? `Error ${r.status}`); return; }
@@ -48,6 +54,7 @@ export default function ExcelImportWizard({
     try {
       const fd = new FormData();
       fd.append("file", file);
+      if (modo) fd.append("modo", modo);
       if (permiteCrearFaltantes) fd.append("crear_faltantes", crearFaltantes ? "1" : "0");
       const r = await fetch(commitUrl, { method: "POST", credentials: "include", body: fd });
       const j = await r.json();
@@ -65,7 +72,7 @@ export default function ExcelImportWizard({
       <div className="zx-surface w-full max-w-5xl shadow-2xl flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 border-b flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-800">Importar {entidad} desde Excel</h2>
+            <h2 className="text-lg font-semibold text-slate-800">{titulo ?? `Importar ${entidad} desde Excel`}</h2>
             <p className="text-xs text-slate-400">Paso {step === "upload" ? "1 de 3" : step === "preview" ? "2 de 3" : "3 de 3"}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl">×</button>

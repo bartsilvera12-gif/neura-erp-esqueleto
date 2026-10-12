@@ -9,7 +9,10 @@ export type OrigenMovimiento =
 
 export interface Producto {
   id: string;
+  /** "Nombre del producto": el que asigna el negocio; va a proformas CRM y factura. */
   nombre: string;
+  /** "Nombre de importación": el que da el proveedor; ligado a importaciones/exportaciones. */
+  nombre_importacion?: string | null;
   sku: string;
   costo_promedio: number;
   precio_venta: number;            // precio minorista

@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getBrowserSupabaseForEmpresaData } from "@/lib/supabase/browser-data-client";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import type {
   Producto,
   MovimientoInventario,
@@ -13,6 +14,7 @@ interface ProductoRow {
   id: string;
   empresa_id: string;
   nombre: string;
+  nombre_importacion?: string | null;
   sku: string;
   costo_promedio: number;
   precio_venta: number;
@@ -72,6 +74,7 @@ function rowToProducto(row: ProductoRow): Producto {
   return {
     id: row.id,
     nombre: row.nombre,
+    nombre_importacion: row.nombre_importacion ?? null,
     sku: row.sku,
     costo_promedio: Number(row.costo_promedio),
     precio_venta: Number(row.precio_venta),
@@ -200,6 +203,7 @@ export async function saveProducto(
 ): Promise<Producto | null> {
   const body = {
     nombre: datos.nombre,
+    nombre_importacion: datos.nombre_importacion ?? null,
     sku: datos.sku,
     costo_promedio: datos.costo_promedio,
     precio_venta: datos.precio_venta,
@@ -281,6 +285,7 @@ export async function updateProducto(
 ): Promise<Producto | null> {
   const body: Record<string, unknown> = {};
   if (datos.nombre !== undefined) body.nombre = datos.nombre;
+  if (datos.nombre_importacion !== undefined) body.nombre_importacion = datos.nombre_importacion ?? null;
   if (datos.sku !== undefined) body.sku = datos.sku;
   if (datos.costo_promedio !== undefined) body.costo_promedio = datos.costo_promedio;
   if (datos.precio_venta !== undefined) body.precio_venta = datos.precio_venta;
@@ -433,6 +438,35 @@ export async function saveMovimiento(
 
     if (updError) {
       console.error("[inventario] saveMovimiento (update stock):", updError.message);
+    }
+
+    // 3b. Living Room (instancia esqueletoerp): mantener el stock por depósito en
+    // sincronía aplicando el mismo delta al depósito principal del producto.
+    // Best-effort (no frena el movimiento). En otras instancias no se ejecuta.
+    if (esInstanciaLR() && producto.ubicacion_principal_id) {
+      try {
+        const ubic = producto.ubicacion_principal_id;
+        const { data: filaDep } = await supabase
+          .from("inventario_stock_ubicacion")
+          .select("id, stock_actual")
+          .eq("empresa_id", usuario.empresa_id)
+          .eq("producto_id", mov.producto_id)
+          .eq("ubicacion_id", ubic)
+          .maybeSingle();
+        if (filaDep) {
+          const actual = Number((filaDep as { stock_actual: number }).stock_actual) || 0;
+          await supabase
+            .from("inventario_stock_ubicacion")
+            .update({ stock_actual: actual + delta })
+            .eq("id", (filaDep as { id: string }).id);
+        } else {
+          await supabase
+            .from("inventario_stock_ubicacion")
+            .insert({ empresa_id: usuario.empresa_id, producto_id: mov.producto_id, ubicacion_id: ubic, stock_actual: nuevoStock, es_principal: true });
+        }
+      } catch (e) {
+        console.error("[inventario] saveMovimiento (stock por depósito):", e);
+      }
     }
   }
 

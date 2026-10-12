@@ -10,6 +10,14 @@ import { getAuthWithRol, isAdmin } from "@/lib/middleware/auth";
 import { parseUploadFile } from "@/lib/excel/import";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 
+/**
+ * Modo de importación de productos:
+ * - "actualizar": solo actualiza productos existentes (SKU bloqueado, NO toca stock).
+ * - "agregar": solo da de alta productos nuevos (con stock, almacén por defecto).
+ * - "ambos": comportamiento clásico (inserta y actualiza).
+ */
+export type ModoImport = "actualizar" | "agregar" | "ambos";
+
 export interface AuthCtx {
   empresaId: string;
   schema: string;
@@ -18,6 +26,7 @@ export interface AuthCtx {
   filename: string;
   rows: Record<string, string>[];
   crearFaltantes: boolean;
+  modo: ModoImport;
   /** Cliente tenant (Storage + PostgREST). Usado p.ej. para imágenes al importar. */
   supabase: AppSupabaseClient;
 }
@@ -50,6 +59,9 @@ export async function leerArchivoYAuth(request: Request): Promise<
   if ("error" in parsed) return { ok: false, status: 400, error: parsed.error };
 
   const crearFaltantes = String(form.get("crear_faltantes") ?? "") === "1";
+  const modoRaw = String(form.get("modo") ?? "");
+  const modo: ModoImport =
+    modoRaw === "actualizar" || modoRaw === "agregar" ? modoRaw : "ambos";
 
   return {
     ok: true,
@@ -61,6 +73,7 @@ export async function leerArchivoYAuth(request: Request): Promise<
       filename: file.name,
       rows: parsed.rows,
       crearFaltantes,
+      modo,
       supabase: tenant.supabase,
     },
   };

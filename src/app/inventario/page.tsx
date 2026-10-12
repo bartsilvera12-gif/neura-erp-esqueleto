@@ -278,13 +278,22 @@ export default function InventarioPage() {
           <p className="mt-0.5 text-xs text-slate-500">Gestión de productos y control de stock</p>
         </div>
         <div className="flex items-center gap-2 mt-1">
+          <Link
+            href="/inventario/reportes"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          >
+            Reportes
+          </Link>
           <ExportExcelButton url="/api/inventario/productos/export" />
+          {/* Actualizar Producto: el Excel solo actualiza datos (SKU bloqueado, no toca stock). */}
           <ImportExcelButton
             entidad="Productos"
             previewUrl="/api/inventario/productos/import/preview"
             commitUrl="/api/inventario/productos/import/commit"
             templateUrl="/api/inventario/productos/import/template"
-            permiteCrearFaltantes
+            modo="actualizar"
+            label="Actualizar Producto"
+            titulo="Actualizar productos desde Excel"
             visible={isAdmin}
             onCompleted={() => setRefreshKey((k) => k + 1)}
           />
@@ -300,7 +309,7 @@ export default function InventarioPage() {
               href="/inventario/nuevo"
               className="rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[#4FAEB2]/25 transition-colors hover:bg-[#3F8E91] active:scale-95"
             >
-              Nuevo producto
+              Añadir producto
             </Link>
           </div>
         </div>
@@ -372,10 +381,10 @@ export default function InventarioPage() {
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">Almacén</label>
             <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+              {/* Solo almacenes de Paraguay: se sacó la opción BOL (pedido del cliente). */}
               {([
                 { id: "", label: "Todos" },
                 { id: "PY", label: "PY" },
-                { id: "BOL", label: "BOL" },
               ] as const).map((o) => (
                 <button
                   key={o.id || "todos"}
@@ -555,11 +564,8 @@ export default function InventarioPage() {
                   </span>
                 </th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Stock</th>
-                <th className="py-2.5 pr-4 text-right font-semibold" title="Cantidad de la importación original.">Import.</th>
-                <th className="py-2.5 pr-4 text-right font-semibold" title="Unidades vendidas (se carga a mano).">Vendido</th>
-                <th className="py-2.5 pr-4 text-right font-semibold" title="Unidades en exhibición.">Show room</th>
-                <th className="py-2.5 pr-4 text-right font-semibold" title="Cantidad acumulada re-exportada a Bolivia.">Exp. BOL</th>
-                <th className="py-2.5 pr-4 text-right font-semibold" title="Importación − vendido − exportación Bolivia (igual que el Excel).">Saldo</th>
+                {/* Columnas de inventario extendido (Import./Vendido/Show room/Exp. BOL/Saldo)
+                    movidas al reporte "Inventario extendido" (botón Reportes). */}
                 <th className="w-32 py-2.5 pl-4 pr-4 text-right font-semibold">Acción</th>
               </tr>
             </thead>
@@ -625,22 +631,7 @@ export default function InventarioPage() {
                       <span className="ml-1 text-[11px] uppercase text-slate-400">{p.unidad_medida}</span>
                       <p className="text-[11px] text-slate-400">mín. {p.stock_minimo}</p>
                     </td>
-                    {(() => {
-                      const imp = Number(p.cantidad_importacion ?? 0);
-                      const vend = Number(p.vendido ?? 0);
-                      const sr = Number(p.show_room ?? 0);
-                      const eb = Number(p.exportacion_bolivia ?? 0);
-                      const saldo = imp - vend - eb;
-                      return (
-                        <>
-                          <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{imp || <span className="text-slate-300">—</span>}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{vend || <span className="text-slate-300">—</span>}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{sr || <span className="text-slate-300">—</span>}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums text-slate-600">{eb || <span className="text-slate-300">—</span>}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums font-semibold text-slate-800">{saldo}</td>
-                        </>
-                      );
-                    })()}
+                    {/* Columnas de inventario extendido movidas al reporte "Inventario extendido". */}
                     <td className="py-3 pl-4 pr-4 text-right">
                       <div className="inline-flex items-center gap-2">
                         <Link
@@ -665,7 +656,7 @@ export default function InventarioPage() {
               {/* Sin resultados: antes la tabla quedaba en blanco, sin explicación. */}
               {!cargandoLista && productosPagina.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="p-4">
+                  <td colSpan={6} className="p-4">
                     <div className="zx-empty px-6 py-10 text-center">
                       <p className="text-sm text-slate-500">
                         {todos.length === 0
