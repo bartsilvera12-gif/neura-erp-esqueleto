@@ -20,8 +20,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_ubicaciones_predeterminada
   ON esqueletoerp.inventario_ubicaciones (empresa_id)
   WHERE es_predeterminado;
 
--- Crear "Almacén Mariano Roque" (Paraguay) para cada empresa que todavía no lo
--- tenga. Queda como predeterminado solo si la empresa aún no tiene uno.
+-- 1) Si YA existe un depósito "Mariano Roque" (p.ej. "ALMACEN MARIANO ROQUE"),
+--    marcarlo como predeterminado (uno por empresa, solo si aún no hay uno).
+--    Match por nombre normalizado (sin acentos, tolerante a mayúsculas/espacios).
+UPDATE esqueletoerp.inventario_ubicaciones u
+   SET es_predeterminado = true
+ WHERE u.id = (
+         SELECT u2.id FROM esqueletoerp.inventario_ubicaciones u2
+          WHERE u2.empresa_id = u.empresa_id
+            AND translate(lower(trim(u2.nombre)), 'áéíóúñ', 'aeioun') ~ 'mariano +roque'
+          ORDER BY u2.created_at NULLS LAST, u2.id
+          LIMIT 1
+       )
+   AND NOT EXISTS (
+         SELECT 1 FROM esqueletoerp.inventario_ubicaciones ud
+          WHERE ud.empresa_id = u.empresa_id AND ud.es_predeterminado
+       );
+
+-- 2) Crear "Almacén Mariano Roque" (Paraguay) SOLO para empresas que todavía NO
+--    tengan un depósito con ese nombre. Queda predeterminado si aún no hay uno.
 INSERT INTO esqueletoerp.inventario_ubicaciones
   (empresa_id, nombre, codigo, tipo, pais, activo, es_predeterminado)
 SELECT DISTINCT p.empresa_id,
@@ -34,7 +51,7 @@ FROM esqueletoerp.productos p
 WHERE NOT EXISTS (
   SELECT 1 FROM esqueletoerp.inventario_ubicaciones u
   WHERE u.empresa_id = p.empresa_id
-    AND lower(trim(u.codigo)) = 'mariano_roque'
+    AND translate(lower(trim(u.nombre)), 'áéíóúñ', 'aeioun') ~ 'mariano +roque'
 );
 
 COMMIT;
