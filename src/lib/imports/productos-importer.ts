@@ -5,7 +5,7 @@ import { getChatPostgresPool, quoteSchemaTable } from "@/lib/supabase/chat-pg-po
 import { assertAllowedChatDataSchema } from "@/lib/supabase/chat-data-schema";
 import { normalizeUpperText, normalizeUpperNullable } from "@/lib/text/normalize";
 import type { PreviewRow, PreviewResponse } from "@/lib/excel/import-types";
-import { pick, pickNumber, pickBool, chunked } from "./import-helpers";
+import { pick, pickNumber, pickBool, chunked, type ModoImport } from "./import-helpers";
 
 interface ProductoExistente {
   id: string;
@@ -86,6 +86,8 @@ export interface ResolverMaps {
   proveedoresByName: Map<string, string>;
   ubicacionesByName: Map<string, string>;
   ubicacionesByCodigo: Map<string, string>;
+  /** Depósito predeterminado de la empresa (modo "agregar"). null si no hay. */
+  defaultUbicacionId: string | null;
 }
 
 export async function buildResolverMaps(schemaRaw: string, empresaId: string): Promise<ResolverMaps> {
@@ -121,16 +123,30 @@ export async function buildResolverMaps(schemaRaw: string, empresaId: string): P
     ubicacionesByName.set(u.nombre.trim().toUpperCase(), u.id);
     if (u.codigo) ubicacionesByCodigo.set(u.codigo.trim().toUpperCase(), u.id);
   }
-  return { productosBySku, productosByCodigo, categoriasByName, proveedoresByName, ubicacionesByName, ubicacionesByCodigo };
+
+  // Depósito predeterminado (columna es_predeterminado; puede no existir en
+  // esquemas sin la migración → se ignora el error y queda null).
+  let defaultUbicacionId: string | null = null;
+  try {
+    const def = await pool.query<{ id: string }>(
+      `SELECT id FROM ${tU} WHERE empresa_id=$1::uuid AND es_predeterminado=true AND activo=true LIMIT 1`,
+      [empresaId]
+    );
+    defaultUbicacionId = def.rows[0]?.id ?? null;
+  } catch {
+    defaultUbicacionId = null;
+  }
+
+  return { productosBySku, productosByCodigo, categoriasByName, proveedoresByName, ubicacionesByName, ubicacionesByCodigo, defaultUbicacionId };
 }
 
-export function buildPreview(parsed: ProductoParsed[], maps: ResolverMaps): PreviewResponse {
+export function buildPreview(parsed: ProductoParsed[], maps: ResolverMaps, modo: ModoImport = "ambos"): PreviewResponse {
   const catsFaltantes = new Set<string>();
   const provsFaltantes = new Set<string>();
   const ubisFaltantes = new Set<string>();
   let insertar = 0, actualizar = 0, errores = 0, warnings = 0;
   let totalEntrada = 0, totalSalida = 0, movimientosGenerar = 0;
-  const omitir = 0;
+  let omitir = 0;
   const skuVistos = new Set<string>();
   const codbarVistos = new Set<string>();
 
@@ -168,20 +184,42 @@ export function buildPreview(parsed: ProductoParsed[], maps: ResolverMaps): Prev
     }
 
     const hasErr = p.errors.length > 0;
-    const action = hasErr ? "ERROR" : matchId ? "UPDATE" : "INSERT";
+    // El modo define qué pasa con cada fila:
+    //  - "actualizar": solo UPDATE; las filas sin match se omiten (no se crean).
+    //  - "agregar":    solo INSERT; las filas con match se omiten (no se actualizan).
+    //  - "ambos":      inserta y actualiza (comportamiento clásico).
+    let action: "INSERT" | "UPDATE" | "ERROR" | "SKIP";
+    if (hasErr) {
+      action = "ERROR";
+    } else if (matchId) {
+      if (modo === "agregar") {
+        action = "SKIP";
+        p.warnings.push(`Ya existe (SKU ${p.sku}); en modo "Añadir producto" no se actualiza.`);
+      } else {
+        action = "UPDATE";
+      }
+    } else {
+      if (modo === "actualizar") {
+        action = "SKIP";
+        p.warnings.push(`No existe (SKU ${p.sku}); en modo "Actualizar producto" no se crea.`);
+      } else {
+        action = "INSERT";
+      }
+    }
     if (action === "INSERT") insertar++;
     else if (action === "UPDATE") actualizar++;
+    else if (action === "SKIP") omitir++;
     else if (action === "ERROR") errores++;
     if (p.warnings.length > 0) warnings++;
 
-    // Calcular impacto de stock que se generara
+    // Calcular impacto de stock que se generara (modo "actualizar" NO toca stock).
     let stockMov: string = "SIN MOVIMIENTO";
     if (!hasErr) {
       if (action === "INSERT" && p.stock_actual > 0) {
         stockMov = `ENTRADA +${p.stock_actual}`;
         totalEntrada += p.stock_actual;
         movimientosGenerar++;
-      } else if (action === "UPDATE" && stockAnterior != null) {
+      } else if (action === "UPDATE" && modo === "ambos" && stockAnterior != null) {
         const delta = p.stock_actual - stockAnterior;
         if (delta > 0) {
           stockMov = `ENTRADA +${delta} (prev=${stockAnterior})`;
@@ -262,7 +300,8 @@ export async function commitProductos(
   parsed: ProductoParsed[],
   maps: ResolverMaps,
   crearFaltantes: boolean,
-  ctx: CommitContext = {}
+  ctx: CommitContext = {},
+  modo: ModoImport = "ambos"
 ): Promise<CommitOutcome> {
   const schema = assertAllowedChatDataSchema(schemaRaw);
   const poolMaybe = getChatPostgresPool();
@@ -347,6 +386,9 @@ export async function commitProductos(
   for (const chunk of chunked(parsed, 200)) {
     for (const p of chunk) {
       if (p.errors.length > 0) { out.errors++; out.errorMessages.push(`Fila ${p.row_number}: ${p.errors.join("; ")}`); continue; }
+      // Modo: omitir las filas que no corresponden a este modo.
+      if (p.match_id && modo === "agregar") { out.skipped++; continue; }
+      if (!p.match_id && modo === "actualizar") { out.skipped++; continue; }
       const categoriaId = p.categoria_nombre ? maps.categoriasByName.get(p.categoria_nombre) ?? null : null;
       const proveedorId = p.proveedor_nombre ? maps.proveedoresByName.get(p.proveedor_nombre) ?? null : null;
       const ubicacionId = p.ubicacion_nombre
@@ -354,8 +396,26 @@ export async function commitProductos(
         : null;
 
       try {
-        if (p.match_id) {
-          // UPDATE — leer stock anterior para calcular delta y generar movimiento
+        if (p.match_id && modo === "actualizar") {
+          // Modo "Actualizar producto": solo características. NO toca SKU ni stock,
+          // y no genera movimiento. Costo/precio/categoría solo si vienen cargados.
+          await pool.query(
+            `UPDATE ${tP} SET
+               nombre=$1,
+               nombre_importacion=NULLIF($2,''),
+               descripcion=NULLIF($3,''),
+               costo_promedio=CASE WHEN $4::numeric > 0 THEN $4::numeric ELSE costo_promedio END,
+               precio_venta=CASE WHEN $5::numeric > 0 THEN $5::numeric ELSE precio_venta END,
+               categoria_principal_id=COALESCE($6::uuid, categoria_principal_id),
+               updated_at=now()
+             WHERE id=$7::uuid AND empresa_id=$8::uuid`,
+            [p.nombre, p.nombre_importacion, p.descripcion, p.costo_promedio, p.precio_venta,
+             categoriaId, p.match_id, empresaId]
+          );
+          out.updated++;
+          if (p.imagen_url) out.imagenes.push({ producto_id: p.match_id, nombre: p.nombre, sku: p.sku, url: p.imagen_url });
+        } else if (p.match_id) {
+          // UPDATE clásico (modo "ambos") — leer stock anterior para delta/movimiento
           const prevQ = await pool.query<{ stock_actual: string | number; nombre: string; sku: string }>(
             `SELECT stock_actual, nombre, sku FROM ${tP} WHERE id=$1::uuid AND empresa_id=$2::uuid`,
             [p.match_id, empresaId]
@@ -389,6 +449,8 @@ export async function commitProductos(
             );
           }
         } else {
+          // Almacén por defecto para productos nuevos (si no se indicó uno).
+          const ubicacionFinal = ubicacionId ?? maps.defaultUbicacionId;
           // Generar codigo_barras_interno si no vino
           let codigoBarras = p.codigo_barras;
           let codigoInterno = false;
@@ -416,7 +478,7 @@ export async function commitProductos(
              ) RETURNING id`,
             [empresaId, p.nombre, p.sku, codigoBarras, codigoInterno,
              p.unidad_medida, p.costo_promedio, p.precio_venta, p.stock_actual, p.stock_minimo,
-             p.metodo_valuacion, p.activo, categoriaId, proveedorId, ubicacionId,
+             p.metodo_valuacion, p.activo, categoriaId, proveedorId, ubicacionFinal,
              p.nombre_importacion, p.descripcion]
           );
           out.inserted++;

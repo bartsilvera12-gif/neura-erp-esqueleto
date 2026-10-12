@@ -11,12 +11,12 @@ export async function POST(request: NextRequest) {
   try {
     const parsed = parseProductosRows(res.ctx.rows);
     const maps = await buildResolverMaps(res.ctx.schema, res.ctx.empresaId);
-    buildPreview(parsed, maps); // marca .match_id y .errors/.warnings
+    buildPreview(parsed, maps, res.ctx.modo); // marca .match_id y .errors/.warnings
     const out = await commitProductos(res.ctx.schema, res.ctx.empresaId, parsed, maps, res.ctx.crearFaltantes, {
       filename: res.ctx.filename,
       createdBy: res.ctx.usuarioCatalogId,
       usuarioNombre: res.ctx.usuarioNombre,
-    });
+    }, res.ctx.modo);
 
     // Imágenes por URL: descargar y asociar a cada producto (una por una).
     let imagenesOk = 0;
