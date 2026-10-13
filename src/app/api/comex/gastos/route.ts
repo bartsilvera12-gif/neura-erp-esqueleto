@@ -5,7 +5,7 @@ import { getComexCtx, esUuid, estadoOperacion, nombreUsuario, operacionCerrada, 
 import { MONEDAS_COMEX, TIPOS_GASTO_COMEX } from "@/lib/comex/gastos";
 
 const COLS =
-  "id, origen_tipo, origen_id, fecha, tipo, descripcion, proveedor_nombre, comprobante, monto, moneda, tipo_cambio, pagado, cuenta_codigo, usuario_nombre, created_at";
+  "id, origen_tipo, origen_id, fecha, tipo, descripcion, proveedor_nombre, comprobante, monto, moneda, tipo_cambio, pagado, cuenta_codigo, lleva_iva, usuario_nombre, created_at";
 
 /** Solo importación y exportación tienen gastos propios. */
 const ORIGENES_GASTO = new Set(["IMPORTACION", "EXPORTACION"]);
@@ -24,6 +24,7 @@ function datosGasto(b: Record<string, unknown>): { datos: Record<string, unknown
     const s = String(v ?? "").trim();
     return s ? s.slice(0, max) : null;
   };
+  if (tipo === "OTRO" && !texto(b.descripcion, 300)) return { error: 'Cuando el concepto es "OTRO", poné el detalle del gasto.' };
   return {
     datos: {
       fecha: /^\d{4}-\d{2}-\d{2}$/.test(String(b.fecha ?? "")) ? String(b.fecha) : new Date().toISOString().slice(0, 10),
@@ -36,6 +37,7 @@ function datosGasto(b: Record<string, unknown>): { datos: Record<string, unknown
       moneda,
       tipo_cambio: tipoCambio,
       pagado: b.pagado === true,
+      lleva_iva: b.lleva_iva === true,
     },
   };
 }

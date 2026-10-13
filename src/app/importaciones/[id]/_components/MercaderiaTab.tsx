@@ -6,6 +6,7 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { Importacion, ImportacionItem } from "@/lib/importaciones/types";
 import type { Contenedor } from "@/lib/comex/types";
 import ProductoBuscador, { type ProductoLista } from "../../_components/ProductoBuscador";
+import ImportExcelButton from "@/components/ui/ImportExcelButton";
 import {
   Aviso,
   ModalShell,
@@ -72,9 +73,21 @@ export default function MercaderiaTab({
             : "La cantidad pedida queda fija como referencia para comparar con lo que llega."}
         </p>
         {editable && (
-          <button onClick={() => setModal("nuevo")} className={btnPrimario}>
-            <Plus className="h-3.5 w-3.5" /> Agregar producto
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => setModal("nuevo")} className={btnPrimario}>
+              <Plus className="h-3.5 w-3.5" /> Agregar producto
+            </button>
+            {/* Carga por lote: match por SKU, crea los faltantes, no toca stock. */}
+            <ImportExcelButton
+              entidad="Mercadería"
+              previewUrl={`/api/importaciones/${imp.id}/items/import/preview`}
+              commitUrl={`/api/importaciones/${imp.id}/items/import/commit`}
+              templateUrl={`/api/importaciones/${imp.id}/items/import/template`}
+              label="Cargar por Excel"
+              titulo="Importar mercadería desde Excel"
+              onCompleted={onCambio}
+            />
+          </div>
         )}
       </div>
       {sinVincular.length > 0 && (

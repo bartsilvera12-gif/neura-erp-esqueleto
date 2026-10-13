@@ -7,6 +7,11 @@ import type { FilaCosteo, Prorrateo } from "@/lib/comex/costeo";
 import { Aviso, api, btnPrimario, btnSecundario, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "@/components/comex/ui";
 
 const gs = (n: number) => `Gs. ${Math.round(Number(n) || 0).toLocaleString("es-PY")}`;
+/** El valor en Gs. expresado en la moneda de la importación (USD/BOB), si aplica. */
+const enMoneda = (gsVal: number, moneda: string, tc: number) =>
+  moneda !== "PYG" && tc > 1
+    ? `${moneda} ${(Number(gsVal || 0) / tc).toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : null;
 
 type Respuesta = {
   filas: FilaCosteo[];
@@ -87,17 +92,29 @@ export default function CosteoTab({ impId, bloqueado, onCambio }: { impId: strin
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className={labelClass}>Mercadería</p>
           <p className="text-xl font-semibold text-slate-900">{gs(d.totalMercaderiaGs)}</p>
-          <p className="text-xs text-slate-500">Lo que facturó el proveedor</p>
+          {enMoneda(d.totalMercaderiaGs, d.moneda, d.tipo_cambio) ? (
+            <p className="text-xs font-medium text-slate-600">{enMoneda(d.totalMercaderiaGs, d.moneda, d.tipo_cambio)}</p>
+          ) : (
+            <p className="text-xs text-slate-500">Lo que facturó el proveedor</p>
+          )}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className={labelClass}>Gastos</p>
           <p className="text-xl font-semibold text-slate-900">{gs(d.totalGastosGs)}</p>
-          <p className="text-xs text-slate-500">Flete, seguro, despachante, tributos…</p>
+          {enMoneda(d.totalGastosGs, d.moneda, d.tipo_cambio) ? (
+            <p className="text-xs font-medium text-slate-600">{enMoneda(d.totalGastosGs, d.moneda, d.tipo_cambio)}</p>
+          ) : (
+            <p className="text-xs text-slate-500">Flete, seguro, despachante, tributos…</p>
+          )}
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
           <p className={labelClass}>Costo total</p>
           <p className="text-xl font-semibold text-emerald-900">{gs(d.totalGs)}</p>
-          <p className="text-xs text-emerald-800">Mercadería puesta en el depósito</p>
+          {enMoneda(d.totalGs, d.moneda, d.tipo_cambio) ? (
+            <p className="text-xs font-semibold text-emerald-800">{enMoneda(d.totalGs, d.moneda, d.tipo_cambio)}</p>
+          ) : (
+            <p className="text-xs text-emerald-800">Mercadería puesta en el depósito</p>
+          )}
         </div>
       </div>
 
@@ -184,8 +201,18 @@ export default function CosteoTab({ impId, bloqueado, onCambio }: { impId: strin
                 <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{Number(f.cantidad).toLocaleString("es-PY")}</td>
                 <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{gs(f.subtotal_gs)}</td>
                 <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{gs(f.gastos_gs)}</td>
-                <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{gs(f.total_gs)}</td>
-                <td className="whitespace-nowrap px-4 py-2 text-right font-semibold text-slate-900">{gs(f.costo_unitario_gs)}</td>
+                <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">
+                  {gs(f.total_gs)}
+                  {enMoneda(f.total_gs, d.moneda, d.tipo_cambio) && (
+                    <span className="block text-[11px] text-slate-500">{enMoneda(f.total_gs, d.moneda, d.tipo_cambio)}</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-4 py-2 text-right font-semibold text-slate-900">
+                  {gs(f.costo_unitario_gs)}
+                  {enMoneda(f.costo_unitario_gs, d.moneda, d.tipo_cambio) && (
+                    <span className="block text-[11px] font-normal text-slate-500">{enMoneda(f.costo_unitario_gs, d.moneda, d.tipo_cambio)}</span>
+                  )}
+                </td>
                 <td className="px-4 py-2 text-xs">
                   {!f.producto_id ? (
                     <span className="text-amber-700">Sin vincular</span>

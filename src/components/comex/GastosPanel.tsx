@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import { MONEDAS_COMEX, TIPOS_GASTO_COMEX, gastoEnGuaranies, totalesGastos, type GastoComex } from "@/lib/comex/gastos";
+import { MONEDAS_COMEX, TIPOS_GASTO_COMEX, FACTOR_COSTO_SIN_IVA, gastoEnGuaranies, totalesGastos, type GastoComex } from "@/lib/comex/gastos";
 import { Aviso, api, btnPrimario, btnSecundario, fechaES, hoyPY, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "./ui";
 
 const gs = (n: number) => `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
@@ -21,6 +21,7 @@ const vacio = {
   tipo_cambio: "",
   cuenta_codigo: "",
   pagado: false,
+  lleva_iva: false,
 };
 
 type CuentaPlan = { cuenta: string; denominacion: string; asentable?: boolean | null; activo?: boolean | null };
@@ -44,6 +45,8 @@ export default function GastosPanel({
 }) {
   const [lista, setLista] = useState<GastoComex[]>([]);
   const [f, setF] = useState(vacio);
+  // Texto visible del autocompletar de cuenta contable ("código · nombre").
+  const [cuentaTexto, setCuentaTexto] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +76,10 @@ export default function GastosPanel({
   const t = useMemo(() => totalesGastos(lista), [lista]);
 
   async function agregar() {
+    if (f.tipo === "OTRO" && !f.descripcion.trim()) {
+      setError('Cuando el concepto es "OTRO", poné el detalle del gasto.');
+      return;
+    }
     setGuardando(true);
     setError(null);
     try {
@@ -87,6 +94,7 @@ export default function GastosPanel({
         })
       );
       setF({ ...vacio, fecha: f.fecha, moneda: f.moneda, tipo_cambio: f.tipo_cambio });
+      setCuentaTexto("");
       setAbierto(false);
       await cargar();
       onCambio?.();
@@ -125,9 +133,13 @@ export default function GastosPanel({
       {/* Totales */}
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className={labelClass}>Total de gastos</p>
+          <p className={labelClass}>Total de gastos (pago)</p>
           <p className="text-xl font-semibold text-slate-900">{gs(t.total)}</p>
-          <p className="text-xs text-slate-500">{lista.length} gasto{lista.length === 1 ? "" : "s"} cargado{lista.length === 1 ? "" : "s"}</p>
+          {t.totalCosto !== t.total ? (
+            <p className="text-xs text-slate-500">Costo (sin IVA): <span className="font-medium text-slate-700">{gs(t.totalCosto)}</span></p>
+          ) : (
+            <p className="text-xs text-slate-500">{lista.length} gasto{lista.length === 1 ? "" : "s"} cargado{lista.length === 1 ? "" : "s"}</p>
+          )}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className={labelClass}>Pendiente de pago</p>
@@ -225,32 +237,58 @@ export default function GastosPanel({
             {cuentas.length > 0 && (
               <div>
                 <label className={labelClass}>Cuenta contable</label>
-                <select value={f.cuenta_codigo} onChange={(e) => setF({ ...f, cuenta_codigo: e.target.value })} className={inputClass}>
-                  <option value="">— Sin cuenta —</option>
+                {/* Autocompletar: se tipea (código o nombre) y el navegador filtra. */}
+                <input
+                  list="comex-cuentas"
+                  value={cuentaTexto}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCuentaTexto(v);
+                    // Toma el código que esté antes del " · ", o el texto tal cual.
+                    const cod = v.split(" · ")[0].trim();
+                    const match = cuentas.find((c) => c.cuenta === cod);
+                    setF({ ...f, cuenta_codigo: match ? match.cuenta : "" });
+                  }}
+                  placeholder="Tipeá código o nombre…"
+                  className={inputClass}
+                  autoComplete="off"
+                />
+                <datalist id="comex-cuentas">
                   {cuentas.map((c) => (
-                    <option key={c.cuenta} value={c.cuenta}>
-                      {c.cuenta} · {c.denominacion}
-                    </option>
+                    <option key={c.cuenta} value={`${c.cuenta} · ${c.denominacion}`} />
                   ))}
-                </select>
+                </datalist>
               </div>
             )}
             <div className="sm:col-span-2 lg:col-span-2">
-              <label className={labelClass}>Detalle</label>
-              <input value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })} className={inputClass} />
+              <label className={labelClass}>Detalle{f.tipo === "OTRO" ? " *" : ""}</label>
+              <input
+                value={f.descripcion}
+                onChange={(e) => setF({ ...f, descripcion: e.target.value })}
+                placeholder={f.tipo === "OTRO" ? "Especificá el gasto (ej.: Fotocopias)" : ""}
+                className={inputClass}
+              />
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" checked={f.pagado} onChange={(e) => setF({ ...f, pagado: e.target.checked })} className="h-4 w-4 rounded border-slate-300" />
-              Ya está pagado
-            </label>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={f.pagado} onChange={(e) => setF({ ...f, pagado: e.target.checked })} className="h-4 w-4 rounded border-slate-300" />
+                Ya está pagado
+              </label>
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={f.lleva_iva} onChange={(e) => setF({ ...f, lleva_iva: e.target.checked })} className="h-4 w-4 rounded border-slate-300" />
+                Lleva IVA (10%)
+                <span className="text-xs text-slate-400">— costo 90% sin IVA, pago 100% con IVA</span>
+              </label>
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setAbierto(false);
                   setF(vacio);
+                  setCuentaTexto("");
                 }}
                 className={btnSecundario}
               >
@@ -264,6 +302,11 @@ export default function GastosPanel({
           {f.moneda !== "PYG" && Number(f.monto) > 0 && Number(f.tipo_cambio) > 0 && (
             <p className="text-xs text-slate-500">
               Equivale a {gs(Number(f.monto) * Number(f.tipo_cambio))}.
+            </p>
+          )}
+          {f.lleva_iva && Number(f.monto) > 0 && (
+            <p className="text-xs text-slate-500">
+              Pago (100% con IVA): {monto(Number(f.monto), f.moneda)} · Costo (90% sin IVA): {monto(Number(f.monto) * FACTOR_COSTO_SIN_IVA, f.moneda)}.
             </p>
           )}
         </div>
@@ -298,6 +341,11 @@ export default function GastosPanel({
                 <td className="whitespace-nowrap px-4 py-2 text-slate-600">{fechaES(g.fecha)}</td>
                 <td className="px-4 py-2">
                   <span className="font-medium text-slate-800">{g.tipo}</span>
+                  {g.lleva_iva && (
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700" title="Lleva IVA: costo 90% sin IVA, pago 100% con IVA">
+                      IVA
+                    </span>
+                  )}
                   {g.descripcion && <span className="block text-xs text-slate-500">{g.descripcion}</span>}
                 </td>
                 <td className="px-4 py-2 text-slate-600">{g.proveedor_nombre ?? "—"}</td>
@@ -335,11 +383,18 @@ export default function GastosPanel({
             <tfoot>
               <tr className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-900">
                 <td colSpan={6} className="px-4 py-2 text-right">
-                  Total
+                  {t.totalCosto !== t.total ? "Total (pago, con IVA)" : "Total"}
                 </td>
                 <td className="whitespace-nowrap px-4 py-2 text-right">{gs(t.total)}</td>
                 <td colSpan={2} />
               </tr>
+              {t.totalCosto !== t.total && (
+                <tr className="bg-slate-50 text-slate-600">
+                  <td colSpan={6} className="px-4 py-2 text-right">Costo (sin IVA, al costeo)</td>
+                  <td className="whitespace-nowrap px-4 py-2 text-right font-medium">{gs(t.totalCosto)}</td>
+                  <td colSpan={2} />
+                </tr>
+              )}
             </tfoot>
           )}
         </table>
