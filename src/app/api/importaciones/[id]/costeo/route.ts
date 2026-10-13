@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { getComexCtx, operacionCerrada, registrarHistorial } from "@/lib/comex/server";
 import { calcularCosteo, type ItemCosteo, type Prorrateo } from "@/lib/comex/costeo";
-import { gastoEnGuaranies, type GastoComex } from "@/lib/comex/gastos";
+import { gastoCostoGuaranies, type GastoComex } from "@/lib/comex/gastos";
 
 const ITEM_COLS = "id, producto_id, producto_nombre, sku, cantidad, precio_unitario, moneda, subtotal, costo_final_gs, costo_aplicado_at";
 
@@ -13,12 +13,14 @@ async function datos(ctx: NonNullable<Awaited<ReturnType<typeof getComexCtx>>>, 
   const [imp, its, gas] = await Promise.all([
     ctx.supabase.from("importaciones").select("id, numero, estado, moneda, tipo_cambio, prorrateo_gastos").eq("empresa_id", emp).eq("id", id).maybeSingle(),
     ctx.supabase.from("importacion_items").select(ITEM_COLS).eq("empresa_id", emp).eq("importacion_id", id).order("created_at"),
-    ctx.supabase.from("comex_gastos").select("monto, tipo_cambio").eq("empresa_id", emp).eq("origen_tipo", "IMPORTACION").eq("origen_id", id),
+    ctx.supabase.from("comex_gastos").select("monto, tipo_cambio, lleva_iva").eq("empresa_id", emp).eq("origen_tipo", "IMPORTACION").eq("origen_id", id),
   ]);
   const cab = imp.data as { id: string; numero: string; estado: string; moneda: string; tipo_cambio: number; prorrateo_gastos: string } | null;
   if (!cab) return null;
   const items = (its.data ?? []) as unknown as ItemCosteo[];
-  const gastosGs = ((gas.data ?? []) as Pick<GastoComex, "monto" | "tipo_cambio">[]).reduce((a, g) => a + gastoEnGuaranies(g), 0);
+  // Para el COSTO se usa el 90% sin IVA de los gastos que llevan IVA (el pago
+  // 100% con IVA vive en gastos/caja). Así el costo capitalizado no incluye IVA.
+  const gastosGs = ((gas.data ?? []) as Pick<GastoComex, "monto" | "tipo_cambio" | "lleva_iva">[]).reduce((a, g) => a + gastoCostoGuaranies(g), 0);
   return { cab, items, gastosGs };
 }
 
