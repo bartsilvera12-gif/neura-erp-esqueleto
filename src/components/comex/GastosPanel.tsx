@@ -45,6 +45,8 @@ export default function GastosPanel({
 }) {
   const [lista, setLista] = useState<GastoComex[]>([]);
   const [f, setF] = useState(vacio);
+  // Texto visible del autocompletar de cuenta contable ("código · nombre").
+  const [cuentaTexto, setCuentaTexto] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,10 @@ export default function GastosPanel({
   const t = useMemo(() => totalesGastos(lista), [lista]);
 
   async function agregar() {
+    if (f.tipo === "OTRO" && !f.descripcion.trim()) {
+      setError('Cuando el concepto es "OTRO", poné el detalle del gasto.');
+      return;
+    }
     setGuardando(true);
     setError(null);
     try {
@@ -88,6 +94,7 @@ export default function GastosPanel({
         })
       );
       setF({ ...vacio, fecha: f.fecha, moneda: f.moneda, tipo_cambio: f.tipo_cambio });
+      setCuentaTexto("");
       setAbierto(false);
       await cargar();
       onCambio?.();
@@ -230,19 +237,37 @@ export default function GastosPanel({
             {cuentas.length > 0 && (
               <div>
                 <label className={labelClass}>Cuenta contable</label>
-                <select value={f.cuenta_codigo} onChange={(e) => setF({ ...f, cuenta_codigo: e.target.value })} className={inputClass}>
-                  <option value="">— Sin cuenta —</option>
+                {/* Autocompletar: se tipea (código o nombre) y el navegador filtra. */}
+                <input
+                  list="comex-cuentas"
+                  value={cuentaTexto}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCuentaTexto(v);
+                    // Toma el código que esté antes del " · ", o el texto tal cual.
+                    const cod = v.split(" · ")[0].trim();
+                    const match = cuentas.find((c) => c.cuenta === cod);
+                    setF({ ...f, cuenta_codigo: match ? match.cuenta : "" });
+                  }}
+                  placeholder="Tipeá código o nombre…"
+                  className={inputClass}
+                  autoComplete="off"
+                />
+                <datalist id="comex-cuentas">
                   {cuentas.map((c) => (
-                    <option key={c.cuenta} value={c.cuenta}>
-                      {c.cuenta} · {c.denominacion}
-                    </option>
+                    <option key={c.cuenta} value={`${c.cuenta} · ${c.denominacion}`} />
                   ))}
-                </select>
+                </datalist>
               </div>
             )}
             <div className="sm:col-span-2 lg:col-span-2">
-              <label className={labelClass}>Detalle</label>
-              <input value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })} className={inputClass} />
+              <label className={labelClass}>Detalle{f.tipo === "OTRO" ? " *" : ""}</label>
+              <input
+                value={f.descripcion}
+                onChange={(e) => setF({ ...f, descripcion: e.target.value })}
+                placeholder={f.tipo === "OTRO" ? "Especificá el gasto (ej.: Fotocopias)" : ""}
+                className={inputClass}
+              />
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -263,6 +288,7 @@ export default function GastosPanel({
                 onClick={() => {
                   setAbierto(false);
                   setF(vacio);
+                  setCuentaTexto("");
                 }}
                 className={btnSecundario}
               >

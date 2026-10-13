@@ -24,6 +24,7 @@ function datosGasto(b: Record<string, unknown>): { datos: Record<string, unknown
     const s = String(v ?? "").trim();
     return s ? s.slice(0, max) : null;
   };
+  if (tipo === "OTRO" && !texto(b.descripcion, 300)) return { error: 'Cuando el concepto es "OTRO", poné el detalle del gasto.' };
   return {
     datos: {
       fecha: /^\d{4}-\d{2}-\d{2}$/.test(String(b.fecha ?? "")) ? String(b.fecha) : new Date().toISOString().slice(0, 10),
