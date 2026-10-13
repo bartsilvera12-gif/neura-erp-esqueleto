@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Pencil, Plus, Power, Trash2, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, Pencil, Plus, Power, Trash2, Upload } from "lucide-react";
 import { GlobalConfigSubpageShell } from "@/components/config/GlobalConfigSubpageShell";
 import { ConfigMetricCard } from "@/components/config/global-config-primitives";
 import { apiFetch } from "@/lib/api/fetch-with-supabase-session";
@@ -33,6 +33,43 @@ export default function PlanDeCuentasPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<PlanCuentaItem | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  async function exportarExcel() {
+    if (exporting) return;
+    setActionError(null);
+    setExporting(true);
+    try {
+      const r = await apiFetch("/api/configuracion/plan-cuentas/export");
+      if (!r.ok) {
+        let msg = `Error ${r.status}`;
+        try {
+          const j = await r.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* respuesta no-JSON */
+        }
+        setActionError(`No se pudo exportar: ${msg}`);
+        return;
+      }
+      const blob = await r.blob();
+      const dispo = r.headers.get("Content-Disposition") ?? "";
+      const m = /filename="([^"]+)"/.exec(dispo);
+      const filename = m?.[1] ?? "plan-de-cuentas.xlsx";
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Error de red al exportar.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -234,6 +271,13 @@ export default function PlanDeCuentasPage() {
           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:border-[#4FAEB2]/60 hover:bg-[#4FAEB2]/5"
         >
           <Upload className="h-4 w-4" /> Importar plan de cuentas
+        </button>
+        <button
+          onClick={exportarExcel}
+          disabled={exporting || loading || cuentas.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:border-[#4FAEB2]/60 hover:bg-[#4FAEB2]/5 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" /> {exporting ? "Generando…" : "Exportar plan de cuentas"}
         </button>
         <button
           onClick={expandAll}
