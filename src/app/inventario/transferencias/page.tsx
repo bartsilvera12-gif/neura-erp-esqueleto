@@ -81,10 +81,10 @@ export default function TransferenciasPage() {
             Zentra · Inventario
           </p>
           <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
-            <Truck className="h-6 w-6 text-slate-500" /> Transferencias entre depósitos
+            <Truck className="h-6 w-6 text-slate-500" /> Transferencias entre almacenes
           </h1>
           <p className="text-sm text-slate-600">
-            Movimientos internos de stock entre depósitos propios. Descuenta del origen y suma al destino
+            Movimientos internos de stock entre almacenes propios. Descuenta del origen y suma al destino
             en una sola operación.
           </p>
         </div>

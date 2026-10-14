@@ -45,8 +45,11 @@ export function parseProductosRows(rows: Record<string, string>[]): ProductoPars
   return rows.map((r, idx) => {
     const errors: string[] = [];
     const warnings: string[] = [];
-    const nombre = normalizeUpperText(pick(r, "NOMBRE"));
-    if (!nombre) errors.push("NOMBRE obligatorio.");
+    // El "Nombre de importación" es el principal (con él se importan los productos).
+    // Si no viene NOMBRE (el nombre visible/comercial), se usa el de importación.
+    const nombreImportacion = normalizeUpperText(pick(r, "NOMBRE_IMPORTACION", "NOMBREIMPORTACION"));
+    const nombre = normalizeUpperText(pick(r, "NOMBRE")) || nombreImportacion;
+    if (!nombre) errors.push("Falta NOMBRE o NOMBRE_IMPORTACION.");
     const sku = normalizeUpperText(pick(r, "SKU"));
     const codigo_barras_raw = normalizeUpperText(pick(r, "CODIGO_BARRAS", "CODIGOBARRAS"));
     if (codigo_barras_raw && /^INT-/i.test(codigo_barras_raw)) {
@@ -57,7 +60,7 @@ export function parseProductosRows(rows: Record<string, string>[]): ProductoPars
     return {
       row_number: idx + 2,
       nombre,
-      nombre_importacion: normalizeUpperText(pick(r, "NOMBRE_IMPORTACION", "NOMBREIMPORTACION")),
+      nombre_importacion: nombreImportacion,
       // Descripción: texto libre, NO normalizar a mayúsculas.
       descripcion: pick(r, "DESCRIPCION"),
       sku,

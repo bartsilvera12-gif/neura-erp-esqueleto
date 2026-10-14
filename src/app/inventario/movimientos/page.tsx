@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getMovimientos } from "@/lib/inventario/storage";
 import type { MovimientoInventario, TipoMovimiento, OrigenMovimiento } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
@@ -101,9 +102,9 @@ export default function MovimientosPage() {
             <h2 className="text-xl font-semibold">Historial</h2>
             <Link
               href="/inventario/movimientos/nuevo"
-              className="text-sm text-gray-600 hover:text-gray-900 underline"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#4FAEB2] px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#3F8E91]"
             >
-              Nuevo movimiento
+              <Plus className="h-4 w-4" /> Nuevo movimiento
             </Link>
             <span className="text-sm text-gray-400">
               {filtrados.length} de {todos.length} registros

@@ -166,9 +166,9 @@ const MENU_STRUCTURE: MenuItem[] = [
   { key: "inventario", slug: "inventario", label: "Inventario", href: "/inventario", icon: Package, children: [
     { label: "Productos", href: "/inventario" },
     { label: "Movimientos", href: "/inventario/movimientos" },
-    { label: "Transferencias entre depósitos", href: "/inventario/transferencias" },
+    { label: "Transferencias entre almacenes", href: "/inventario/transferencias" },
     { label: "Categorías", href: "/inventario/categorias" },
-    { label: "Depósitos / Ubicaciones", href: "/inventario/ubicaciones" },
+    { label: "Almacenes", href: "/inventario/ubicaciones" },
   ]},
   {
     key: "compras",
