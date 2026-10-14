@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 /**
  * GET /api/inventario/movimientos — lista movimientos via PostgREST (compat Hostinger sin pool PG).
@@ -12,10 +13,13 @@ export async function GET(request: NextRequest) {
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const empresaId = ctx.auth.empresa_id;
 
+    // ubicacion_id (almacén) y observacion (razón) existen solo en esqueletoerp.
+    const extraLR = esInstanciaLR() ? ", ubicacion_id, observacion" : "";
     const { data, error } = await ctx.supabase
       .from("movimientos_inventario")
       .select(
-        "id, empresa_id, producto_id, producto_nombre, producto_sku, tipo, cantidad, costo_unitario, origen, referencia, fecha, created_at, updated_at, created_by, usuario_nombre"
+        "id, empresa_id, producto_id, producto_nombre, producto_sku, tipo, cantidad, costo_unitario, origen, referencia, fecha, created_at, updated_at, created_by, usuario_nombre" +
+          extraLR
       )
       .eq("empresa_id", empresaId)
       .order("fecha", { ascending: false })

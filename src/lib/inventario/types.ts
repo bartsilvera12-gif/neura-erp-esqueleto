@@ -97,4 +97,8 @@ export interface MovimientoInventario {
   referencia?: string; // ej: "COMP-000001"
   created_by?: string | null;
   usuario_nombre?: string | null;
+  /** Almacén donde se realiza el movimiento/ajuste. Living Room (esqueletoerp). */
+  ubicacion_id?: string | null;
+  /** Razón/motivo del movimiento, queda en el historial. Living Room (esqueletoerp). */
+  observacion?: string | null;
 }
