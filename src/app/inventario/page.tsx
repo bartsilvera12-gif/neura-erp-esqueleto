@@ -99,8 +99,6 @@ export default function InventarioPage() {
   const [filtroCategoria,  setFiltroCategoria]  = useState("");
   const [filtroStock,      setFiltroStock]      = useState<"todos" | "bajo" | "sin" | "con">("todos");
   const [filtroTipoProd,   setFiltroTipoProd]   = useState<"" | "reventa" | "repuesto" | "servicio">("");
-  const [filtroAlmacen,    setFiltroAlmacen]    = useState<"" | "PY" | "BOL">("");
-  const [ubicPaisById,     setUbicPaisById]     = useState<Record<string, string | null>>({});
   const [categorias,       setCategorias]       = useState<{ id: string; nombre: string }[]>([]);
   const [porPagina,        setPorPagina]        = useState(25);
   const [pagina,           setPagina]           = useState(1);
@@ -150,18 +148,15 @@ export default function InventarioPage() {
         setCategorias((j.data?.categorias ?? []) as { id: string; nombre: string }[]);
       })
       .catch(() => undefined);
-    // Ubicaciones: solo para mapear id → pais (filtro Almacén PY/BOL).
+    // Almacenes de la empresa: para el filtro por almacén y la transferencia en bloque.
     fetch("/api/inventario/ubicaciones", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
         if (cancelled || !j?.success) return;
-        const map: Record<string, string | null> = {};
         const lista: AlmacenOpcion[] = [];
-        for (const u of (j.data?.ubicaciones ?? []) as Array<AlmacenOpcion & { pais: string | null }>) {
-          map[u.id] = u.pais;
+        for (const u of (j.data?.ubicaciones ?? []) as AlmacenOpcion[]) {
           if (u.activo !== false) lista.push({ id: u.id, nombre: u.nombre, es_predeterminado: u.es_predeterminado });
         }
-        setUbicPaisById(map);
         setAlmacenes(lista);
       })
       .catch(() => undefined);
@@ -238,12 +233,6 @@ export default function InventarioPage() {
       if (p.ubicacion_principal_id) return false;
     } else if (filtroUbicacion !== "") {
       if (p.ubicacion_principal_id !== filtroUbicacion) return false;
-    }
-
-    // Almacén (país del depósito): sin depósito o depósito sin país cuenta como PY (mismo criterio que Importaciones).
-    if (filtroAlmacen) {
-      const pais = (p.ubicacion_principal_id ? ubicPaisById[p.ubicacion_principal_id] : null) || "PY";
-      if (pais.toUpperCase() !== filtroAlmacen) return false;
     }
 
     // Solo stock bajo
@@ -356,7 +345,7 @@ export default function InventarioPage() {
     busqueda || filtroCategoria || filtroStock !== "todos" || filtroTipoProd ||
     filtroPorNombre || filtroPorSku || filtroPorCosto ||
     filtroPorPrecio || filtroValuacion || filtroUbicacion || soloStockBajo ||
-    filtroTipo !== "todos" || filtroAlmacen;
+    filtroTipo !== "todos";
 
   function limpiarFiltros() {
     setPagina(1);
@@ -372,7 +361,6 @@ export default function InventarioPage() {
     setFiltroUbicacion("");
     setSoloStockBajo(false);
     setFiltroTipo("todos");
-    setFiltroAlmacen("");
   }
 
   return (
@@ -556,28 +544,23 @@ export default function InventarioPage() {
             </Select>
           </div>
 
-          <div>
+          <div className="min-w-[11rem]">
             <label className="mb-1 block text-xs font-medium text-slate-500">Almacén</label>
-            <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-              {/* Solo almacenes de Paraguay: se sacó la opción BOL (pedido del cliente). */}
-              {([
-                { id: "", label: "Todos" },
-                { id: "PY", label: "PY" },
-              ] as const).map((o) => (
-                <button
-                  key={o.id || "todos"}
-                  type="button"
-                  onClick={() => { setFiltroAlmacen(o.id as "" | "PY" | "BOL"); setPagina(1); }}
-                  className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
-                    filtroAlmacen === o.id
-                      ? "bg-white text-[#3F8E91] shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {o.label}
-                </button>
+            {/* Lista los almacenes reales de la empresa: filtra los productos por
+                su almacén principal (útil para transferir por lote por almacén). */}
+            <Select
+              value={filtroUbicacion}
+              onChange={(e) => { setFiltroUbicacion(e.target.value); setPagina(1); }}
+              className="zx-surface w-full px-3 py-2 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
+            >
+              <option value="">Todos</option>
+              {almacenes.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nombre}{a.es_predeterminado ? " (predeterminado)" : ""}
+                </option>
               ))}
-            </div>
+              <option value="__sin__">Sin almacén</option>
+            </Select>
           </div>
 
           <div>
