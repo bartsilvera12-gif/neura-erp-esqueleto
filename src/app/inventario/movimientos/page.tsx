@@ -128,6 +128,14 @@ export default function MovimientosPage() {
             >
               <Plus className="h-4 w-4" /> Nuevo movimiento
             </Link>
+            {usaAlmacenes && (
+              <Link
+                href="/inventario/movimientos/ajuste-bloque"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#4FAEB2]/40 bg-white px-3.5 py-2 text-sm font-semibold text-[#3F8E91] hover:bg-[#4FAEB2]/5"
+              >
+                Ajuste en bloque
+              </Link>
+            )}
             <span className="text-sm text-gray-400">
               {filtrados.length} de {todos.length} registros
             </span>
