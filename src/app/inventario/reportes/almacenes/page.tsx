@@ -108,6 +108,7 @@ export default function ReporteAlmacenesPage() {
                 <th className="py-2.5 pr-4 text-right font-semibold">Entradas</th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Salidas</th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Vendido</th>
+                <th className="py-2.5 pr-4 text-right font-semibold">Conteo</th>
               </tr>
             </thead>
             <tbody>
@@ -122,6 +123,20 @@ export default function ReporteAlmacenesPage() {
                   <td className="py-3 pr-4 text-right tabular-nums text-emerald-700">{r.entradas || <span className="text-slate-300">—</span>}</td>
                   <td className="py-3 pr-4 text-right tabular-nums text-red-600">{r.salidas || <span className="text-slate-300">—</span>}</td>
                   <td className="py-3 pr-4 text-right tabular-nums text-slate-700">{r.vendido || <span className="text-slate-300">—</span>}</td>
+                  <td className="py-3 pr-4 text-right">
+                    {r.ubicacion_id ? (
+                      <a
+                        href={`/api/inventario/reportes/almacenes/${r.ubicacion_id}/imprimir?auto=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      >
+                        PDF
+                      </a>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {total && rows.length > 0 && (
@@ -132,11 +147,12 @@ export default function ReporteAlmacenesPage() {
                   <td className="py-3 pr-4 text-right tabular-nums text-emerald-700">{total.entradas}</td>
                   <td className="py-3 pr-4 text-right tabular-nums text-red-600">{total.salidas}</td>
                   <td className="py-3 pr-4 text-right tabular-nums text-slate-800">{total.vendido}</td>
+                  <td className="py-3 pr-4" />
                 </tr>
               )}
               {!cargando && rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-4">
+                  <td colSpan={7} className="p-4">
                     <div className="zx-empty px-6 py-10 text-center">
                       <p className="text-sm text-slate-500">Todavía no hay depósitos cargados.</p>
                     </div>

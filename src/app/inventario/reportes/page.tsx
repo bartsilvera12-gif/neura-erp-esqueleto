@@ -61,6 +61,16 @@ export default function ReportesInventarioPage() {
             Por almacén
           </Link>
           <ExportExcelButton url="/api/inventario/reportes/extendido/export" />
+          <button
+            type="button"
+            onClick={() => {
+              const qs = busqueda.trim() ? `?buscar=${encodeURIComponent(busqueda.trim())}&auto=1` : "?auto=1";
+              window.open(`/api/inventario/reportes/extendido/imprimir${qs}`, "_blank", "noopener");
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          >
+            Imprimir PDF
+          </button>
         </div>
       </div>
 
