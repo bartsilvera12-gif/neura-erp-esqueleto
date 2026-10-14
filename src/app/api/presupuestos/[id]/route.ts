@@ -3,6 +3,7 @@ import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { faltanteDeStock } from "@/lib/presupuestos/server/stock";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import { ESTADOS_PRESUPUESTO, type EstadoPresupuesto } from "@/lib/presupuestos/types";
 
 const PRESU_COLS =
@@ -133,14 +134,17 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
         });
       }
 
-      // No se compromete mercadería que no hay en el almacén.
-      const sinStock = await faltanteDeStock(
-        ctx.supabase,
-        ctx.auth.empresa_id,
-        rawItems.map((it) => ({ producto_id: it.producto_id ? String(it.producto_id) : null, cantidad: Number(it.cantidad) })),
-        body.ubicacion_id ? String(body.ubicacion_id) : null
-      );
-      if (sinStock) return NextResponse.json(errorResponse(sinStock), { status: 400 });
+      // Living Room (esqueletoerp): se permite presupuestar sin stock (el aviso lo
+      // da la UI). En otros clientes se sigue bloqueando.
+      if (!esInstanciaLR()) {
+        const sinStock = await faltanteDeStock(
+          ctx.supabase,
+          ctx.auth.empresa_id,
+          rawItems.map((it) => ({ producto_id: it.producto_id ? String(it.producto_id) : null, cantidad: Number(it.cantidad) })),
+          body.ubicacion_id ? String(body.ubicacion_id) : null
+        );
+        if (sinStock) return NextResponse.json(errorResponse(sinStock), { status: 400 });
+      }
 
       // Delete items viejos + insertar nuevos.
       const delR = await ctx.supabase.from("presupuesto_items").delete()

@@ -5,6 +5,7 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { resolveVendedorScope } from "@/lib/auth/scope-vendedor";
 import { crearPresupuesto, type PresupuestoItemInput } from "@/lib/presupuestos/server/presupuestos-pg";
 import { faltanteDeStock } from "@/lib/presupuestos/server/stock";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 const PRESU_COLS =
   "id, cliente_id, cliente_nombre, cliente_ruc, cliente_telefono, cliente_direccion, " +
@@ -89,10 +90,13 @@ export async function POST(request: NextRequest) {
     if (!clienteNombre) {
       return NextResponse.json(errorResponse("El nombre del cliente es obligatorio."), { status: 400 });
     }
-    // No se compromete mercadería que no hay en el almacén.
+    // Living Room (esqueletoerp): se permite presupuestar sin stock (el aviso lo da
+    // la UI). En otros clientes se sigue bloqueando lo que no hay en el almacén.
     const ubicacionId = body.ubicacion_id ? String(body.ubicacion_id) : null;
-    const sinStock = await faltanteDeStock(ctx.supabase, ctx.auth.empresa_id, items, ubicacionId);
-    if (sinStock) return NextResponse.json(errorResponse(sinStock), { status: 400 });
+    if (!esInstanciaLR()) {
+      const sinStock = await faltanteDeStock(ctx.supabase, ctx.auth.empresa_id, items, ubicacionId);
+      if (sinStock) return NextResponse.json(errorResponse(sinStock), { status: 400 });
+    }
     const validezRaw = body.validez_dias;
     const validez =
       validezRaw === null || validezRaw === undefined || String(validezRaw).trim() === ""

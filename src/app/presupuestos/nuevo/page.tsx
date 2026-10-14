@@ -8,6 +8,7 @@ import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session"
 import SelectFromList from "@/components/inventario/SelectFromList";
 import ClienteBuscador, { type ClienteBuscadorItem } from "@/components/clientes/ClienteBuscador";
 import { calcMontoIvaIncluido, type IvaTipoPresupuesto } from "@/lib/presupuestos/types";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 type ProductoLite = {
   id: string;
@@ -204,7 +205,9 @@ export default function NuevoPresupuestoPage() {
     return { subtotal: round2(subtotal), iva: round2(iva), desc: round2(desc), total: round2(total) };
   }, [items]);
 
-  // No se compromete mercadería que no hay en el almacén.
+  // Living Room (esqueletoerp): se permite presupuestar sin stock (mercadería en
+  // tránsito o por comprar), solo se avisa. En otros clientes se sigue bloqueando.
+  const permiteSinStock = esInstanciaLR();
   const stockDe = useMemo(() => new Map(productos.map((p) => [p.id, p.stock])), [productos]);
   const faltaStock = (it: Item) => {
     if (!it.producto_id) return false;
@@ -216,7 +219,7 @@ export default function NuevoPresupuestoPage() {
   const valido =
     clienteNombre.trim().length > 0 &&
     items.length > 0 &&
-    !haySinStock &&
+    (permiteSinStock || !haySinStock) &&
     items.every((it) => it.producto_nombre.trim() && it.cantidad > 0 && it.precio_unitario >= 0);
 
   async function guardar() {
@@ -373,9 +376,9 @@ export default function NuevoPresupuestoPage() {
                           step="1"
                           value={it.cantidad || ""}
                           onChange={(e) => updItem(i, { cantidad: Number(e.target.value) })}
-                          className={`${inputClass} ${faltaStock(it) ? "border-rose-400 bg-rose-50" : ""}`}
+                          className={`${inputClass} ${faltaStock(it) ? (permiteSinStock ? "border-amber-400 bg-amber-50" : "border-rose-400 bg-rose-50") : ""}`}
                         />
-                        <span className={`mt-0.5 block h-4 text-[11px] ${faltaStock(it) ? "font-semibold text-rose-700" : "text-gray-400"}`}>
+                        <span className={`mt-0.5 block h-4 text-[11px] ${faltaStock(it) ? (permiteSinStock ? "font-semibold text-amber-700" : "font-semibold text-rose-700") : "text-gray-400"}`}>
                           {it.producto_id && stockDe.get(it.producto_id) != null
                             ? `hay ${Number(stockDe.get(it.producto_id)).toLocaleString("es-PY")}`
                             : ""}
@@ -466,9 +469,15 @@ export default function NuevoPresupuestoPage() {
           Cancelar
         </Link>
         {haySinStock && (
-          <p className="mr-auto self-center text-sm font-medium text-rose-700">
-            No se puede guardar: hay productos con más cantidad de la que hay en el almacén.
-          </p>
+          permiteSinStock ? (
+            <p className="mr-auto self-center text-sm font-medium text-amber-700">
+              ⚠️ Atención: hay productos sin stock suficiente en el almacén. Se puede guardar igual (ej. mercadería en tránsito o por comprar).
+            </p>
+          ) : (
+            <p className="mr-auto self-center text-sm font-medium text-rose-700">
+              No se puede guardar: hay productos con más cantidad de la que hay en el almacén.
+            </p>
+          )
         )}
         <button onClick={guardar} disabled={!valido || guardando} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#4FAEB2] px-5 py-2 text-sm font-medium text-white hover:bg-[#3F8E91] disabled:opacity-50">
           {guardando ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando…</> : "Guardar presupuesto"}
