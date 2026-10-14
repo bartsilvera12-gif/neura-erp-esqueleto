@@ -139,9 +139,9 @@ export default function UbicacionesPage() {
     <div className="space-y-8">
       <div className="space-y-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Depósitos y ubicaciones</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Almacenes</h1>
           <p className="text-gray-600">
-            Donde se almacena físicamente cada producto: depósitos, salones, pasillos, góndolas, estantes, zonas.
+            Los almacenes donde se guarda físicamente cada producto.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -163,7 +163,7 @@ export default function UbicacionesPage() {
 
       <div className="zx-surface p-6 max-w-3xl">
         <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide font-semibold">
-          Nueva ubicación
+          Nuevo almacén
         </p>
         <form onSubmit={handleCrear} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
           <div className="md:col-span-2">
@@ -171,7 +171,7 @@ export default function UbicacionesPage() {
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej: Depósito central"
+              placeholder="Ej: Almacén central"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
               required
             />
@@ -210,9 +210,9 @@ export default function UbicacionesPage() {
             </select>
           </div>
           <div className="md:col-span-3">
-            <label className="block text-xs text-gray-600 mb-1">Ubicación padre (opcional)</label>
+            <label className="block text-xs text-gray-600 mb-1">Almacén padre (opcional)</label>
             <FancySelect
-              ariaLabel="Ubicación padre"
+              ariaLabel="Almacén padre"
               value={parentId}
               onChange={setParentId}
               placeholder="— ninguna —"

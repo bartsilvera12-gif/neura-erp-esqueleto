@@ -10,6 +10,14 @@ import ImportExcelButton from "@/components/ui/ImportExcelButton";
 import EdgeScrollArea from "@/components/ui/EdgeScrollArea";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import { Select } from "@/components/ui/Select";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
+
+interface AlmacenOpcion {
+  id: string;
+  nombre: string;
+  es_predeterminado?: boolean;
+  activo?: boolean;
+}
 
 const inputFilterClass =
   "border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none";
@@ -98,6 +106,31 @@ export default function InventarioPage() {
   const [pagina,           setPagina]           = useState(1);
   const [deletingId,       setDeletingId]       = useState<string | null>(null);
 
+  // ── Selección en bloque (solo Living Room) ──────────────────────────────────
+  const usaBloque = esInstanciaLR();
+  const [seleccionMode, setSeleccionMode] = useState(false);
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [almacenes, setAlmacenes] = useState<AlmacenOpcion[]>([]);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [origenId, setOrigenId] = useState("");
+  const [destinoId, setDestinoId] = useState("");
+  const [observacionBulk, setObservacionBulk] = useState("");
+  const [procesando, setProcesando] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
+
+  function toggleSeleccion(id: string) {
+    setSeleccionados((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+  function salirSeleccion() {
+    setSeleccionMode(false);
+    setSeleccionados(new Set());
+    setBulkMsg(null);
+  }
+
   useEffect(() => {
     let cancelled = false;
     setCargandoLista(true);
@@ -123,10 +156,13 @@ export default function InventarioPage() {
       .then((j) => {
         if (cancelled || !j?.success) return;
         const map: Record<string, string | null> = {};
-        for (const u of (j.data?.ubicaciones ?? []) as Array<{ id: string; pais: string | null }>) {
+        const lista: AlmacenOpcion[] = [];
+        for (const u of (j.data?.ubicaciones ?? []) as Array<AlmacenOpcion & { pais: string | null }>) {
           map[u.id] = u.pais;
+          if (u.activo !== false) lista.push({ id: u.id, nombre: u.nombre, es_predeterminado: u.es_predeterminado });
         }
         setUbicPaisById(map);
+        setAlmacenes(lista);
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
@@ -226,6 +262,86 @@ export default function InventarioPage() {
     return true;
   });
 
+  // ── Acciones en bloque ──────────────────────────────────────────────────────
+  const idsFiltrados = productos.map((p) => p.id);
+  const todosFiltradosSeleccionados =
+    idsFiltrados.length > 0 && idsFiltrados.every((id) => seleccionados.has(id));
+
+  function toggleTodosFiltrados() {
+    setSeleccionados((prev) => {
+      const n = new Set(prev);
+      if (todosFiltradosSeleccionados) {
+        for (const id of idsFiltrados) n.delete(id);
+      } else {
+        for (const id of idsFiltrados) n.add(id);
+      }
+      return n;
+    });
+  }
+
+  async function ejecutarTransferencia() {
+    if (procesando) return;
+    if (!origenId || !destinoId) { setBulkMsg("Elegí almacén de origen y destino."); return; }
+    if (origenId === destinoId) { setBulkMsg("El origen y el destino deben ser distintos."); return; }
+    const ids = Array.from(seleccionados);
+    if (ids.length === 0) { setBulkMsg("No hay productos seleccionados."); return; }
+    setProcesando(true);
+    setBulkMsg(null);
+    try {
+      const r = await fetch("/api/inventario/transferencias/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          producto_ids: ids,
+          ubicacion_origen_id: origenId,
+          ubicacion_destino_id: destinoId,
+          observacion: observacionBulk.trim() || undefined,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.success) { setBulkMsg(j?.error ?? `Error ${r.status}`); return; }
+      const d = j.data as { movidos: number; sin_stock: number; errores: number };
+      setTransferOpen(false);
+      setObservacionBulk("");
+      setBulkMsg(
+        `Transferencia lista: ${d.movidos} movido(s)` +
+          (d.sin_stock ? `, ${d.sin_stock} sin stock en el origen` : "") +
+          (d.errores ? `, ${d.errores} con error` : "") + "."
+      );
+      setSeleccionados(new Set());
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setBulkMsg(e instanceof Error ? e.message : "Error de red al transferir.");
+    } finally {
+      setProcesando(false);
+    }
+  }
+
+  async function ejecutarEliminar() {
+    if (procesando) return;
+    const ids = Array.from(seleccionados);
+    if (ids.length === 0) return;
+    if (!window.confirm(`¿Eliminar ${ids.length} producto(s) seleccionado(s)? Dejarán de aparecer en el inventario.`)) return;
+    setProcesando(true);
+    setBulkMsg(null);
+    let ok = 0;
+    const errores: string[] = [];
+    for (const id of ids) {
+      try {
+        await deleteProducto(id);
+        ok++;
+      } catch (e) {
+        errores.push(e instanceof Error ? e.message : id);
+      }
+    }
+    setTodos((prev) => prev.filter((x) => !(seleccionados.has(x.id) && !errores.includes(x.id))));
+    setBulkMsg(`Eliminados: ${ok}${errores.length ? `, ${errores.length} con error` : ""}.`);
+    setSeleccionados(new Set());
+    setProcesando(false);
+    setRefreshKey((k) => k + 1);
+  }
+
   // ── Paginación ────────────────────────────────────────────────────────────
   const totalPaginas = porPagina === 0 ? 1 : Math.max(1, Math.ceil(productos.length / porPagina));
   const paginaActual = Math.min(pagina, totalPaginas);
@@ -311,8 +427,70 @@ export default function InventarioPage() {
             >
               Añadir producto
             </Link>
+            {usaBloque && (
+              <button
+                type="button"
+                onClick={() => (seleccionMode ? salirSeleccion() : setSeleccionMode(true))}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95 ${
+                  seleccionMode
+                    ? "border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    : "border border-[#4FAEB2]/40 bg-white text-[#3F8E91] hover:bg-[#4FAEB2]/5"
+                }`}
+              >
+                {seleccionMode ? "Salir de selección" : "Selección en bloque"}
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Barra de acciones en bloque */}
+        {usaBloque && seleccionMode && (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#4FAEB2]/30 bg-[#4FAEB2]/[0.06] px-4 py-2.5">
+            <span className="text-sm font-semibold text-slate-700">
+              {seleccionados.size} seleccionado(s)
+            </span>
+            <button
+              type="button"
+              onClick={toggleTodosFiltrados}
+              className="text-xs font-medium text-[#3F8E91] hover:underline"
+            >
+              {todosFiltradosSeleccionados ? "Quitar todos" : `Seleccionar todos (${productos.length})`}
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                disabled={seleccionados.size === 0 || procesando}
+                onClick={() => {
+                  setBulkMsg(null);
+                  if (!origenId) {
+                    const def = almacenes.find((a) => a.es_predeterminado) ?? almacenes[0];
+                    if (def) setOrigenId(def.id);
+                  }
+                  setTransferOpen(true);
+                }}
+                className="rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#3F8E91] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Transferir a almacén
+              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  disabled={seleccionados.size === 0 || procesando}
+                  onClick={ejecutarEliminar}
+                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {procesando ? "Procesando…" : "Eliminar"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {bulkMsg && (
+          <div className="mb-4 rounded-lg border border-[#4FAEB2]/30 bg-[#4FAEB2]/[0.06] px-4 py-2.5 text-sm text-slate-700">
+            {bulkMsg}
+          </div>
+        )}
 
         {/* Buscador inteligente + filtros útiles */}
         <div className="mb-5 flex flex-wrap items-end gap-3">
@@ -555,6 +733,17 @@ export default function InventarioPage() {
             {/* Cabecera fija: al scrollear una lista larga no se pierde la referencia. */}
             <thead className="sticky top-0 z-10">
               <tr className="zx-thead text-[11px] uppercase tracking-wide text-slate-500">
+                {usaBloque && seleccionMode && (
+                  <th className="py-2.5 pl-4 pr-2 font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={todosFiltradosSeleccionados}
+                      onChange={toggleTodosFiltrados}
+                      aria-label="Seleccionar todos"
+                      className="rounded border-slate-300"
+                    />
+                  </th>
+                )}
                 <th className="py-2.5 pl-4 pr-4 font-semibold">Producto</th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Costo prom.</th>
                 <th className="py-2.5 pr-4 text-right font-semibold">Precio venta</th>
@@ -578,7 +767,18 @@ export default function InventarioPage() {
                 const markup = calcularMarkup(p.costo_promedio, p.precio_venta);
                 const sinCosto = p.costo_promedio <= 0;
                 return (
-                  <tr key={p.id} className="border-b border-slate-100 last:border-0 transition-colors hover:bg-[#4FAEB2]/[0.05]">
+                  <tr key={p.id} className={`border-b border-slate-100 last:border-0 transition-colors hover:bg-[#4FAEB2]/[0.05] ${usaBloque && seleccionMode && seleccionados.has(p.id) ? "bg-[#4FAEB2]/[0.07]" : ""}`}>
+                    {usaBloque && seleccionMode && (
+                      <td className="py-3 pl-4 pr-2 align-middle">
+                        <input
+                          type="checkbox"
+                          checked={seleccionados.has(p.id)}
+                          onChange={() => toggleSeleccion(p.id)}
+                          aria-label={`Seleccionar ${p.nombre}`}
+                          className="rounded border-slate-300"
+                        />
+                      </td>
+                    )}
                     {/* Producto: imagen + nombre + SKU + etiquetas, todo junto */}
                     <td className="py-3 pl-4 pr-4">
                       <div className="flex items-center gap-3">
@@ -656,7 +856,7 @@ export default function InventarioPage() {
               {/* Sin resultados: antes la tabla quedaba en blanco, sin explicación. */}
               {!cargandoLista && productosPagina.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-4">
+                  <td colSpan={usaBloque && seleccionMode ? 7 : 6} className="p-4">
                     <div className="zx-empty px-6 py-10 text-center">
                       <p className="text-sm text-slate-500">
                         {todos.length === 0
@@ -727,6 +927,77 @@ export default function InventarioPage() {
         )}
 
       </div>
+
+      {/* Modal: transferir seleccionados a otro almacén */}
+      {usaBloque && transferOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={() => !procesando && setTransferOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-slate-900">Transferir a otro almacén</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              {seleccionados.size} producto(s) seleccionado(s). Se mueve el stock que cada uno
+              tenga en el almacén de origen.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Almacén de origen</label>
+                <Select
+                  value={origenId}
+                  onChange={(e) => setOrigenId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                >
+                  <option value="">Elegir…</option>
+                  {almacenes.map((a) => (
+                    <option key={a.id} value={a.id}>{a.nombre}{a.es_predeterminado ? " (predeterminado)" : ""}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Almacén de destino</label>
+                <Select
+                  value={destinoId}
+                  onChange={(e) => setDestinoId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                >
+                  <option value="">Elegir…</option>
+                  {almacenes.filter((a) => a.id !== origenId).map((a) => (
+                    <option key={a.id} value={a.id}>{a.nombre}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Razón / observación (opcional)</label>
+                <input
+                  type="text"
+                  value={observacionBulk}
+                  onChange={(e) => setObservacionBulk(e.target.value)}
+                  placeholder="Ej: reubicación de mercadería"
+                  maxLength={300}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </div>
+              {bulkMsg && <p className="text-sm text-red-600">{bulkMsg}</p>}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setTransferOpen(false)}
+                disabled={procesando}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={ejecutarTransferencia}
+                disabled={procesando || !origenId || !destinoId}
+                className="rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {procesando ? "Transfiriendo…" : "Transferir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

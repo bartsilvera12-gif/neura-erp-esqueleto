@@ -99,6 +99,53 @@ export async function listAlmacenes(
   });
 }
 
+export interface ProductoAlmacenRow {
+  sku: string;
+  nombre: string;
+  unidad_medida: string | null;
+  stock: number;
+}
+
+/**
+ * Productos con stock registrado en un almacén (para la hoja de conteo físico
+ * de ese almacén). Devuelve también el nombre del almacén. Solo Living Room.
+ */
+export async function listProductosDeAlmacen(
+  schemaRaw: string,
+  empresaId: string,
+  ubicacionId: string
+): Promise<{ nombre: string | null; filas: ProductoAlmacenRow[] }> {
+  const schema = assertAllowedChatDataSchema(schemaRaw);
+  if (!soportaCamposLR(schema)) return { nombre: null, filas: [] };
+  const pool = getChatPostgresPool();
+  if (!pool) throw new Error("Pool no disponible.");
+  const tU = quoteSchemaTable(schema, "inventario_ubicaciones");
+  const tS = quoteSchemaTable(schema, "inventario_stock_ubicacion");
+  const tP = quoteSchemaTable(schema, "productos");
+
+  const [uq, pq] = await Promise.all([
+    pool.query<{ nombre: string }>(`SELECT nombre FROM ${tU} WHERE empresa_id=$1::uuid AND id=$2::uuid`, [empresaId, ubicacionId]),
+    pool.query<{ sku: string; nombre: string; unidad_medida: string | null; stock: string | number }>(
+      `SELECT p.sku, p.nombre, p.unidad_medida, s.stock_actual AS stock
+         FROM ${tS} s
+         JOIN ${tP} p ON p.id = s.producto_id AND p.empresa_id = s.empresa_id
+        WHERE s.empresa_id=$1::uuid AND s.ubicacion_id=$2::uuid AND p.activo IS NOT FALSE
+        ORDER BY p.nombre`,
+      [empresaId, ubicacionId]
+    ),
+  ]);
+
+  return {
+    nombre: uq.rows[0]?.nombre ?? null,
+    filas: pq.rows.map((r) => ({
+      sku: r.sku,
+      nombre: r.nombre,
+      unidad_medida: r.unidad_medida,
+      stock: Number(r.stock) || 0,
+    })),
+  };
+}
+
 export function totalAlmacenes(rows: AlmacenRow[]): AlmacenRow {
   return rows.reduce<AlmacenRow>(
     (acc, r) => {

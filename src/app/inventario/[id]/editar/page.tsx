@@ -268,6 +268,12 @@ export default function EditarProductoPage() {
     };
 
     try {
+      // El "Nombre de importación" es el principal y obligatorio; el "Nombre del
+      // producto" (el visible) es opcional: si viene vacío, se usa el de importación.
+      const impT = form.nombre_importacion.trim();
+      if (!impT) { showErr("El nombre de importación es obligatorio."); return; }
+      const nombreT = form.nombre.trim() || impT;
+
       const codigoIngresado = form.codigo_barras.trim();
       // Validar: si cambio el codigo y empieza con INT- pero NO fue generado por el sistema,
       // rechazar (prefijo reservado).
@@ -284,7 +290,7 @@ export default function EditarProductoPage() {
       // Pre-chequeo de duplicado: tolerante a fallos de red — si la consulta falla,
       // seguimos. El backend igual valida unicidad en el PATCH.
       try {
-        const duplicado = await productoExiste(form.sku, form.nombre);
+        const duplicado = await productoExiste(form.sku, nombreT);
         if (duplicado && duplicado.id !== id) {
           setErrorDuplicado(`Ya existe "${duplicado.nombre}" con SKU ${duplicado.sku}.`);
           try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
@@ -296,7 +302,7 @@ export default function EditarProductoPage() {
 
       const cambioCodigo = codigoIngresado !== (codigoOriginal ?? "");
       const updatePayload: Parameters<typeof updateProducto>[1] = {
-        nombre: form.nombre.trim().toUpperCase(),
+        nombre: nombreT.toUpperCase(),
         nombre_importacion: form.nombre_importacion.trim().toUpperCase() || null,
         sku: form.sku.trim().toUpperCase(),
         costo_promedio: parseFloat(form.costo_promedio) || 0,
@@ -405,32 +411,33 @@ export default function EditarProductoPage() {
           )}
 
           <div>
+            <label className={labelClass}>Nombre de importación *</label>
+            <input
+              type="text"
+              name="nombre_importacion"
+              value={form.nombre_importacion}
+              onChange={handleChange}
+              placeholder="Ej: SOFA LEBLON 3 CUERPOS CARAMELO"
+              className={`${inputClass} uppercase`}
+              required
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              El principal: con este se importan los productos (lo otorga el proveedor).
+            </p>
+          </div>
+
+          <div>
             <label className={labelClass}>Nombre del producto</label>
             <input
               type="text"
               name="nombre"
               value={form.nombre}
               onChange={handleChange}
-              className={`${inputClass} uppercase`}
-              required
-            />
-            <p className="mt-1 text-xs text-slate-400">
-              El que ve el cliente: va a las proformas del CRM y a la factura.
-            </p>
-          </div>
-
-          <div>
-            <label className={labelClass}>Nombre de importación</label>
-            <input
-              type="text"
-              name="nombre_importacion"
-              value={form.nombre_importacion}
-              onChange={handleChange}
-              placeholder="El nombre que da el proveedor (opcional)"
+              placeholder="Opcional — nombre comercial para facturas y presupuestos"
               className={`${inputClass} uppercase`}
             />
             <p className="mt-1 text-xs text-slate-400">
-              El que otorga el proveedor; se usa en importaciones y exportaciones.
+              El que ve el cliente (proformas del CRM y factura). Si lo dejás vacío, se usa el de importación.
             </p>
           </div>
 

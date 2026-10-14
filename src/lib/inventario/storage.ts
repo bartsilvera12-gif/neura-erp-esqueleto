@@ -66,6 +66,8 @@ interface MovimientoRow {
   updated_at: string;
   created_by?: string | null;
   usuario_nombre?: string | null;
+  ubicacion_id?: string | null;
+  observacion?: string | null;
 }
 
 // ─── Mapeo fila → tipo ────────────────────────────────────────────────────────
@@ -125,6 +127,8 @@ function rowToMovimiento(row: MovimientoRow): MovimientoInventario {
     fecha: row.fecha,
     created_by: row.created_by ?? null,
     usuario_nombre: row.usuario_nombre ?? null,
+    ubicacion_id: row.ubicacion_id ?? null,
+    observacion: row.observacion ?? null,
   };
 }
 
@@ -404,8 +408,12 @@ export async function saveMovimiento(
   const nuevoStock = Math.max(0, producto.stock_actual + delta);
   const debeActualizarStock = mov.origen !== "inventario_inicial"; // inventario_inicial ya viene del insert
 
+  // Almacén donde ocurre el movimiento: el elegido en el form, o el principal del
+  // producto por defecto. Solo Living Room (esqueletoerp) tiene estas columnas.
+  const ubicacionMov = mov.ubicacion_id ?? producto.ubicacion_principal_id ?? null;
+
   // 2. Insertar movimiento
-  const insert = {
+  const insert: Record<string, unknown> = {
     empresa_id: usuario.empresa_id,
     producto_id: mov.producto_id,
     producto_nombre: mov.producto_nombre,
@@ -417,6 +425,11 @@ export async function saveMovimiento(
     referencia: mov.referencia ?? null,
     fecha: mov.fecha,
   };
+  if (esInstanciaLR()) {
+    // ubicacion_id (almacén) y observacion (razón) existen solo en esqueletoerp.
+    insert.ubicacion_id = ubicacionMov;
+    insert.observacion = mov.observacion?.trim() ? mov.observacion.trim() : null;
+  }
 
   const { data: movData, error: movError } = await supabase
     .from("movimientos_inventario")
@@ -443,9 +456,9 @@ export async function saveMovimiento(
     // 3b. Living Room (instancia esqueletoerp): mantener el stock por depósito en
     // sincronía aplicando el mismo delta al depósito principal del producto.
     // Best-effort (no frena el movimiento). En otras instancias no se ejecuta.
-    if (esInstanciaLR() && producto.ubicacion_principal_id) {
+    if (esInstanciaLR() && ubicacionMov) {
       try {
-        const ubic = producto.ubicacion_principal_id;
+        const ubic = ubicacionMov;
         const { data: filaDep } = await supabase
           .from("inventario_stock_ubicacion")
           .select("id, stock_actual")
@@ -453,16 +466,21 @@ export async function saveMovimiento(
           .eq("producto_id", mov.producto_id)
           .eq("ubicacion_id", ubic)
           .maybeSingle();
+        const esPrincipal = ubic === producto.ubicacion_principal_id;
         if (filaDep) {
           const actual = Number((filaDep as { stock_actual: number }).stock_actual) || 0;
           await supabase
             .from("inventario_stock_ubicacion")
-            .update({ stock_actual: actual + delta })
+            .update({ stock_actual: Math.max(0, actual + delta) })
             .eq("id", (filaDep as { id: string }).id);
         } else {
+          // No había fila para este almacén. Si es el principal, arranca con el stock
+          // total del producto (comportamiento histórico); si es otro almacén, arranca
+          // con lo que suma/resta este movimiento.
+          const inicial = esPrincipal ? nuevoStock : Math.max(0, delta);
           await supabase
             .from("inventario_stock_ubicacion")
-            .insert({ empresa_id: usuario.empresa_id, producto_id: mov.producto_id, ubicacion_id: ubic, stock_actual: nuevoStock, es_principal: true });
+            .insert({ empresa_id: usuario.empresa_id, producto_id: mov.producto_id, ubicacion_id: ubic, stock_actual: inicial, es_principal: esPrincipal });
         }
       } catch (e) {
         console.error("[inventario] saveMovimiento (stock por depósito):", e);

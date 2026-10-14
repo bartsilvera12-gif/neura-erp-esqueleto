@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { getMovimientos } from "@/lib/inventario/storage";
 import type { MovimientoInventario, TipoMovimiento, OrigenMovimiento } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 /** Paleta blanco + turquesa Zentra. La entrada usa el turquesa de marca. */
 const tipoBadge: Record<TipoMovimiento, string> = {
@@ -52,6 +54,8 @@ const inputFilterClass =
 
 export default function MovimientosPage() {
   const [todos, setTodos] = useState<MovimientoInventario[]>([]);
+  const [almacenNombre, setAlmacenNombre] = useState<Record<string, string>>({});
+  const usaAlmacenes = esInstanciaLR();
 
   // Filtros
   const [busqueda, setBusqueda] = useState("");
@@ -67,6 +71,25 @@ export default function MovimientosPage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Mapa almacén id → nombre (solo Living Room) para mostrar en el historial.
+  useEffect(() => {
+    if (!usaAlmacenes) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/inventario/ubicaciones", { credentials: "include", cache: "no-store" });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j?.success || cancelled) return;
+        const map: Record<string, string> = {};
+        for (const u of (j.data?.ubicaciones ?? []) as { id: string; nombre: string }[]) map[u.id] = u.nombre;
+        setAlmacenNombre(map);
+      } catch {
+        /* sin nombres: se muestra "—" */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [usaAlmacenes]);
 
   const filtrados = todos.filter((m) => {
     const texto = busqueda.toLowerCase();
@@ -101,10 +124,18 @@ export default function MovimientosPage() {
             <h2 className="text-xl font-semibold">Historial</h2>
             <Link
               href="/inventario/movimientos/nuevo"
-              className="text-sm text-gray-600 hover:text-gray-900 underline"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#4FAEB2] px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#3F8E91]"
             >
-              Nuevo movimiento
+              <Plus className="h-4 w-4" /> Nuevo movimiento
             </Link>
+            {usaAlmacenes && (
+              <Link
+                href="/inventario/movimientos/ajuste-bloque"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#4FAEB2]/40 bg-white px-3.5 py-2 text-sm font-semibold text-[#3F8E91] hover:bg-[#4FAEB2]/5"
+              >
+                Ajuste en bloque
+              </Link>
+            )}
             <span className="text-sm text-gray-400">
               {filtrados.length} de {todos.length} registros
             </span>
@@ -195,6 +226,8 @@ export default function MovimientosPage() {
                 <th className="py-3 pr-4 font-medium text-right">Cantidad</th>
                 <th className="py-3 pr-4 font-medium text-right">Costo unit.</th>
                 <th className="py-3 pr-4 font-medium">Origen</th>
+                {usaAlmacenes && <th className="py-3 pr-4 font-medium">Almacén</th>}
+                {usaAlmacenes && <th className="py-3 pr-4 font-medium">Razón</th>}
                 <th className="py-3 pr-4 font-medium">Usuario</th>
                 <th className="py-3 font-medium">Fecha</th>
               </tr>
@@ -202,7 +235,7 @@ export default function MovimientosPage() {
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400">
+                  <td colSpan={usaAlmacenes ? 10 : 8} className="py-12 text-center text-gray-400">
                     {todos.length === 0
                       ? "No hay movimientos registrados"
                       : "Ningún movimiento coincide con los filtros"}
@@ -239,6 +272,20 @@ export default function MovimientosPage() {
                           {origenLabel[m.origen]}
                         </span>
                       </td>
+                      {usaAlmacenes && (
+                        <td className="py-4 pr-4 text-gray-600 text-xs">
+                          {m.ubicacion_id ? (almacenNombre[m.ubicacion_id] ?? "—") : <span className="text-slate-300">—</span>}
+                        </td>
+                      )}
+                      {usaAlmacenes && (
+                        <td className="py-4 pr-4 text-gray-600 text-xs max-w-[220px]">
+                          {m.observacion ? (
+                            <span className="line-clamp-2" title={m.observacion}>{m.observacion}</span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
+                      )}
                       <td className="py-4 pr-4 text-gray-600 text-xs">
                         {m.usuario_nombre ? (
                           <span className="inline-flex items-center gap-1.5 font-medium text-slate-700">

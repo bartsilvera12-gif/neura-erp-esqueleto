@@ -254,8 +254,12 @@ export default function NuevoProductoPage() {
 
     try {
       // Validaciones básicas en JS (HTML5 desactivado con noValidate).
-      const nombreT = form.nombre.trim();
-      if (!nombreT) { showErr("El nombre es obligatorio."); return; }
+      // El "Nombre de importación" es el principal (con él se importan los productos).
+      // El "Nombre del producto" (el lindo para facturas/presupuestos) es opcional:
+      // si viene vacío, se usa el de importación como nombre visible.
+      const impT = form.nombre_importacion.trim();
+      if (!impT) { showErr("El nombre de importación es obligatorio."); return; }
+      const nombreT = form.nombre.trim() || impT;
       // SKU: si el usuario lo dejó vacío, generamos uno automático (SKU-<epoch base36 último 4><rand 3>).
       if (!form.sku.trim()) {
         const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
@@ -274,7 +278,7 @@ export default function NuevoProductoPage() {
 
       // Pre-chequeo duplicado tolerante a fallos de red.
       try {
-        const duplicado = await productoExiste(form.sku, form.nombre);
+        const duplicado = await productoExiste(form.sku, nombreT);
         if (duplicado) {
           setErrorDuplicado(`Ya existe "${duplicado.nombre}" con SKU ${duplicado.sku}.`);
           try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
@@ -307,7 +311,7 @@ export default function NuevoProductoPage() {
       let guardado;
       try {
         guardado = await saveProducto({
-          nombre: form.nombre.trim().toUpperCase(),
+          nombre: nombreT.toUpperCase(),
           nombre_importacion: form.nombre_importacion.trim().toUpperCase() || null,
           descripcion: form.descripcion.trim() || null,
           sku: form.sku.trim().toUpperCase(),
@@ -444,7 +448,26 @@ export default function NuevoProductoPage() {
             </div>
           )}
 
-          {/* Nombre del producto (el que ve el cliente: proformas CRM + factura) */}
+          {/* Nombre de importación: el PRINCIPAL. Con este se importan los productos
+              (lo da el proveedor). Es obligatorio. */}
+          <div>
+            <label className={labelClass}>Nombre de importación *</label>
+            <input
+              type="text"
+              name="nombre_importacion"
+              value={form.nombre_importacion}
+              onChange={handleChange}
+              placeholder="Ej: SOFA LEBLON 3 CUERPOS CARAMELO"
+              className={`${inputClass} uppercase`}
+              required
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              El principal: con este se importan los productos (lo otorga el proveedor).
+            </p>
+          </div>
+
+          {/* Nombre del producto: el lindo para facturas/presupuestos. Opcional:
+              si se deja vacío, se usa el nombre de importación. */}
           <div>
             <label className={labelClass}>Nombre del producto</label>
             <input
@@ -452,28 +475,11 @@ export default function NuevoProductoPage() {
               name="nombre"
               value={form.nombre}
               onChange={handleChange}
-              placeholder="Ej: SOFA LEBLON 3 CUERPOS CARAMELO"
-              className={`${inputClass} uppercase`}
-              required
-            />
-            <p className="mt-1 text-xs text-slate-400">
-              El que ve el cliente: va a las proformas del CRM y a la factura.
-            </p>
-          </div>
-
-          {/* Nombre de importación (el del proveedor: importaciones/exportaciones) */}
-          <div>
-            <label className={labelClass}>Nombre de importación</label>
-            <input
-              type="text"
-              name="nombre_importacion"
-              value={form.nombre_importacion}
-              onChange={handleChange}
-              placeholder="El nombre que da el proveedor (opcional)"
+              placeholder="Opcional — nombre comercial para facturas y presupuestos"
               className={`${inputClass} uppercase`}
             />
             <p className="mt-1 text-xs text-slate-400">
-              El que otorga el proveedor; se usa en importaciones y exportaciones.
+              El que ve el cliente (proformas del CRM y factura). Si lo dejás vacío, se usa el de importación.
             </p>
           </div>
 

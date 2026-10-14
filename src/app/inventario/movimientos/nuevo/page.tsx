@@ -6,10 +6,20 @@ import MontoInput from "@/components/ui/MontoInput";
 import { getProductos, saveMovimiento } from "@/lib/inventario/storage";
 import type { Producto, TipoMovimiento, OrigenMovimiento } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
+
+interface AlmacenOpcion {
+  id: string;
+  nombre: string;
+  es_predeterminado?: boolean;
+  activo?: boolean;
+}
 
 export default function NuevoMovimientoPage() {
   const router = useRouter();
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [almacenes, setAlmacenes] = useState<AlmacenOpcion[]>([]);
+  const usaAlmacenes = esInstanciaLR();
 
   const [form, setForm] = useState({
     producto_id: "",
@@ -17,6 +27,8 @@ export default function NuevoMovimientoPage() {
     cantidad: "",
     costo_unitario: "",
     origen: "compra" as OrigenMovimiento,
+    ubicacion_id: "",
+    observacion: "",
   });
 
   useEffect(() => {
@@ -26,6 +38,26 @@ export default function NuevoMovimientoPage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Almacenes (solo Living Room): para elegir dónde se realiza el movimiento.
+  useEffect(() => {
+    if (!usaAlmacenes) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/inventario/ubicaciones", { credentials: "include", cache: "no-store" });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j?.success || cancelled) return;
+        const lista = ((j.data?.ubicaciones ?? []) as AlmacenOpcion[]).filter((u) => u.activo !== false);
+        setAlmacenes(lista);
+        const porDefecto = lista.find((u) => u.es_predeterminado) ?? lista[0];
+        if (porDefecto) setForm((prev) => (prev.ubicacion_id ? prev : { ...prev, ubicacion_id: porDefecto.id }));
+      } catch {
+        /* sin almacenes: el movimiento usa el almacén principal del producto */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [usaAlmacenes]);
 
   function handleProductoChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const id = e.target.value;
@@ -70,6 +102,9 @@ export default function NuevoMovimientoPage() {
       costo_unitario: parseFloat(form.costo_unitario) || 0,
       origen: form.origen,
       fecha: new Date().toISOString(),
+      ...(usaAlmacenes
+        ? { ubicacion_id: form.ubicacion_id || null, observacion: form.observacion.trim() || null }
+        : {}),
     });
 
     if (guardado) router.push("/inventario/movimientos");
@@ -142,6 +177,29 @@ export default function NuevoMovimientoPage() {
             </div>
           </div>
 
+          {/* Almacén de origen (solo Living Room) */}
+          {usaAlmacenes && (
+            <div>
+              <label className={labelClass}>Almacén</label>
+              <Select
+                name="ubicacion_id"
+                value={form.ubicacion_id}
+                onChange={handleChange}
+                className={inputClass}
+              >
+                <option value="">Almacén principal del producto</option>
+                {almacenes.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nombre}{a.es_predeterminado ? " (predeterminado)" : ""}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-xs text-gray-400">
+                Dónde se realiza el movimiento (el stock se ajusta en este almacén).
+              </p>
+            </div>
+          )}
+
           {/* Cantidad + Costo unitario */}
           <div className="grid grid-cols-2 gap-6">
             <div>
@@ -177,6 +235,28 @@ export default function NuevoMovimientoPage() {
               />
             </div>
           </div>
+
+          {/* Razón / motivo (solo Living Room): queda en el historial */}
+          {usaAlmacenes && (
+            <div>
+              <label className={labelClass}>
+                Razón del movimiento
+                <span className="ml-2 text-xs text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                name="observacion"
+                value={form.observacion}
+                onChange={handleChange}
+                placeholder="Ej: ajuste por conteo físico, rotura, devolución…"
+                className={inputClass}
+                maxLength={300}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Por qué se realiza el movimiento. Queda guardado en el historial.
+              </p>
+            </div>
+          )}
 
           {/* Nota de fecha automática */}
           <p className="text-xs text-gray-400">
