@@ -109,6 +109,10 @@ export default function InventarioPage() {
   const [seleccionMode, setSeleccionMode] = useState(false);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const [almacenes, setAlmacenes] = useState<AlmacenOpcion[]>([]);
+  // Stock por producto en el almacén filtrado (dónde está la mercadería, no el
+  // almacén "principal"). null = sin filtro de almacén. Se carga del endpoint de depósito.
+  const [stockEnAlmacen, setStockEnAlmacen] = useState<Map<string, number> | null>(null);
+  const [cargandoAlmacen, setCargandoAlmacen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [origenId, setOrigenId] = useState("");
   const [destinoId, setDestinoId] = useState("");
@@ -162,6 +166,31 @@ export default function InventarioPage() {
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [refreshKey]);
+
+  // Al elegir un almacén en el filtro: traer qué productos tienen stock EN ESE almacén
+  // (y cuánto), para filtrar por dónde está la mercadería, no por el almacén principal.
+  useEffect(() => {
+    const id = filtroUbicacion;
+    if (!id || id === "__sin__") { setStockEnAlmacen(null); setCargandoAlmacen(false); return; }
+    let cancel = false;
+    setCargandoAlmacen(true);
+    setStockEnAlmacen(null);
+    fetch(`/api/depositos/${id}/stock?solo_con_stock=1`, { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancel) return;
+        const m = new Map<string, number>();
+        if (j?.success) {
+          for (const it of (j.data?.items ?? []) as Array<{ producto_id: string; stock: number }>) {
+            m.set(it.producto_id, Number(it.stock) || 0);
+          }
+        }
+        setStockEnAlmacen(m);
+      })
+      .catch(() => { if (!cancel) setStockEnAlmacen(new Map()); })
+      .finally(() => { if (!cancel) setCargandoAlmacen(false); });
+    return () => { cancel = true; };
+  }, [filtroUbicacion]);
 
   async function handleEliminar(id: string, nombre: string) {
     if (deletingId) return;
@@ -228,11 +257,14 @@ export default function InventarioPage() {
     // Valuación
     if (filtroValuacion !== "" && p.metodo_valuacion !== filtroValuacion) return false;
 
-    // Ubicación
+    // Almacén: se filtra por dónde TIENE stock el producto (inventario por depósito),
+    // no por su almacén "principal". Así, filtrar por un almacén muestra lo que
+    // realmente está ahí (coincide con "Qué hay en el depósito" y el reporte).
     if (filtroUbicacion === "__sin__") {
       if (p.ubicacion_principal_id) return false;
     } else if (filtroUbicacion !== "") {
-      if (p.ubicacion_principal_id !== filtroUbicacion) return false;
+      if (cargandoAlmacen || !stockEnAlmacen) return false; // esperando datos del almacén
+      if (!stockEnAlmacen.has(p.id)) return false;
     }
 
     // Solo stock bajo
@@ -746,6 +778,9 @@ export default function InventarioPage() {
               {productosPagina.map((p) => {
                 const stockBajo = p.stock_actual <= p.stock_minimo;
                 const sinStock = p.stock_actual <= 0;
+                // Si hay filtro por almacén, mostrar el stock EN ESE almacén.
+                const filtrandoAlmacen = filtroUbicacion !== "" && filtroUbicacion !== "__sin__" && !!stockEnAlmacen;
+                const stockMostrado = filtrandoAlmacen ? (stockEnAlmacen!.get(p.id) ?? 0) : p.stock_actual;
                 const margen = calcularMargenVenta(p.costo_promedio, p.precio_venta);
                 const markup = calcularMarkup(p.costo_promedio, p.precio_venta);
                 const sinCosto = p.costo_promedio <= 0;
@@ -808,11 +843,15 @@ export default function InventarioPage() {
                     </td>
                     {/* Stock + unidad + mínimo, agrupados en una sola columna */}
                     <td className="py-3 pr-4 text-right">
-                      <span className={`text-sm font-semibold tabular-nums ${sinStock ? "text-red-600" : stockBajo ? "text-amber-600" : "text-gray-800"}`}>
-                        {p.stock_actual}
+                      <span className={`text-sm font-semibold tabular-nums ${filtrandoAlmacen ? "text-gray-800" : sinStock ? "text-red-600" : stockBajo ? "text-amber-600" : "text-gray-800"}`}>
+                        {stockMostrado}
                       </span>
                       <span className="ml-1 text-[11px] uppercase text-slate-400">{p.unidad_medida}</span>
-                      <p className="text-[11px] text-slate-400">mín. {p.stock_minimo}</p>
+                      {filtrandoAlmacen ? (
+                        <p className="text-[11px] text-[#3F8E91]">en este almacén</p>
+                      ) : (
+                        <p className="text-[11px] text-slate-400">mín. {p.stock_minimo}</p>
+                      )}
                     </td>
                     {/* Columnas de inventario extendido movidas al reporte "Inventario extendido". */}
                     <td className="py-3 pl-4 pr-4 text-right">
