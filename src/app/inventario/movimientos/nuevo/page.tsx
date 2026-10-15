@@ -6,6 +6,7 @@ import MontoInput from "@/components/ui/MontoInput";
 import { getProductos, saveMovimiento } from "@/lib/inventario/storage";
 import type { Producto, TipoMovimiento, OrigenMovimiento } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
+import SelectFromList from "@/components/inventario/SelectFromList";
 import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 interface AlmacenOpcion {
@@ -59,12 +60,11 @@ export default function NuevoMovimientoPage() {
     return () => { cancelled = true; };
   }, [usaAlmacenes]);
 
-  function handleProductoChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const id = e.target.value;
-    const producto = productos.find((p) => p.id === id);
+  function elegirProducto(id: string | null) {
+    const producto = id ? productos.find((p) => p.id === id) : undefined;
     setForm((prev) => ({
       ...prev,
-      producto_id: id,
+      producto_id: id ?? "",
       costo_unitario: producto ? String(producto.costo_promedio) : "",
     }));
   }
@@ -127,23 +127,21 @@ export default function NuevoMovimientoPage() {
       <div className="zx-surface p-6 max-w-2xl">
         <form className="space-y-6" onSubmit={handleSubmit}>
 
-          {/* Producto */}
+          {/* Producto (con buscador: filtra por nombre o SKU mientras escribís) */}
           <div>
             <label className={labelClass}>Producto</label>
-            <Select
-              name="producto_id"
-              value={form.producto_id}
-              onChange={handleProductoChange}
-              className={inputClass}
-              required
-            >
-              <option value="">Seleccionar producto...</option>
-              {productos.map((p) => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.nombre} — {p.sku} (stock actual: {p.stock_actual})
-                </option>
-              ))}
-            </Select>
+            <SelectFromList
+              buscable
+              value={form.producto_id || null}
+              onChange={elegirProducto}
+              placeholder="Buscar producto por nombre o SKU…"
+              emptyShort="Sin productos"
+              options={productos.map((p) => ({
+                id: p.id,
+                label: p.nombre,
+                sublabel: `${p.sku} · stock actual: ${p.stock_actual}`,
+              }))}
+            />
           </div>
 
           {/* Tipo + Origen */}
