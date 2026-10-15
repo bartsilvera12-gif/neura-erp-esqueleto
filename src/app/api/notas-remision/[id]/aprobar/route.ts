@@ -5,6 +5,7 @@ import { API_ERRORS } from "@/lib/api/errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { asegurarStockPorDeposito, filasStockDeposito, stockEnDeposito, sumarStockDeposito, type ProdStock } from "@/lib/comex/stock-deposito";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 /**
  * Ajusta el stock de un producto en un depósito (la misma tabla que usan las
@@ -23,7 +24,8 @@ async function ajustarStock(
     await asegurarStockPorDeposito(sb, empresaId, productoId);
     const fila = (await filasStockDeposito(sb, empresaId, [productoId])).find((f) => f.ubicacion_id === ubicacionId);
     const actual = Number(fila?.stock_actual) || 0;
-    if (actual + delta < 0) return `Stock final negativo (${actual + delta}) para producto ${productoId}`;
+    // Living Room (esqueletoerp): se permite stock negativo (mercadería por llegar).
+    if (actual + delta < 0 && !esInstanciaLR()) return `Stock final negativo (${actual + delta}) para producto ${productoId}`;
     await sumarStockDeposito(sb, empresaId, productoId, ubicacionId, delta);
     return null;
   } catch (e) {
@@ -88,6 +90,8 @@ export async function POST(
     if (items.length === 0) return NextResponse.json(errorResponse("NR sin items."), { status: 400 });
 
     // Validar stock disponible antes de descontar (stock del depósito de origen).
+    // Living Room (esqueletoerp): se permite descontar aunque no haya stock
+    // (quedará en negativo); la mercadería puede estar por llegar.
     const sbApp = supabase as unknown as AppSupabaseClient;
     const pStock = await supabase
       .from("productos")
@@ -113,11 +117,13 @@ export async function POST(
       prodInfo.set(p.id, { nombre: p.nombre, sku: p.sku ?? "" });
     }
 
-    for (const it of items) {
-      const disp = stockOrig.get(it.producto_id) ?? 0;
-      if (Number(it.cantidad) > disp) {
-        const info = prodInfo.get(it.producto_id);
-        return NextResponse.json(errorResponse(`Stock insuficiente de ${info?.nombre ?? it.producto_id} en origen: hay ${disp}, se piden ${it.cantidad}.`), { status: 400 });
+    if (!esInstanciaLR()) {
+      for (const it of items) {
+        const disp = stockOrig.get(it.producto_id) ?? 0;
+        if (Number(it.cantidad) > disp) {
+          const info = prodInfo.get(it.producto_id);
+          return NextResponse.json(errorResponse(`Stock insuficiente de ${info?.nombre ?? it.producto_id} en origen: hay ${disp}, se piden ${it.cantidad}.`), { status: 400 });
+        }
       }
     }
 

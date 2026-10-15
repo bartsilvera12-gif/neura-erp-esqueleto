@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { filasStockDeposito, stockEnDeposito, type ProdStock } from "@/lib/comex/stock-deposito";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 const COLS =
   "id, empresa_id, numero, fecha, emisor, ubicacion_origen_id, ubicacion_destino_id, motivo, estado, motivo_rechazo, aprobada_at, aprobada_por, transportista, ruc_transportista, conductor, ci_conductor, chapa, fecha_inicio_traslado, fecha_fin_traslado, observaciones, created_at, updated_at, destino_tipo, cliente_id, destino_nombre, destino_direccion, destino_ciudad, timbrado, marca_vehiculo, documento_origen, prueba";
@@ -141,17 +142,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse("Ubicación inválida."), { status: 400 });
     }
 
-    // Validar stock disponible en origen
-    const productoIds = Array.from(new Set(items.map((i) => i.producto_id)));
-    const pStock = await supabase.from("productos").select("id, nombre, stock_actual, ubicacion_principal_id").eq("empresa_id", auth.empresa_id).in("id", productoIds);
-    if (pStock.error) throw new Error(pStock.error.message);
-    const prods = (pStock.data ?? []) as unknown as (ProdStock & { nombre: string })[];
-    const nombreProd = new Map(prods.map((p) => [p.id, p.nombre]));
-    const stockMap = stockEnDeposito(prods, await filasStockDeposito(supabase as unknown as AppSupabaseClient, auth.empresa_id, productoIds), origenId);
-    for (const it of items) {
-      const disp = stockMap.get(it.producto_id) ?? 0;
-      if (Number(it.cantidad) > disp) {
-        return NextResponse.json(errorResponse(`Stock insuficiente de ${nombreProd.get(it.producto_id) ?? "un producto"} en el depósito de origen: hay ${disp}, se piden ${it.cantidad}.`), { status: 400 });
+    // Validar stock disponible en origen.
+    // Living Room (esqueletoerp): se permite crear la remisión sin stock
+    // suficiente (quedará en negativo al aprobar); la mercadería puede estar
+    // por llegar. En otros clientes se sigue bloqueando.
+    if (!esInstanciaLR()) {
+      const productoIds = Array.from(new Set(items.map((i) => i.producto_id)));
+      const pStock = await supabase.from("productos").select("id, nombre, stock_actual, ubicacion_principal_id").eq("empresa_id", auth.empresa_id).in("id", productoIds);
+      if (pStock.error) throw new Error(pStock.error.message);
+      const prods = (pStock.data ?? []) as unknown as (ProdStock & { nombre: string })[];
+      const nombreProd = new Map(prods.map((p) => [p.id, p.nombre]));
+      const stockMap = stockEnDeposito(prods, await filasStockDeposito(supabase as unknown as AppSupabaseClient, auth.empresa_id, productoIds), origenId);
+      for (const it of items) {
+        const disp = stockMap.get(it.producto_id) ?? 0;
+        if (Number(it.cantidad) > disp) {
+          return NextResponse.json(errorResponse(`Stock insuficiente de ${nombreProd.get(it.producto_id) ?? "un producto"} en el depósito de origen: hay ${disp}, se piden ${it.cantidad}.`), { status: 400 });
+        }
       }
     }
 
