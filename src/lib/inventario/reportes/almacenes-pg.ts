@@ -42,6 +42,7 @@ export async function listAlmacenes(
   if (!pool) throw new Error("Pool no disponible.");
   const tU = quoteSchemaTable(schema, "inventario_ubicaciones");
   const tS = quoteSchemaTable(schema, "inventario_stock_ubicacion");
+  const tP = quoteSchemaTable(schema, "productos");
   const tM = quoteSchemaTable(schema, "movimientos_inventario");
 
   // Rango de fechas opcional para los movimientos.
@@ -56,9 +57,14 @@ export async function listAlmacenes(
       [empresaId]
     ),
     pool.query<{ ubicacion_id: string; fisico: string; productos: string }>(
-      `SELECT ubicacion_id, SUM(stock_actual) AS fisico,
-              COUNT(*) FILTER (WHERE stock_actual <> 0) AS productos
-         FROM ${tS} WHERE empresa_id=$1::uuid GROUP BY ubicacion_id`,
+      // Solo productos activos: un producto eliminado puede dejar su fila de stock,
+      // pero no debe contar en el físico ni en la cantidad de productos del almacén.
+      `SELECT s.ubicacion_id, SUM(s.stock_actual) AS fisico,
+              COUNT(*) FILTER (WHERE s.stock_actual <> 0) AS productos
+         FROM ${tS} s
+         JOIN ${tP} p ON p.id = s.producto_id AND p.empresa_id = s.empresa_id
+        WHERE s.empresa_id=$1::uuid AND p.activo IS NOT FALSE
+        GROUP BY s.ubicacion_id`,
       [empresaId]
     ),
     pool.query<{ ubic: string; entradas: string }>(
