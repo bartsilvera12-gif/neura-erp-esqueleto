@@ -7,6 +7,11 @@ export async function GET() {
     value: (r: typeof ITEMS_TEMPLATE_ROW) => r[k as keyof typeof ITEMS_TEMPLATE_ROW],
     width: 20,
   }));
-  const buf = buildXlsxBuffer([ITEMS_TEMPLATE_ROW], cols, { sheetName: "Mercadería" });
+  // Dos filas de ejemplo para que se vea cómo llenar cada columna.
+  const ejemplos = [
+    ITEMS_TEMPLATE_ROW,
+    { SKU: "EJ-002", NOMBRE: "OTRO PRODUCTO", CANTIDAD: 5, PRECIO_UNITARIO: 120, MONEDA: "USD" },
+  ];
+  const buf = buildXlsxBuffer(ejemplos, cols, { sheetName: "Mercadería" });
   return new Response(new Uint8Array(buf), { status: 200, headers: xlsxResponseHeaders("plantilla-mercaderia-importacion") });
 }

@@ -41,6 +41,9 @@ export default function MercaderiaTab({
   const [error, setError] = useState<string | null>(null);
   const contNumero = new Map(contenedores.map((c) => [c.id, c.numero]));
   const totalUnidades = items.reduce((s, i) => s + Number(i.cantidad), 0);
+  const moneda = imp.moneda ?? "USD";
+  const totalCosto = items.reduce((s, i) => s + Number(i.precio_unitario || 0) * Number(i.cantidad || 0), 0);
+  const fmtMonto = (n: number) => n.toLocaleString("es-PY", { maximumFractionDigits: 2 });
   const sinVincular = items.filter((i) => !i.producto_id);
 
   async function cambiarContenedor(it: ImportacionItem, contenedorId: string) {
@@ -106,8 +109,9 @@ export default function MercaderiaTab({
               <th className="px-4 py-3">Código</th>
               <th className="px-4 py-3">Producto</th>
               <th className="px-4 py-3">Unidad</th>
-              <th className="px-4 py-3 text-right">Precio</th>
+              <th className="px-4 py-3 text-right">Precio ({moneda})</th>
               <th className="px-4 py-3 text-right">Pedido</th>
+              <th className="px-4 py-3 text-right">Costo total ({moneda})</th>
               <th className="px-4 py-3 text-right">Recibido</th>
               <th className="px-4 py-3">Contenedor</th>
               <th className="px-4 py-3">Seriales</th>
@@ -117,7 +121,7 @@ export default function MercaderiaTab({
           <tbody>
             {items.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={10} className="px-4 py-6 text-center text-slate-500">
                   Todavía no hay productos.
                 </td>
               </tr>
@@ -133,8 +137,9 @@ export default function MercaderiaTab({
                     {!it.producto_id && <div className="text-xs font-semibold text-rose-600">sin vincular</div>}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-700">{it.unidad || "—"}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{Number(it.precio_unitario) ? Number(it.precio_unitario).toLocaleString("es-PY", { maximumFractionDigits: 2 }) : "—"}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{Number(it.precio_unitario) ? fmtMonto(Number(it.precio_unitario)) : "—"}</td>
                   <td className="px-4 py-3 text-right">{cant(it.cantidad)}</td>
+                  <td className="px-4 py-3 text-right font-medium text-slate-700">{Number(it.precio_unitario) ? fmtMonto(Number(it.precio_unitario) * Number(it.cantidad)) : "—"}</td>
                   <td className="px-4 py-3 text-right">
                     <div className={hayRecepcion && dif !== 0 ? "font-semibold text-rose-700" : "text-slate-700"}>{cant(it.cantidad_recibida)}</div>
                     {hayRecepcion && dif !== 0 && <div className="text-[11px] text-rose-600">{dif > 0 ? `sobran ${cant(dif)}` : `faltan ${cant(-dif)}`}</div>}
@@ -180,9 +185,11 @@ export default function MercaderiaTab({
           </tbody>
           {items.length > 0 && (
             <tfoot>
-              <tr className="border-t border-slate-200 bg-slate-50">
-                <td className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-500">Total unidades</td>
-                <td className="px-4 py-3 text-right font-semibold">{cant(totalUnidades)}</td>
+              <tr className="border-t border-slate-200 bg-slate-50 font-semibold">
+                <td colSpan={3} />
+                <td className="px-4 py-3 text-right text-xs uppercase text-slate-500">Totales</td>
+                <td className="px-4 py-3 text-right">{cant(totalUnidades)} u.</td>
+                <td className="px-4 py-3 text-right">{fmtMonto(totalCosto)} {moneda}</td>
                 <td colSpan={4} />
               </tr>
             </tfoot>

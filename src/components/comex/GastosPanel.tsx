@@ -74,6 +74,13 @@ export default function GastosPanel({
   }, []);
 
   const t = useMemo(() => totalesGastos(lista), [lista]);
+  // Total también en dólares: se usa el tipo de cambio de los gastos en USD.
+  const cuentaNombre = useMemo(() => new Map(cuentas.map((c) => [c.cuenta, c.denominacion])), [cuentas]);
+  const tcUSD = useMemo(() => {
+    const g = lista.find((x) => x.moneda === "USD" && Number(x.tipo_cambio) > 0);
+    return g ? Number(g.tipo_cambio) : 0;
+  }, [lista]);
+  const usd = (gsVal: number) => (tcUSD > 0 ? `USD ${(gsVal / tcUSD).toLocaleString("es-PY", { maximumFractionDigits: 2 })}` : null);
 
   async function agregar() {
     if (f.tipo === "OTRO" && !f.descripcion.trim()) {
@@ -135,8 +142,9 @@ export default function GastosPanel({
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className={labelClass}>Total de gastos (pago)</p>
           <p className="text-xl font-semibold text-slate-900">{gs(t.total)}</p>
+          {usd(t.total) && <p className="text-xs font-medium text-emerald-700">{usd(t.total)}</p>}
           {t.totalCosto !== t.total ? (
-            <p className="text-xs text-slate-500">Costo (sin IVA): <span className="font-medium text-slate-700">{gs(t.totalCosto)}</span></p>
+            <p className="text-xs text-slate-500">Costo (sin IVA): <span className="font-medium text-slate-700">{gs(t.totalCosto)}</span>{usd(t.totalCosto) ? ` · ${usd(t.totalCosto)}` : ""}</p>
           ) : (
             <p className="text-xs text-slate-500">{lista.length} gasto{lista.length === 1 ? "" : "s"} cargado{lista.length === 1 ? "" : "s"}</p>
           )}
@@ -350,7 +358,14 @@ export default function GastosPanel({
                 </td>
                 <td className="px-4 py-2 text-slate-600">{g.proveedor_nombre ?? "—"}</td>
                 <td className="px-4 py-2 font-mono text-xs text-slate-600">{g.comprobante ?? "—"}</td>
-                <td className="px-4 py-2 font-mono text-xs text-slate-600">{g.cuenta_codigo ?? "—"}</td>
+                <td className="px-4 py-2 text-xs text-slate-600">
+                  {g.cuenta_codigo ? (
+                    <>
+                      <span className="font-mono">{g.cuenta_codigo}</span>
+                      {cuentaNombre.get(g.cuenta_codigo) && <span className="block text-slate-500">{cuentaNombre.get(g.cuenta_codigo)}</span>}
+                    </>
+                  ) : "—"}
+                </td>
                 <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{monto(g.monto, g.moneda)}</td>
                 <td className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-900">{gs(gastoEnGuaranies(g))}</td>
                 <td className="px-4 py-2">
