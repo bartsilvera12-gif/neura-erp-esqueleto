@@ -7,6 +7,12 @@ import { Truck, Send } from "lucide-react";
 import { FancySelect } from "@/components/ui/FancySelect";
 import CrearClienteModal, { type ClienteCreado } from "@/components/clientes/CrearClienteModal";
 import { fetchDepositos, fetchStockDeposito, crearNR, type Deposito, type StockItem } from "@/lib/multideposito/client";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
+
+// Living Room (esqueletoerp): se permite remitir mercadería aunque no haya stock
+// (puede estar por llegar). Por eso el buscador trae TODOS los productos activos,
+// no solo los que tienen stock en el depósito de origen.
+const SOLO_CON_STOCK = !esInstanciaLR();
 
 function fmt(n: number) { return n.toLocaleString("es-PY"); }
 function hoyISO() { return new Date().toISOString().slice(0, 10); }
@@ -158,7 +164,7 @@ export default function EmitirNRPage() {
     if (d.ubicacion_id && d.ubicacion_id !== origen) {
       setOrigen(d.ubicacion_id);
       origenPrevio.current = d.ubicacion_id;
-      const r = await fetchStockDeposito(d.ubicacion_id, { soloConStock: true });
+      const r = await fetchStockDeposito(d.ubicacion_id, { soloConStock: SOLO_CON_STOCK });
       if (r.ok) {
         stock = r.data.items;
         setStockOrigen(stock);
@@ -176,7 +182,7 @@ export default function EmitirNRPage() {
       if (!p) { sinStock.push(it.descripcion); continue; }
       const cant = (cants[it.producto_id] ?? 0) + it.cantidad;
       if (cant > p.stock) parciales.push(`${p.nombre}: pide ${fmt(cant)} y hay ${fmt(p.stock)}`);
-      cants[it.producto_id] = Math.min(cant, p.stock);
+      cants[it.producto_id] = SOLO_CON_STOCK ? Math.min(cant, p.stock) : cant;
       if (!ids.includes(it.producto_id)) ids.push(it.producto_id);
     }
     setProductosAgregados(ids);
@@ -194,7 +200,7 @@ export default function EmitirNRPage() {
 
   const cargarStock = useCallback(async (ubicacionId: string) => {
     if (!ubicacionId) return;
-    const r = await fetchStockDeposito(ubicacionId, { soloConStock: true });
+    const r = await fetchStockDeposito(ubicacionId, { soloConStock: SOLO_CON_STOCK });
     if (!r.ok) { setError(r.error); return; }
     setStockOrigen(r.data.items);
   }, []);
@@ -596,11 +602,11 @@ export default function EmitirNRPage() {
                     <td className="px-5 py-3 text-right tabular-nums text-slate-600">{fmt(p.stock)}</td>
                     <td className="px-5 py-3">
                       <input
-                        type="number" min={0} max={p.stock}
+                        type="number" min={0} max={SOLO_CON_STOCK ? p.stock : undefined}
                         value={cant === 0 ? "" : cant}
                         placeholder="0"
                         onChange={(e) => setCantidades({ ...cantidades, [pid]: Number(e.target.value) || 0 })}
-                        className={`w-full rounded-md border px-2 py-1 text-right text-sm ${cant > p.stock ? "border-rose-400 bg-rose-50" : "border-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"}`}
+                        className={`w-full rounded-md border px-2 py-1 text-right text-sm ${SOLO_CON_STOCK && cant > p.stock ? "border-rose-400 bg-rose-50" : "border-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"}`}
                       />
                     </td>
                     <td className="px-5 py-3 text-right">
