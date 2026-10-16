@@ -30,3 +30,27 @@ export async function PATCH(request: NextRequest, p: { params: Promise<{ id: str
     return NextResponse.json(errorResponse("No se pudo guardar la cuenta."), { status: 500 });
   }
 }
+
+/** DELETE — eliminar cuenta bancaria y sus movimientos (solo admin). */
+export async function DELETE(request: NextRequest, p: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await p.params;
+    const ctx = await getComexCtx(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    if (!esRolAdminEmpresaOGlobal(ctx.auth.rol)) return NextResponse.json(errorResponse("Solo un administrador puede eliminar cuentas."), { status: 403 });
+    const emp = ctx.auth.empresa_id;
+    // banco_movimientos tiene FK ON DELETE RESTRICT: hay que borrarlos primero.
+    const delMov = await ctx.supabase.from("banco_movimientos").delete().eq("empresa_id", emp).eq("entidad_bancaria_id", id);
+    if (delMov.error) throw new Error(delMov.error.message);
+    const { error } = await ctx.supabase.from("entidades_bancarias").delete().eq("empresa_id", emp).eq("id", id).eq("tipo", "banco");
+    if (error) {
+      if (/foreign key|violates|23503/i.test(error.message))
+        return NextResponse.json(errorResponse("No se puede eliminar: la cuenta está vinculada a otros registros."), { status: 409 });
+      throw new Error(error.message);
+    }
+    return NextResponse.json(successResponse({ id }));
+  } catch (err) {
+    console.error("[/api/tesoreria/bancos/:id DELETE]", err);
+    return NextResponse.json(errorResponse("No se pudo eliminar la cuenta."), { status: 500 });
+  }
+}

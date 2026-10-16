@@ -17,7 +17,6 @@ import {
   Star,
   Search,
   BarChart3,
-  Wallet,
   Users,
   Truck,
   Receipt,
@@ -159,9 +158,6 @@ function adminEmpresasMatchesQuery(queryRaw: string): boolean {
  */
 const MENU_STRUCTURE: MenuItem[] = [
   { key: "dashboard", slug: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
-  // Caja = el modulo Ventas del ERP (punto de venta / caja registradora). Se reusa
-  // la vista /ventas tal cual viene de Instemaq; solo cambia la etiqueta del menu.
-  { key: "ventas", slug: "ventas", label: "Caja", href: "/ventas", icon: Wallet },
   { key: "clientes", slug: "clientes", label: "Clientes", href: "/clientes", icon: Users },
   { key: "inventario", slug: "inventario", label: "Inventario", href: "/inventario", icon: Package, children: [
     { label: "Productos", href: "/inventario" },
@@ -193,11 +189,8 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Incidencias", href: "/comex/incidencias" },
     { label: "Reportes", href: "/comex/reportes" },
   ]},
-  { key: "recibos", slug: "recibos", label: "Recibos", href: "/recibos", icon: Receipt },
-  { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown, children: [
-    { label: "Gastos", href: "/gastos", exactMatch: true },
-    { label: "Cajas chicas", href: "/tesoreria" },
-  ]},
+  { key: "recibos", slug: "recibos", label: "Recibos de dinero", href: "/recibos", icon: Receipt },
+  { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown },
   { key: "cobros", slug: "cobros", label: "Cobros / Pagos", href: "/pagos", icon: CreditCard, children: [
     { label: "Cobros y pagos", href: "/pagos", exactMatch: true },
     { label: "Bancos y cajas chicas", href: "/tesoreria" },
@@ -248,7 +241,7 @@ const MENU_STRUCTURE: MenuItem[] = [
  */
 const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "inicio", titulo: "Inicio", keys: ["dashboard"] },
-  { id: "finanzas", titulo: "Finanzas", keys: ["ventas", "recibos", "cobros", "gastos"] },
+  { id: "finanzas", titulo: "Finanzas", keys: ["recibos", "gastos", "cobros"] },
   { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision"] },
   { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "facturas_exportacion", "importaciones"] },
   { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
