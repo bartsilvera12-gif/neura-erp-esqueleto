@@ -2,6 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { Aviso, ModalShell, ResponsableSelect, api, btnPrimario, btnSecundario, hoyPY, inputClass, jsonInit, labelClass, noRueda, sinFlechas, useUsuarios } from "@/components/comex/ui";
+import CuentaCombobox from "@/components/contabilidad/CuentaCombobox";
+import { getCuentasContablesOpciones, type CuentaContableOpcion } from "@/lib/compras/storage";
+
+/** Carga las cuentas del plan de cuentas (activas + asentables) para el selector contable. */
+function useCuentasOpciones() {
+  const [cuentas, setCuentas] = useState<CuentaContableOpcion[]>([]);
+  useEffect(() => {
+    getCuentasContablesOpciones()
+      .then(setCuentas)
+      .catch(() => setCuentas([]));
+  }, []);
+  return cuentas;
+}
 
 export interface Banco {
   id: string;
@@ -173,6 +186,7 @@ export function ModalBanco({ banco, onClose, onDone }: { banco: Banco | null; on
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const cuentas = useCuentasOpciones();
   return (
     <ModalShell title={banco ? `Cuenta ${banco.nombre}` : "Nueva cuenta bancaria"} onClose={onClose}>
       <div className="space-y-4">
@@ -207,7 +221,12 @@ export function ModalBanco({ banco, onClose, onDone }: { banco: Banco | null; on
           </div>
           <div className="col-span-2">
             <label className={labelClass}>Cuenta contable</label>
-            <input value={f.cuenta_contable_codigo} onChange={(e) => setF({ ...f, cuenta_contable_codigo: e.target.value })} placeholder="1.01.01.02.000" className={`${inputClass} font-mono`} />
+            <CuentaCombobox
+              cuentas={cuentas}
+              value={cuentas.find((c) => c.cuenta === f.cuenta_contable_codigo)?.id ?? null}
+              onChange={(id) => setF({ ...f, cuenta_contable_codigo: id ? (cuentas.find((c) => c.id === id)?.cuenta ?? "") : "" })}
+              placeholder="(Buscar en el plan de cuentas)"
+            />
           </div>
         </div>
         {banco && (
@@ -259,6 +278,7 @@ export function ModalCaja({ caja, onClose, onDone }: { caja: Caja | null; onClos
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const cuentas = useCuentasOpciones();
   return (
     <ModalShell title={caja ? `Caja chica ${caja.nombre}` : "Nueva caja chica"} onClose={onClose}>
       <div className="space-y-4">
@@ -289,7 +309,12 @@ export function ModalCaja({ caja, onClose, onDone }: { caja: Caja | null; onClos
           </div>
           <div className="col-span-2">
             <label className={labelClass}>Cuenta contable</label>
-            <input value={f.cuenta_contable_codigo} onChange={(e) => setF({ ...f, cuenta_contable_codigo: e.target.value })} className={`${inputClass} font-mono`} />
+            <CuentaCombobox
+              cuentas={cuentas}
+              value={cuentas.find((c) => c.cuenta === f.cuenta_contable_codigo)?.id ?? null}
+              onChange={(id) => setF({ ...f, cuenta_contable_codigo: id ? (cuentas.find((c) => c.id === id)?.cuenta ?? "") : "" })}
+              placeholder="(Buscar en el plan de cuentas)"
+            />
           </div>
         </div>
         {caja && (

@@ -28,3 +28,23 @@ export async function PATCH(request: NextRequest, p: { params: Promise<{ id: str
     return NextResponse.json(errorResponse("No se pudo guardar la caja chica."), { status: 500 });
   }
 }
+
+/** DELETE — eliminar caja chica (solo admin). Sus movimientos y pagos se borran en cascada. */
+export async function DELETE(request: NextRequest, p: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await p.params;
+    const ctx = await getComexCtx(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    if (!esRolAdminEmpresaOGlobal(ctx.auth.rol)) return NextResponse.json(errorResponse("Solo un administrador puede eliminar cajas chicas."), { status: 403 });
+    const { error } = await ctx.supabase.from("cajas_chicas").delete().eq("empresa_id", ctx.auth.empresa_id).eq("id", id);
+    if (error) {
+      if (/foreign key|violates|23503/i.test(error.message))
+        return NextResponse.json(errorResponse("No se puede eliminar: la caja está vinculada a otros registros."), { status: 409 });
+      throw new Error(error.message);
+    }
+    return NextResponse.json(successResponse({ id }));
+  } catch (err) {
+    console.error("[/api/tesoreria/cajas/:id DELETE]", err);
+    return NextResponse.json(errorResponse("No se pudo eliminar la caja chica."), { status: 500 });
+  }
+}
