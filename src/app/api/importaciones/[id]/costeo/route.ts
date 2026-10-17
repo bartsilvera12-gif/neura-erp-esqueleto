@@ -115,6 +115,18 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
         .eq("empresa_id", emp)
         .eq("id", f.producto_id);
       if (eProd) throw new Error(eProd.message);
+      // Estampa el costo real en el movimiento de ingreso de esta importación
+      // (al registrar la recepción quedó con el costo que había en ese momento,
+      // normalmente 0 si el costeo todavía no se había aplicado). Así el Kardex
+      // muestra el ingreso valorado.
+      const { error: eMov } = await ctx.supabase
+        .from("movimientos_inventario")
+        .update({ costo_unitario: f.costo_unitario_gs, updated_at: ahora })
+        .eq("empresa_id", emp)
+        .eq("producto_id", f.producto_id)
+        .eq("origen", "importacion")
+        .eq("referencia", `Importación ${d.cab.numero}`);
+      if (eMov) throw new Error(eMov.message);
       aplicados.push(f.producto_nombre);
     }
 

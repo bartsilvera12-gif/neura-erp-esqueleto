@@ -13,6 +13,7 @@ interface Config {
   cuenta_proveedores_id: string | null;
   cuenta_caja_id: string | null;
   cuenta_banco_id: string | null;
+  cuenta_inventario_id: string | null;
   cuenta_iva_debito_5_id: string | null;
   cuenta_iva_debito_10_id: string | null;
   cuenta_ventas_gravadas_id: string | null;
@@ -25,7 +26,7 @@ interface Periodo { id: string; anio: number; mes: number; estado: string; cerra
 
 const EMPTY: Config = {
   cuenta_iva_credito_5_id: null, cuenta_iva_credito_10_id: null, cuenta_proveedores_id: null,
-  cuenta_caja_id: null, cuenta_banco_id: null,
+  cuenta_caja_id: null, cuenta_banco_id: null, cuenta_inventario_id: null,
   cuenta_iva_debito_5_id: null, cuenta_iva_debito_10_id: null, cuenta_ventas_gravadas_id: null,
   cuenta_ventas_exentas_id: null, cuenta_ventas_servicios_id: null, cuenta_clientes_id: null,
   cuenta_anticipos_clientes_id: null,
@@ -37,6 +38,9 @@ const FIELDS_COMPRAS: { key: keyof Config; label: string }[] = [
   { key: "cuenta_proveedores_id", label: "Cuenta general de Proveedores" },
   { key: "cuenta_caja_id", label: "Cuenta predeterminada de Caja" },
   { key: "cuenta_banco_id", label: "Cuenta predeterminada de Banco" },
+];
+const FIELDS_IMPORTACIONES: { key: keyof Config; label: string }[] = [
+  { key: "cuenta_inventario_id", label: "Cuenta de Inventario / Mercadería" },
 ];
 const FIELDS_VENTAS: { key: keyof Config; label: string }[] = [
   { key: "cuenta_iva_debito_5_id", label: "Cuenta de IVA Débito 5%" },
@@ -109,6 +113,20 @@ export default function ConfiguracionContablePage() {
                 onChange={(id) => setConfig((c) => ({ ...c, [f.key]: id }))} placeholder="(Sin configurar)" />
             </div>
           ))}
+        </div>
+
+        <div className="mt-6 border-t border-slate-100 pt-5">
+          <ConfigSectionTitle>Cuentas de Importaciones</ConfigSectionTitle>
+          <p className="mb-4 text-xs text-slate-400">Al cerrar una importación se arma su asiento: el costo (mercadería + gastos sin IVA) se capitaliza en esta cuenta de Inventario.</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {FIELDS_IMPORTACIONES.map((f) => (
+              <div key={f.key}>
+                <label className={F_LABEL}>{f.label}</label>
+                <CuentaCombobox cuentas={cuentas} value={(config[f.key] as string) ?? null}
+                  onChange={(id) => setConfig((c) => ({ ...c, [f.key]: id }))} placeholder="(Sin configurar)" />
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="mt-6 border-t border-slate-100 pt-5">

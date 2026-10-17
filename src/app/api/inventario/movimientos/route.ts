@@ -13,17 +13,23 @@ export async function GET(request: NextRequest) {
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const empresaId = ctx.auth.empresa_id;
 
+    // Kardex de un producto: todos sus movimientos en orden cronológico ascendente
+    // (para ir acumulando saldo). Sin producto: últimos 500 de toda la empresa.
+    const productoId = new URL(request.url).searchParams.get("producto_id");
+
     // ubicacion_id (almacén) y observacion (razón) existen solo en esqueletoerp.
     const extraLR = esInstanciaLR() ? ", ubicacion_id, observacion" : "";
-    const { data, error } = await ctx.supabase
+    let q = ctx.supabase
       .from("movimientos_inventario")
       .select(
         "id, empresa_id, producto_id, producto_nombre, producto_sku, tipo, cantidad, costo_unitario, origen, referencia, fecha, created_at, updated_at, created_by, usuario_nombre" +
           extraLR
       )
-      .eq("empresa_id", empresaId)
-      .order("fecha", { ascending: false })
-      .limit(500);
+      .eq("empresa_id", empresaId);
+    q = productoId
+      ? q.eq("producto_id", productoId).order("fecha", { ascending: true }).order("created_at", { ascending: true }).limit(5000)
+      : q.order("fecha", { ascending: false }).limit(500);
+    const { data, error } = await q;
     if (error) throw new Error(error.message);
 
     return NextResponse.json(successResponse({ movimientos: data ?? [] }));

@@ -187,6 +187,7 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
           fecha: fechaRec,
           usuarioId: ctx.auth.user.id,
           usuarioNombre: nombreUsuario(ctx.auth),
+          origen: "importacion",
         });
       }
     } catch (e) {

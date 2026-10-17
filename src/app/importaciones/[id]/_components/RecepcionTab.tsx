@@ -43,8 +43,10 @@ export default function RecepcionTab({
     // Igual que el servidor: el sobrante se avisa solo si lo causa esta carga.
     .filter((x) => (x.dif > 0 && x.nuevo > 0) || (final && x.dif < 0));
 
+  const pendiente = (i: ImportacionItem) => Math.max(0, Number(i.cantidad) - Number(i.cantidad_recibida));
+
   function completarTodo() {
-    setCantidades(Object.fromEntries(items.map((i) => [i.id, String(Math.max(0, Number(i.cantidad) - Number(i.cantidad_recibida)))])));
+    setCantidades(Object.fromEntries(items.map((i) => [i.id, String(pendiente(i))])));
   }
 
   async function registrar() {
@@ -101,10 +103,17 @@ export default function RecepcionTab({
             <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
               <PackageCheck className="h-4 w-4" /> Cargar lo que llegó
             </h3>
-            <button type="button" onClick={completarTodo} className="text-xs font-medium text-emerald-700 hover:underline">
-              Llegó todo lo pendiente
+            <button
+              type="button"
+              onClick={completarTodo}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+            >
+              <PackageCheck className="h-3.5 w-3.5" /> Completar con lo pendiente
             </button>
           </div>
+          <p className="-mt-2 text-xs text-slate-500">
+            Llená de un toque todas las cantidades que faltan y después ajustá las que haga falta. Con <strong>Replicar</strong> completás un solo producto.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-sm">
               <thead className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -121,16 +130,27 @@ export default function RecepcionTab({
                     <td className="py-2 font-medium text-slate-800">{i.producto_nombre}</td>
                     <td className="py-2 text-right">{cant(i.cantidad)}</td>
                     <td className="py-2 text-right text-slate-500">{cant(i.cantidad_recibida)}</td>
-                    <td className="py-2 text-right">
-                      <input
-                        type="number"
-                        min={0}
-                        step="any"
-                        value={cantidades[i.id] ?? ""}
-                        onWheel={noRueda}
-                        onChange={(e) => setCantidades({ ...cantidades, [i.id]: e.target.value })}
-                        className={`${sinFlechas} ml-auto block w-28 rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100`}
-                      />
+                    <td className="py-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setCantidades({ ...cantidades, [i.id]: String(pendiente(i)) })}
+                          disabled={pendiente(i) === 0}
+                          title={`Completar con lo pendiente (${cant(pendiente(i))})`}
+                          className="shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Replicar
+                        </button>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={cantidades[i.id] ?? ""}
+                          onWheel={noRueda}
+                          onChange={(e) => setCantidades({ ...cantidades, [i.id]: e.target.value })}
+                          className={`${sinFlechas} block w-28 rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100`}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -141,17 +141,30 @@ export default function GastosPanel({
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className={labelClass}>Total de gastos (pago)</p>
-          <p className="text-xl font-semibold text-slate-900">{gs(t.total)}</p>
-          {usd(t.total) && <p className="text-xs font-medium text-emerald-700">{usd(t.total)}</p>}
+          {usd(t.total) ? (
+            <>
+              <p className="text-xl font-semibold text-slate-900">{usd(t.total)}</p>
+              <p className="text-xs font-medium text-slate-500">{gs(t.total)}</p>
+            </>
+          ) : (
+            <p className="text-xl font-semibold text-slate-900">{gs(t.total)}</p>
+          )}
           {t.totalCosto !== t.total ? (
-            <p className="text-xs text-slate-500">Costo (sin IVA): <span className="font-medium text-slate-700">{gs(t.totalCosto)}</span>{usd(t.totalCosto) ? ` · ${usd(t.totalCosto)}` : ""}</p>
+            <p className="text-xs text-slate-500">Costo (sin IVA): <span className="font-medium text-slate-700">{usd(t.totalCosto) ?? gs(t.totalCosto)}</span>{usd(t.totalCosto) ? ` · ${gs(t.totalCosto)}` : ""}</p>
           ) : (
             <p className="text-xs text-slate-500">{lista.length} gasto{lista.length === 1 ? "" : "s"} cargado{lista.length === 1 ? "" : "s"}</p>
           )}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className={labelClass}>Pendiente de pago</p>
-          <p className={`text-xl font-semibold ${t.pendiente > 0 ? "text-amber-700" : "text-emerald-700"}`}>{gs(t.pendiente)}</p>
+          {usd(t.pendiente) ? (
+            <>
+              <p className={`text-xl font-semibold ${t.pendiente > 0 ? "text-amber-700" : "text-emerald-700"}`}>{usd(t.pendiente)}</p>
+              <p className="text-xs font-medium text-slate-500">{gs(t.pendiente)}</p>
+            </>
+          ) : (
+            <p className={`text-xl font-semibold ${t.pendiente > 0 ? "text-amber-700" : "text-emerald-700"}`}>{gs(t.pendiente)}</p>
+          )}
           <p className="text-xs text-slate-500">{t.pendiente > 0 ? "Hay gastos sin pagar" : "Todo pagado"}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -163,7 +176,10 @@ export default function GastosPanel({
               {t.porTipo.slice(0, 4).map(([tipo, v]) => (
                 <li key={tipo} className="flex justify-between gap-2">
                   <span className="truncate">{tipo}</span>
-                  <span className="shrink-0 font-medium text-slate-800">{gs(v)}</span>
+                  <span className="shrink-0 text-right">
+                    <span className="block font-medium text-slate-800">{usd(v) ?? gs(v)}</span>
+                    {usd(v) && <span className="block text-[10px] text-slate-500">{gs(v)}</span>}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -400,13 +416,19 @@ export default function GastosPanel({
                 <td colSpan={6} className="px-4 py-2 text-right">
                   {t.totalCosto !== t.total ? "Total (pago, con IVA)" : "Total"}
                 </td>
-                <td className="whitespace-nowrap px-4 py-2 text-right">{gs(t.total)}</td>
+                <td className="whitespace-nowrap px-4 py-2 text-right">
+                  {usd(t.total) ?? gs(t.total)}
+                  {usd(t.total) && <span className="block text-[11px] font-normal text-slate-500">{gs(t.total)}</span>}
+                </td>
                 <td colSpan={2} />
               </tr>
               {t.totalCosto !== t.total && (
                 <tr className="bg-slate-50 text-slate-600">
                   <td colSpan={6} className="px-4 py-2 text-right">Costo (sin IVA, al costeo)</td>
-                  <td className="whitespace-nowrap px-4 py-2 text-right font-medium">{gs(t.totalCosto)}</td>
+                  <td className="whitespace-nowrap px-4 py-2 text-right font-medium">
+                    {usd(t.totalCosto) ?? gs(t.totalCosto)}
+                    {usd(t.totalCosto) && <span className="block text-[11px] font-normal text-slate-500">{gs(t.totalCosto)}</span>}
+                  </td>
                   <td colSpan={2} />
                 </tr>
               )}

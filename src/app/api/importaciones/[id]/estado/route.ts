@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
-import { getComexCtx, registrarHistorial } from "@/lib/comex/server";
+import { getComexCtx, hoyPY, registrarHistorial } from "@/lib/comex/server";
 import { ESTADO_IMPORTACION_LABEL, FLUJO_IMPORTACION, transicionImportacionValida } from "@/lib/comex/estados";
 import { faltantesParaEstado } from "@/lib/importaciones/validar";
 import type { EstadoImportacion } from "@/lib/importaciones/types";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { contabilizarImportacionCierre } from "@/lib/comex/importacion-asiento-pg";
 
 /**
  * POST { estado, motivo? } — cambia el estado de a un paso (CON-02).
@@ -56,6 +58,21 @@ export async function POST(request: NextRequest, ctxParams: { params: Promise<{ 
           .eq("importacion_id", id);
         if ((count ?? 0) > 0)
           return NextResponse.json(errorResponse("Ya hay mercadería recibida: no se puede volver a un estado anterior a Arribado."), { status: 400 });
+      }
+    }
+
+    // Al cerrar se contabiliza la importación. Si el asiento no se puede armar
+    // (falta una cuenta, un gasto sin clasificar…), se bloquea el cierre con el
+    // motivo y no se cambia el estado. El asiento es idempotente, así que si el
+    // cierre reintenta no se duplica.
+    if (hacia === "cerrada") {
+      try {
+        const schema = await fetchDataSchemaForEmpresaId(ctx.auth.empresa_id);
+        await contabilizarImportacionCierre(schema, ctx.auth.empresa_id, id, hoyPY(), ctx.auth.usuarioCatalogId ?? null);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "No se pudo generar el asiento contable de la importación.";
+        const status = typeof (e as { status?: unknown })?.status === "number" ? (e as { status: number }).status : 400;
+        return NextResponse.json(errorResponse(`No se cerró la importación. ${msg}`), { status });
       }
     }
 

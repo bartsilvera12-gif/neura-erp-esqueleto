@@ -91,29 +91,44 @@ export default function CosteoTab({ impId, bloqueado, onCambio }: { impId: strin
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className={labelClass}>Mercadería</p>
-          <p className="text-xl font-semibold text-slate-900">{gs(d.totalMercaderiaGs)}</p>
           {enMoneda(d.totalMercaderiaGs, d.moneda, d.tipo_cambio) ? (
-            <p className="text-xs font-medium text-slate-600">{enMoneda(d.totalMercaderiaGs, d.moneda, d.tipo_cambio)}</p>
+            <>
+              <p className="text-xl font-semibold text-slate-900">{enMoneda(d.totalMercaderiaGs, d.moneda, d.tipo_cambio)}</p>
+              <p className="text-xs font-medium text-slate-500">{gs(d.totalMercaderiaGs)}</p>
+            </>
           ) : (
-            <p className="text-xs text-slate-500">Lo que facturó el proveedor</p>
+            <>
+              <p className="text-xl font-semibold text-slate-900">{gs(d.totalMercaderiaGs)}</p>
+              <p className="text-xs text-slate-500">Lo que facturó el proveedor</p>
+            </>
           )}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className={labelClass}>Gastos</p>
-          <p className="text-xl font-semibold text-slate-900">{gs(d.totalGastosGs)}</p>
           {enMoneda(d.totalGastosGs, d.moneda, d.tipo_cambio) ? (
-            <p className="text-xs font-medium text-slate-600">{enMoneda(d.totalGastosGs, d.moneda, d.tipo_cambio)}</p>
+            <>
+              <p className="text-xl font-semibold text-slate-900">{enMoneda(d.totalGastosGs, d.moneda, d.tipo_cambio)}</p>
+              <p className="text-xs font-medium text-slate-500">{gs(d.totalGastosGs)}</p>
+            </>
           ) : (
-            <p className="text-xs text-slate-500">Flete, seguro, despachante, tributos…</p>
+            <>
+              <p className="text-xl font-semibold text-slate-900">{gs(d.totalGastosGs)}</p>
+              <p className="text-xs text-slate-500">Flete, seguro, despachante, tributos…</p>
+            </>
           )}
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
           <p className={labelClass}>Costo total</p>
-          <p className="text-xl font-semibold text-emerald-900">{gs(d.totalGs)}</p>
           {enMoneda(d.totalGs, d.moneda, d.tipo_cambio) ? (
-            <p className="text-xs font-semibold text-emerald-800">{enMoneda(d.totalGs, d.moneda, d.tipo_cambio)}</p>
+            <>
+              <p className="text-xl font-semibold text-emerald-900">{enMoneda(d.totalGs, d.moneda, d.tipo_cambio)}</p>
+              <p className="text-xs font-semibold text-emerald-800">{gs(d.totalGs)}</p>
+            </>
           ) : (
-            <p className="text-xs text-emerald-800">Mercadería puesta en el depósito</p>
+            <>
+              <p className="text-xl font-semibold text-emerald-900">{gs(d.totalGs)}</p>
+              <p className="text-xs text-emerald-800">Mercadería puesta en el depósito</p>
+            </>
           )}
         </div>
       </div>
@@ -199,18 +214,28 @@ export default function CosteoTab({ impId, bloqueado, onCambio }: { impId: strin
                   {f.sku && <span className="block font-mono text-[11px] text-slate-500">{f.sku}</span>}
                 </td>
                 <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{Number(f.cantidad).toLocaleString("es-PY")}</td>
-                <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{gs(f.subtotal_gs)}</td>
-                <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">{gs(f.gastos_gs)}</td>
                 <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">
-                  {gs(f.total_gs)}
+                  {enMoneda(f.subtotal_gs, d.moneda, d.tipo_cambio) ?? gs(f.subtotal_gs)}
+                  {enMoneda(f.subtotal_gs, d.moneda, d.tipo_cambio) && (
+                    <span className="block text-[11px] text-slate-500">{gs(f.subtotal_gs)}</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">
+                  {enMoneda(f.gastos_gs, d.moneda, d.tipo_cambio) ?? gs(f.gastos_gs)}
+                  {enMoneda(f.gastos_gs, d.moneda, d.tipo_cambio) && (
+                    <span className="block text-[11px] text-slate-500">{gs(f.gastos_gs)}</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-4 py-2 text-right text-slate-700">
+                  {enMoneda(f.total_gs, d.moneda, d.tipo_cambio) ?? gs(f.total_gs)}
                   {enMoneda(f.total_gs, d.moneda, d.tipo_cambio) && (
-                    <span className="block text-[11px] text-slate-500">{enMoneda(f.total_gs, d.moneda, d.tipo_cambio)}</span>
+                    <span className="block text-[11px] text-slate-500">{gs(f.total_gs)}</span>
                   )}
                 </td>
                 <td className="whitespace-nowrap px-4 py-2 text-right font-semibold text-slate-900">
-                  {gs(f.costo_unitario_gs)}
+                  {enMoneda(f.costo_unitario_gs, d.moneda, d.tipo_cambio) ?? gs(f.costo_unitario_gs)}
                   {enMoneda(f.costo_unitario_gs, d.moneda, d.tipo_cambio) && (
-                    <span className="block text-[11px] font-normal text-slate-500">{enMoneda(f.costo_unitario_gs, d.moneda, d.tipo_cambio)}</span>
+                    <span className="block text-[11px] font-normal text-slate-500">{gs(f.costo_unitario_gs)}</span>
                   )}
                 </td>
                 <td className="px-4 py-2 text-xs">
