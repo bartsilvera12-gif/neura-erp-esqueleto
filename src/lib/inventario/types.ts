@@ -5,7 +5,8 @@ export type OrigenMovimiento =
   | "venta"
   | "ajuste_manual"
   | "inventario_inicial"
-  | "transferencia";
+  | "transferencia"
+  | "importacion";
 
 export interface Producto {
   id: string;

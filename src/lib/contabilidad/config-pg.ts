@@ -16,6 +16,8 @@ const CONFIG_FIELDS = [
   "cuenta_proveedores_id",
   "cuenta_caja_id",
   "cuenta_banco_id",
+  // Importaciones
+  "cuenta_inventario_id",
   // Ventas (Fase 0)
   "cuenta_iva_debito_5_id",
   "cuenta_iva_debito_10_id",
@@ -29,7 +31,7 @@ type ConfigField = (typeof CONFIG_FIELDS)[number];
 
 const EMPTY_CONFIG: ConfigContableView = {
   cuenta_iva_credito_5_id: null, cuenta_iva_credito_10_id: null, cuenta_proveedores_id: null,
-  cuenta_caja_id: null, cuenta_banco_id: null,
+  cuenta_caja_id: null, cuenta_banco_id: null, cuenta_inventario_id: null,
   cuenta_iva_debito_5_id: null, cuenta_iva_debito_10_id: null, cuenta_ventas_gravadas_id: null,
   cuenta_ventas_exentas_id: null, cuenta_ventas_servicios_id: null, cuenta_clientes_id: null,
   cuenta_anticipos_clientes_id: null,

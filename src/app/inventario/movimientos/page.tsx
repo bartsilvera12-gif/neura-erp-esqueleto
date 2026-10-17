@@ -21,6 +21,7 @@ const origenLabel: Record<OrigenMovimiento, string> = {
   ajuste_manual: "Ajuste manual",
   inventario_inicial: "Inventario inicial",
   transferencia: "Transferencia",
+  importacion: "Importación",
 };
 
 const origenBadge: Record<OrigenMovimiento, string> = {
@@ -29,6 +30,7 @@ const origenBadge: Record<OrigenMovimiento, string> = {
   ajuste_manual: "bg-white text-slate-500 ring-1 ring-slate-200",
   inventario_inicial: "bg-white text-slate-500 ring-1 ring-slate-200",
   transferencia: "bg-white text-[#3F8E91] ring-1 ring-[#4FAEB2]/35",
+  importacion: "bg-[#4FAEB2]/10 text-[#2F6E71] ring-1 ring-[#4FAEB2]/30",
 };
 
 function formatGs(valor: number) {
@@ -136,12 +138,18 @@ export default function MovimientosPage() {
                 Ajuste en bloque
               </Link>
             )}
+            <Link
+              href="/inventario/kardex"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#4FAEB2]/40 bg-white px-3.5 py-2 text-sm font-semibold text-[#3F8E91] hover:bg-[#4FAEB2]/5"
+            >
+              Kardex valorado
+            </Link>
             <span className="text-sm text-gray-400">
               {filtrados.length} de {todos.length} registros
             </span>
           </div>
           <p className="text-xs text-gray-400">
-            Los movimientos se generan automáticamente desde <span className="font-medium text-gray-500">Compras</span>
+            Los movimientos se generan automáticamente desde <span className="font-medium text-gray-500">Compras</span> e <span className="font-medium text-gray-500">Importaciones</span>
           </p>
         </div>
 
@@ -172,6 +180,7 @@ export default function MovimientosPage() {
           >
             <option value="">Todos los orígenes</option>
             <option value="compra">Compra</option>
+            <option value="importacion">Importación</option>
             <option value="venta">Venta</option>
             <option value="ajuste_manual">Ajuste manual</option>
           </Select>
