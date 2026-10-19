@@ -49,7 +49,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
   const numero = `CV -   ${String(p.numero_control ?? "").replace(/\D/g, "").padStart(7, "0")}`;
 
   const cuerpo = `
-  ${cabeceraDoc({ titulo: "COMPROMISO DE VENTAS", numero })}
+  ${cabeceraDoc({ titulo: "PRESUPUESTO DE VENTA", numero })}
   <div class="box pad dos">
     <div>
       <div class="fila"><span class="l" style="flex-basis:80px">Fecha:</span><span>${fechaDoc(p.fecha)}</span></div>
@@ -86,5 +86,5 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
     <div class="ln"><span>ACLARACION DE FIRMA:</span><i></i></div><div class="ln"><span>ACLARACION DE FIRMA:</span><i></i></div>
     <div class="ln"><span>DOCUMENTO Nº:</span><i></i></div><div class="ln"><span>DOCUMENTO Nº:</span><i></i></div>
   </div>`;
-  return new NextResponse(paginaDoc(`Compromiso de venta ${p.numero_control ?? ""}`, cuerpo, auto), { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  return new NextResponse(paginaDoc(`Presupuesto de venta ${p.numero_control ?? ""}`, cuerpo, auto), { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
