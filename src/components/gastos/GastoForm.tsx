@@ -8,6 +8,11 @@ import type { Gasto, GastoInput } from "@/lib/gastos/actions";
 import { Select } from "@/components/ui/Select";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { ClipboardList } from "lucide-react";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
+import SelectFromList from "@/components/inventario/SelectFromList";
+
+type OrigenCuenta = { id: string; nombre: string };
+type CuentaPlan = { id: string; cuenta: string; denominacion: string; asentable?: boolean | null; activo?: boolean | null };
 
 const fLabel = "block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1";
 const fInput =
@@ -23,6 +28,7 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const usaLR = esInstanciaLR();
   const [form, setForm] = useState<GastoInput>({
     categoria: gasto?.categoria ?? "",
     descripcion: gasto?.descripcion ?? "",
@@ -32,9 +38,32 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
     frecuencia: gasto?.frecuencia ?? "",
     fecha: gasto?.fecha ?? new Date().toISOString().slice(0, 10),
     proyecto_id: gasto?.proyecto_id ?? null,
+    facturado: gasto?.facturado ?? true,
+    cuenta_contable_id: gasto?.cuenta_contable_id ?? null,
+    origen_medio: gasto?.entidad_bancaria_id ? "BANCO" : gasto?.caja_chica_id ? "CAJA_CHICA" : null,
+    origen_cuenta_id: gasto?.entidad_bancaria_id ?? gasto?.caja_chica_id ?? null,
   });
 
   const [proyectos, setProyectos] = useState<{ id: string; titulo: string }[]>([]);
+  const [bancos, setBancos] = useState<OrigenCuenta[]>([]);
+  const [cajas, setCajas] = useState<OrigenCuenta[]>([]);
+  const [cuentas, setCuentas] = useState<CuentaPlan[]>([]);
+
+  // Living Room: bancos, cajas chicas y plan de cuentas para los campos nuevos.
+  useEffect(() => {
+    if (!usaLR) return;
+    fetchWithSupabaseSession("/api/tesoreria", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((j) => {
+        setBancos(((j?.data?.bancos ?? []) as OrigenCuenta[]).map((b) => ({ id: b.id, nombre: b.nombre })));
+        setCajas(((j?.data?.cajas ?? []) as OrigenCuenta[]).map((k) => ({ id: k.id, nombre: k.nombre })));
+      })
+      .catch(() => {});
+    fetchWithSupabaseSession("/api/configuracion/plan-cuentas", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((j) => setCuentas(((j?.data?.cuentas ?? []) as CuentaPlan[]).filter((c) => c.activo !== false && c.asentable !== false)))
+      .catch(() => {});
+  }, [usaLR]);
 
   useEffect(() => {
     fetchWithSupabaseSession("/api/proyectos", { cache: "no-store" })
@@ -146,6 +175,71 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
               <option value="fijo">Fijo</option>
             </Select>
           </div>
+
+          {usaLR && (
+            <>
+              {/* Sin factura / facturado */}
+              <div>
+                <label className={fLabel}>Comprobante</label>
+                <Select
+                  value={form.facturado ? "facturado" : "sin_factura"}
+                  onChange={(e) => setForm((prev) => ({ ...prev, facturado: e.target.value === "facturado" }))}
+                  className={fInput}
+                >
+                  <option value="facturado">Facturado (con factura)</option>
+                  <option value="sin_factura">Sin factura (Recibo de Gasto)</option>
+                </Select>
+                {!form.facturado && (
+                  <p className="mt-1 text-xs text-slate-500">Vas a poder imprimir un &quot;Recibo de Gasto&quot; desde el listado.</p>
+                )}
+              </div>
+
+              {/* Cuenta contable */}
+              <div>
+                <label className={fLabel}>Cuenta contable</label>
+                <SelectFromList
+                  buscable
+                  value={form.cuenta_contable_id ?? null}
+                  onChange={(v) => setForm((prev) => ({ ...prev, cuenta_contable_id: v }))}
+                  placeholder="Buscar cuenta por código o nombre…"
+                  emptyShort="Sin plan de cuentas"
+                  options={cuentas.map((c) => ({ id: c.id, label: c.denominacion, sublabel: c.cuenta }))}
+                />
+              </div>
+
+              {/* Origen del dinero: banco o caja chica (baja el saldo) */}
+              <div>
+                <label className={fLabel}>¿De dónde salió? (opcional)</label>
+                <Select
+                  value={form.origen_medio ?? ""}
+                  onChange={(e) => {
+                    const medio = (e.target.value || null) as "BANCO" | "CAJA_CHICA" | null;
+                    setForm((prev) => ({ ...prev, origen_medio: medio, origen_cuenta_id: null }));
+                  }}
+                  className={fInput}
+                >
+                  <option value="">— No descontar de banco/caja —</option>
+                  <option value="BANCO">Banco</option>
+                  <option value="CAJA_CHICA">Caja chica</option>
+                </Select>
+                {form.origen_medio && (
+                  <div className="mt-2">
+                    <Select
+                      value={form.origen_cuenta_id ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, origen_cuenta_id: e.target.value || null }))}
+                      className={fInput}
+                    >
+                      <option value="">{form.origen_medio === "BANCO" ? "Elegí el banco…" : "Elegí la caja chica…"}</option>
+                      {(form.origen_medio === "BANCO" ? bancos : cajas).map((o) => (
+                        <option key={o.id} value={o.id}>{o.nombre}</option>
+                      ))}
+                    </Select>
+                    <p className="mt-1 text-xs text-slate-500">Se descuenta del saldo de ese {form.origen_medio === "BANCO" ? "banco" : "caja chica"}.</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
