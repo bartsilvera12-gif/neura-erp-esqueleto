@@ -50,6 +50,8 @@ type MenuItem = {
   icon: React.ComponentType<{ className?: string }>;
   children?: { label: string; href: string; exactMatch?: boolean }[];
   showWhen?: string;
+  /** Si está, el ítem siempre abre su listado (href), no la última pantalla visitada. */
+  siempreListado?: boolean;
 };
 
 /** Lo que el usuario abrió o cerró en el menú se guarda en el navegador, así al
@@ -196,7 +198,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Bancos y cajas chicas", href: "/tesoreria" },
     { label: "Tipos de cambio", href: "/tipos-cambio" },
   ]},
-  { key: "presupuestos", slug: "presupuestos", label: "Compromisos de venta", href: "/presupuestos", icon: FileText },
+  { key: "presupuestos", slug: "presupuestos", label: "Presupuesto de venta", href: "/presupuestos", icon: FileText, siempreListado: true },
   { key: "facturas_exportacion", slug: "facturas_exportacion", label: "Facturación", href: "/facturas-exportacion", icon: FileText, children: [
     { label: "Facturas", href: "/facturas-exportacion", exactMatch: true },
     { label: "Nueva factura", href: "/facturas-exportacion/nueva" },
@@ -628,6 +630,7 @@ export default function Sidebar() {
   /** Estando adentro del módulo, el ítem vuelve al listado: así siempre hay
    *  forma de salir del detalle. Desde afuera, lleva a donde quedó el usuario. */
   const destinoDe = (item: MenuItem) => {
+    if (item.siempreListado) return item.href;
     const p = pathname ?? "";
     if (menuDeRuta(p)?.key === item.key) return item.href;
     const guardada = ultimaRuta[item.key];
