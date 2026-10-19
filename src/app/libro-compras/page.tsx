@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { BookOpen, Download, Plus, Settings } from "lucide-react";
+import { BookOpen, Download, Plus, Settings, Pencil } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { Aviso, api, fechaES, inputClass, labelClass } from "@/components/comex/ui";
 import type { TipoComprobante } from "./_components/FormCompra";
@@ -161,19 +161,20 @@ export default function LibroComprasPage() {
               <th className="px-3 py-3 text-right">Gravado 5%</th>
               <th className="px-3 py-3 text-right">IVA 5%</th>
               <th className="px-3 py-3 text-right">Total</th>
+              <th className="px-3 py-3 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {cargando && filas.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={11} className="px-4 py-8 text-center text-slate-500">
                   Cargando…
                 </td>
               </tr>
             )}
             {!cargando && filas.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={11} className="px-4 py-8 text-center text-slate-500">
                   No hay comprobantes en ese período.
                 </td>
               </tr>
@@ -207,6 +208,20 @@ export default function LibroComprasPage() {
                   <td className="px-3 py-2.5 text-right">{n(f.total_gravado5)}</td>
                   <td className="px-3 py-2.5 text-right">{n(f.iva5)}</td>
                   <td className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">{anulada ? <s>{money(f.total, f.moneda)}</s> : money(f.total, f.moneda)}</td>
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                    {anulada ? (
+                      <span className="text-xs text-slate-300">—</span>
+                    ) : (
+                      <Link
+                        href={`/libro-compras/${f.id}`}
+                        title="Editar comprobante"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-emerald-300 hover:text-emerald-700"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Editar
+                      </Link>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -223,6 +238,7 @@ export default function LibroComprasPage() {
                 <td className="px-3 py-3 text-right">{suma("total_gravado5").toLocaleString("es-PY")}</td>
                 <td className="px-3 py-3 text-right">{suma("iva5").toLocaleString("es-PY")}</td>
                 <td className="px-3 py-3 text-right">Gs. {suma("total").toLocaleString("es-PY")}</td>
+                <td className="px-3 py-3"></td>
               </tr>
             </tfoot>
           )}
