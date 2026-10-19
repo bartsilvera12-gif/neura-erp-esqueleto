@@ -2,7 +2,7 @@ import "server-only";
 import { getChatPostgresPool, quoteSchemaTable } from "@/lib/supabase/chat-pg-pool";
 import { assertAllowedChatDataSchema } from "@/lib/supabase/chat-data-schema";
 
-export type OrigenTipo = "gasto_servicio" | "compra" | "reversion" | "pago_proveedor" | "factura_venta" | "nota_credito_venta" | "cobro_cliente" | "reclasificacion_anticipo" | "condonacion";
+export type OrigenTipo = "gasto_servicio" | "compra" | "reversion" | "pago_proveedor" | "factura_venta" | "nota_credito_venta" | "cobro_cliente" | "reclasificacion_anticipo" | "condonacion" | "importacion";
 
 export class ContabilidadError extends Error {
   status: number;
@@ -47,6 +47,8 @@ export interface ConfigContable {
   cuenta_proveedores_id: string | null;
   cuenta_caja_id: string | null;
   cuenta_banco_id: string | null;
+  // Importaciones: cuenta de Inventario/Mercadería donde se capitaliza el costo.
+  cuenta_inventario_id: string | null;
   // Ventas (Fase 0/2)
   cuenta_iva_debito_5_id: string | null;
   cuenta_iva_debito_10_id: string | null;
@@ -64,6 +66,7 @@ export async function getConfigContable(schemaRaw: string, empresaId: string): P
   const t = quoteSchemaTable(schema, "configuracion_contable");
   const { rows } = await pool().query<ConfigContable>(
     `SELECT empresa_id, cuenta_iva_credito_5_id, cuenta_iva_credito_10_id, cuenta_proveedores_id, cuenta_caja_id, cuenta_banco_id,
+            cuenta_inventario_id,
             cuenta_iva_debito_5_id, cuenta_iva_debito_10_id, cuenta_ventas_gravadas_id, cuenta_ventas_exentas_id,
             cuenta_ventas_servicios_id, cuenta_clientes_id, cuenta_anticipos_clientes_id,
             cuenta_descuentos_incobrables_id

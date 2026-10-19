@@ -70,7 +70,7 @@ export default function LibroDiarioPage() {
         <div>
           <nav className="mb-1 text-xs text-slate-500"><Link href="/reportes" className="hover:text-[#4FAEB2]">Reportes</Link> / <span className="font-semibold text-slate-700">Libro Diario</span></nav>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Libro Diario</h1>
-          <p className="mt-1 text-sm text-slate-500">Asientos contables de Compras y Gastos y Servicios. En esta etapa contiene únicamente esos orígenes.</p>
+          <p className="mt-1 text-sm text-slate-500">Asientos contables de Compras, Gastos y Servicios e Importaciones (al cerrarlas). Se irán sumando más orígenes.</p>
         </div>
         <button onClick={exportar} className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-[#3F8E91] hover:bg-[#4FAEB2]/5">Exportar Excel</button>
       </div>
@@ -79,7 +79,7 @@ export default function LibroDiarioPage() {
         <label className="text-xs font-semibold text-slate-500">Desde<FechaSelect value={desde} onChange={(e) => setDesde(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm" /></label>
         <label className="text-xs font-semibold text-slate-500">Hasta<FechaSelect value={hasta} onChange={(e) => setHasta(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm" /></label>
         <div className="text-xs font-semibold text-slate-500">Cuenta<div className="mt-1"><CuentaCombobox cuentas={cuentas} value={cuentaId || null} onChange={(id) => setCuentaId(id ?? "")} placeholder="Todas" /></div></div>
-        <label className="text-xs font-semibold text-slate-500">Origen<select value={origen} onChange={(e) => setOrigen(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"><option value="">Todos</option><option value="gasto_servicio">Gasto y Servicio</option><option value="compra">Compra</option><option value="reversion">Reversión</option></select></label>
+        <label className="text-xs font-semibold text-slate-500">Origen<select value={origen} onChange={(e) => setOrigen(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"><option value="">Todos</option><option value="gasto_servicio">Gasto y Servicio</option><option value="compra">Compra</option><option value="importacion">Importación</option><option value="reversion">Reversión</option></select></label>
         <label className="text-xs font-semibold text-slate-500">Estado<select value={estado} onChange={(e) => setEstado(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"><option value="">Todos</option><option value="contabilizado">Contabilizado</option><option value="revertido">Revertido</option></select></label>
         <div className="flex items-end"><button onClick={load} className="w-full rounded-lg bg-[#4FAEB2] px-3 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91]">Aplicar</button></div>
       </div>

@@ -100,7 +100,7 @@ export async function sumarStockDeposito(sb: AppSupabaseClient, emp: string, pro
 export async function ingresarStock(
   sb: AppSupabaseClient,
   emp: string,
-  x: { productoId: string; ubicacionId: string; cantidad: number; referencia: string; observacion: string; fecha: string; usuarioId: string | null; usuarioNombre: string | null }
+  x: { productoId: string; ubicacionId: string; cantidad: number; referencia: string; observacion: string; fecha: string; usuarioId: string | null; usuarioNombre: string | null; origen?: string }
 ): Promise<string | null> {
   const { data: prod } = await sb.from("productos").select("nombre, sku, stock_actual, costo_promedio").eq("empresa_id", emp).eq("id", x.productoId).maybeSingle();
   const p = prod as { nombre: string; sku: string | null; stock_actual: number | null; costo_promedio: number | null } | null;
@@ -123,7 +123,7 @@ export async function ingresarStock(
       tipo: "ENTRADA",
       cantidad: x.cantidad,
       costo_unitario: Number(p.costo_promedio) || 0,
-      origen: "compra",
+      origen: x.origen ?? "compra",
       referencia: x.referencia,
       observacion: x.observacion.slice(0, 500),
       ubicacion_destino_id: x.ubicacionId,
