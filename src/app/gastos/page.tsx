@@ -73,13 +73,34 @@ export default function GastosPage() {
           <h1 className="mt-1 text-lg font-semibold tracking-tight text-slate-900">Gastos operativos</h1>
           <p className="mt-0.5 text-xs text-slate-500">Registro de gastos de la empresa</p>
         </div>
-        <Link
-          href="/gastos/nuevo"
-          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[#4FAEB2]/25 transition-colors hover:bg-[#3F8E91] active:scale-95"
-        >
-          <span>+</span>
-          Nuevo gasto
-        </Link>
+        {esInstanciaLR() ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Link
+              href="/libro-compras/nuevo"
+              title="Registra la factura del gasto (con IVA / crédito fiscal)"
+              className="flex items-center gap-1.5 rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[#4FAEB2]/25 transition-colors hover:bg-[#3F8E91] active:scale-95"
+            >
+              <span>+</span>
+              Gasto con factura
+            </Link>
+            <Link
+              href="/gastos/nuevo"
+              title="Registra el gasto sin factura y genera un Recibo de Gasto"
+              className="flex items-center gap-1.5 rounded-lg border border-[#4FAEB2] bg-white px-3 py-1.5 text-xs font-semibold text-[#3F8E91] transition-colors hover:bg-[#4FAEB2]/10 active:scale-95"
+            >
+              <span>+</span>
+              Gasto sin factura
+            </Link>
+          </div>
+        ) : (
+          <Link
+            href="/gastos/nuevo"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[#4FAEB2]/25 transition-colors hover:bg-[#3F8E91] active:scale-95"
+          >
+            <span>+</span>
+            Nuevo gasto
+          </Link>
+        )}
       </div>
 
       <div className="zx-surface zx-surface-accent overflow-hidden">
