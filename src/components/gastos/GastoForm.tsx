@@ -38,7 +38,7 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
     frecuencia: gasto?.frecuencia ?? "",
     fecha: gasto?.fecha ?? new Date().toISOString().slice(0, 10),
     proyecto_id: gasto?.proyecto_id ?? null,
-    facturado: gasto?.facturado ?? true,
+    facturado: gasto?.facturado ?? false,
     cuenta_contable_id: gasto?.cuenta_contable_id ?? null,
     origen_medio: gasto?.entidad_bancaria_id ? "BANCO" : gasto?.caja_chica_id ? "CAJA_CHICA" : null,
     origen_cuenta_id: gasto?.entidad_bancaria_id ?? gasto?.caja_chica_id ?? null,
@@ -178,20 +178,12 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
 
           {usaLR && (
             <>
-              {/* Sin factura / facturado */}
-              <div>
-                <label className={fLabel}>Comprobante</label>
-                <Select
-                  value={form.facturado ? "facturado" : "sin_factura"}
-                  onChange={(e) => setForm((prev) => ({ ...prev, facturado: e.target.value === "facturado" }))}
-                  className={fInput}
-                >
-                  <option value="facturado">Facturado (con factura)</option>
-                  <option value="sin_factura">Sin factura (Recibo de Gasto)</option>
-                </Select>
-                {!form.facturado && (
-                  <p className="mt-1 text-xs text-slate-500">Vas a poder imprimir un &quot;Recibo de Gasto&quot; desde el listado.</p>
-                )}
+              {/* Gasto sin factura: genera un Recibo de Gasto (el gasto con factura va por el Libro de compras). */}
+              <div className="rounded-lg border border-[#4FAEB2]/30 bg-[#4FAEB2]/5 px-3 py-2">
+                <p className="text-xs font-semibold text-[#3F8E91]">Gasto sin factura</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Vas a poder imprimir un &quot;Recibo de Gasto&quot; desde el listado. Si el gasto tiene factura, cargalo con el botón &quot;Gasto con factura&quot;.
+                </p>
               </div>
 
               {/* Cuenta contable */}
