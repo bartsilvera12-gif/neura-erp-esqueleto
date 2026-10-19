@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Receipt, Plus, Printer, Ban, Search, Loader2, X, Pencil, Trash2 } from "lucide-react";
+import { Receipt, Plus, Printer, Ban, Search, Loader2, X, Pencil, Trash2, Landmark, Image as ImageIcon } from "lucide-react";
 import {
   fetchRecibos,
   crearReciboManual,
@@ -9,13 +9,18 @@ import {
   abrirReciboPdf,
   editarRecibo,
   borrarRecibo,
+  registrarDeposito,
+  fetchBancos,
+  urlFotoDeposito,
   type Recibo,
   type ReciboOrigen,
+  type BancoOpcion,
 } from "@/lib/recibos/client";
 import { FancySelect } from "@/components/ui/FancySelect";
 import MontoInput from "@/components/ui/MontoInput";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 const ORIGEN_LABEL: Record<ReciboOrigen, string> = {
   venta_contado: "Venta contado",
@@ -65,7 +70,9 @@ export default function RecibosPage() {
   const [anulando, setAnulando] = useState<Recibo | null>(null);
   const [motivoAnular, setMotivoAnular] = useState("");
   const [borrando, setBorrando] = useState<Recibo | null>(null);
+  const [depositando, setDepositando] = useState<Recibo | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const usaLR = esInstanciaLR();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -275,6 +282,28 @@ export default function RecibosPage() {
                         >
                           <Printer className="h-4 w-4" />
                         </button>
+                        {usaLR && !r.anulado && (
+                          r.deposito_banco_movimiento_id ? (
+                            <a
+                              href={urlFotoDeposito(r.id)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Ver depósito a banco"
+                              className="rounded-lg border border-emerald-200 bg-emerald-50 p-1.5 text-emerald-700 transition-colors hover:border-emerald-300"
+                            >
+                              <ImageIcon className="h-4 w-4" />
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDepositando(r)}
+                              title="Depositar a banco"
+                              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition-colors hover:border-[#4FAEB2] hover:text-[#3F8E91]"
+                            >
+                              <Landmark className="h-4 w-4" />
+                            </button>
+                          )
+                        )}
                         {isAdmin && !r.anulado && (
                           <button
                             type="button"
@@ -350,6 +379,17 @@ export default function RecibosPage() {
         onConfirm={confirmarBorrar}
         onCancel={() => setBorrando(null)}
       />
+
+      {depositando && (
+        <ModalDeposito
+          recibo={depositando}
+          onClose={() => setDepositando(null)}
+          onHecho={() => {
+            setDepositando(null);
+            void cargar();
+          }}
+        />
+      )}
 
       {modalAbierto && (
         <ModalReciboManual
@@ -464,6 +504,93 @@ function ModalEditarRecibo({ recibo, onClose, onGuardado }: { recibo: Recibo; on
             <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
             <button type="button" onClick={guardar} disabled={busy} className="rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:opacity-50">
               {busy ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Depósito a banco de un recibo (Living Room): elegir el banco al que fue el
+ * dinero, la fecha y (opcional) una foto del comprobante del depósito. Deja el
+ * ingreso registrado en el banco.
+ */
+function ModalDeposito({ recibo, onClose, onHecho }: { recibo: Recibo; onClose: () => void; onHecho: () => void }) {
+  const [bancos, setBancos] = useState<BancoOpcion[]>([]);
+  const [bancoId, setBancoId] = useState("");
+  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const moneda = recibo.moneda === "USD" ? "USD" : "PYG";
+
+  useEffect(() => {
+    void fetchBancos().then((r) => {
+      if (r.ok) setBancos(r.data.filter((b) => (b.moneda || "PYG") === moneda));
+    });
+  }, [moneda]);
+
+  async function guardar() {
+    if (!bancoId) return setErr("Elegí el banco del depósito.");
+    setBusy(true);
+    setErr(null);
+    const r = await registrarDeposito(recibo.id, { entidad_bancaria_id: bancoId, fecha, file });
+    setBusy(false);
+    if (!r.ok) return setErr(r.error);
+    onHecho();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-white shadow-lg">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <Landmark className="h-5 w-5 text-[#4FAEB2]" />
+            Depositar a banco · {recibo.numero_recibo}
+          </h2>
+          <button type="button" onClick={onClose} className="rounded p-1 hover:bg-slate-100" aria-label="Cerrar">
+            <X className="h-4 w-4 text-slate-500" />
+          </button>
+        </div>
+        <div className="space-y-4 p-5">
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            Se registra un ingreso de <b>{fmtMonto(recibo.monto, recibo.moneda)}</b> en el banco elegido, para que figure ahí.
+          </p>
+          <div>
+            <label className={labelCls}>Banco <span className="text-red-500">*</span></label>
+            <select value={bancoId} onChange={(e) => setBancoId(e.target.value)} className={inputCls}>
+              <option value="">Elegí el banco…</option>
+              {bancos.map((b) => (
+                <option key={b.id} value={b.id}>{b.nombre}</option>
+              ))}
+            </select>
+            {bancos.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">No hay bancos en {moneda}. Cargá uno en Tesorería.</p>
+            )}
+          </div>
+          <div>
+            <label className={labelCls}>Fecha del depósito</label>
+            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Foto del depósito (opcional)</label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-[#4FAEB2] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#3F8E91]"
+            />
+            <p className="mt-1 text-xs text-slate-400">JPG, PNG, WebP o PDF. Hasta 10 MB.</p>
+          </div>
+          {err && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
+            <button type="button" onClick={guardar} disabled={busy || !bancoId} className="inline-flex items-center gap-1.5 rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:opacity-50">
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+              Registrar depósito
             </button>
           </div>
         </div>

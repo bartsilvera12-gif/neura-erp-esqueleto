@@ -1,5 +1,7 @@
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
+
 export type OrigenRecibo = "venta_contado" | "cobro_cxc" | "manual";
 
 export interface CrearReciboInput {
@@ -33,6 +35,10 @@ export class ReciboError extends Error {
 const RECIBO_COLS =
   "id, numero_recibo, cliente_id, cliente_nombre, cliente_documento, origen, venta_id, " +
   "cuenta_por_cobrar_id, cobro_cliente_id, presupuesto_id, fecha, moneda, monto, metodo_pago, referencia, concepto, observaciones, usuario_nombre, anulado";
+
+/** Columnas del depósito a banco (solo Living Room / esqueletoerp). */
+const RECIBO_COLS_DEPOSITO =
+  ", deposito_entidad_bancaria_id, deposito_fecha, deposito_banco_movimiento_id, deposito_foto_path";
 
 async function siguienteNumero(sb: AppSupabaseClient, empresaId: string): Promise<string> {
   const { data, error } = await sb
@@ -347,9 +353,10 @@ export async function listarRecibos(
     presupuestoId?: string | null;
   }
 ): Promise<Record<string, unknown>[]> {
+  const cols = esInstanciaLR() ? RECIBO_COLS + RECIBO_COLS_DEPOSITO : RECIBO_COLS;
   let q = sb
     .from("recibos_dinero")
-    .select(RECIBO_COLS)
+    .select(cols)
     .eq("empresa_id", empresaId)
     .order("fecha", { ascending: false })
     .limit(500);
