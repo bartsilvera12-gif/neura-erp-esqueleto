@@ -19,7 +19,13 @@ export type Recibo = {
   observaciones: string | null;
   usuario_nombre: string | null;
   anulado: boolean;
+  // Depósito a banco (solo Living Room)
+  deposito_entidad_bancaria_id?: string | null;
+  deposito_fecha?: string | null;
+  deposito_banco_movimiento_id?: string | null;
 };
+
+export type BancoOpcion = { id: string; nombre: string; moneda: string };
 
 export type ReciboManualInput = {
   cliente_id?: string | null;
@@ -142,4 +148,44 @@ export async function editarRecibo(
 /** Borra un recibo hecho por error (solo admin). No toca la venta ni el cobro. */
 export async function borrarRecibo(id: string): Promise<Result<{ id: string }>> {
   return unwrap(await fetchWithSupabaseSession(`/api/recibos-dinero/${id}`, { method: "DELETE" }));
+}
+
+/** Bancos activos del tenant (para el depósito del recibo). Living Room. */
+export async function fetchBancos(): Promise<Result<BancoOpcion[]>> {
+  try {
+    const res = await fetchWithSupabaseSession("/api/tesoreria", { cache: "no-store" });
+    const j = await res.json();
+    if (!res.ok || j?.success === false) return { ok: false, error: j?.error ?? `Error ${res.status}` };
+    const bancos = ((j?.data?.bancos ?? []) as Array<Record<string, unknown>>).map((b) => ({
+      id: String(b.id),
+      nombre: String(b.nombre ?? ""),
+      moneda: String(b.moneda ?? "PYG"),
+    }));
+    return { ok: true, data: bancos };
+  } catch {
+    return { ok: false, error: "Error de red." };
+  }
+}
+
+/**
+ * Registra el depósito a banco de un recibo (Living Room): elige el banco, la
+ * fecha y opcionalmente adjunta una foto del comprobante. Crea el ingreso en el
+ * banco para que figure ahí.
+ */
+export async function registrarDeposito(
+  id: string,
+  datos: { entidad_bancaria_id: string; fecha?: string; file?: File | null }
+): Promise<Result<{ ok: true; foto_url: string | null }>> {
+  const fd = new FormData();
+  fd.set("entidad_bancaria_id", datos.entidad_bancaria_id);
+  if (datos.fecha) fd.set("fecha", datos.fecha);
+  if (datos.file) fd.set("file", datos.file);
+  return unwrap(
+    await fetchWithSupabaseSession(`/api/recibos-dinero/${id}/deposito`, { method: "POST", body: fd })
+  );
+}
+
+/** URL para ver la foto del depósito de un recibo. */
+export function urlFotoDeposito(id: string): string {
+  return `/api/recibos-dinero/${id}/deposito?foto=1`;
 }
