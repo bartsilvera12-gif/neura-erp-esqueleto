@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getGastos, deleteGasto } from "@/lib/gastos/actions";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import type { Gasto } from "@/lib/gastos/actions";
 import { ClipboardList } from "lucide-react";
 
@@ -127,6 +128,16 @@ export default function GastosPage() {
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex gap-2">
+                      {esInstanciaLR() && g.facturado === false && (
+                        <a
+                          href={`/api/gastos/${g.id}/recibo?auto=1`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#3F8E91] hover:text-[#2F6E71] underline"
+                        >
+                          Recibo
+                        </a>
+                      )}
                       <Link
                         href={`/gastos/${g.id}/editar`}
                         className="text-xs text-gray-500 hover:text-gray-800 underline"
