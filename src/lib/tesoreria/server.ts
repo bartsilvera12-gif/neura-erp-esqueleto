@@ -5,6 +5,7 @@
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import type { UsuarioConEmpresaYRol } from "@/lib/middleware/auth";
 import { nombreUsuario, registrarHistorial, traerTodo } from "@/lib/comex/server";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 export class ErrorTesoreria extends Error {}
 
@@ -107,7 +108,13 @@ export async function validarMovimiento(
   if (caja.tope_gasto && monto > Number(caja.tope_gasto))
     throw new ErrorTesoreria(`La caja ${caja.nombre} permite gastos de hasta ${Number(caja.tope_gasto).toLocaleString("es-PY")}.`);
   const saldo = ((await saldosCajas(sb, emp)).get(caja.id) ?? 0) + (opts.devuelve ?? 0);
-  if (saldo < monto) throw new ErrorTesoreria(`La caja ${caja.nombre} tiene ${saldo.toLocaleString("es-PY")}: no alcanza para ${monto.toLocaleString("es-PY")}. Reponela primero.`);
+  if (saldo < monto) {
+    // Living Room arranca desde un saldo central (sin histórico completo): se
+    // permite que la caja quede en negativo, solo se avisa. En el resto, bloquea.
+    if (!esInstanciaLR())
+      throw new ErrorTesoreria(`La caja ${caja.nombre} tiene ${saldo.toLocaleString("es-PY")}: no alcanza para ${monto.toLocaleString("es-PY")}. Reponela primero.`);
+    return { nombre: caja.nombre, aviso: `La caja ${caja.nombre} queda en negativo (${(saldo - monto).toLocaleString("es-PY")}).` };
+  }
   return { nombre: caja.nombre, aviso: null };
 }
 
