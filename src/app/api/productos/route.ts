@@ -6,7 +6,7 @@ import { normalizeUpperText, normalizeUpperCodigoBarras } from "@/lib/text/norma
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { signProductoImagen } from "@/lib/inventario/imagen-storage";
 import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
-import { soportaCamposLR } from "@/lib/inventario/campos-lr";
+import { soportaCamposLR, esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 /**
  * GET/POST de productos via PostgREST (sin pool PG directo) — compatible Hostinger.
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     const costoPromedio = Number(body.costo_promedio ?? 0) || 0;
     const stockMinimo = Number(body.stock_minimo ?? 0) || 0;
     const precioVenta = Number(body.precio_venta ?? 0) || 0;
-    const unidadMedida = normalizeUpperText(body.unidad_medida) || "UNIDAD";
+    const unidadMedida = normalizeUpperText(body.unidad_medida) || (esInstanciaLR() ? "PZA." : "UNIDAD");
     const metodoValuacion =
       body.metodo_valuacion === "FIFO" || body.metodo_valuacion === "LIFO"
         ? (body.metodo_valuacion as "FIFO" | "LIFO")

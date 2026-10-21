@@ -6,7 +6,7 @@ import { assertAllowedChatDataSchema } from "@/lib/supabase/chat-data-schema";
 import { normalizeUpperText, normalizeUpperNullable } from "@/lib/text/normalize";
 import type { PreviewRow, PreviewResponse } from "@/lib/excel/import-types";
 import { pick, pickNumber, pickBool, chunked, type ModoImport } from "./import-helpers";
-import { soportaCamposLR } from "@/lib/inventario/campos-lr";
+import { soportaCamposLR, esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 interface ProductoExistente {
   id: string;
@@ -68,7 +68,7 @@ export function parseProductosRows(rows: Record<string, string>[]): ProductoPars
       categoria_nombre: normalizeUpperText(pick(r, "CATEGORIA", "CATEGORIA_PRINCIPAL")),
       proveedor_nombre: normalizeUpperText(pick(r, "PROVEEDOR_PRINCIPAL", "PROVEEDOR")),
       ubicacion_nombre: normalizeUpperText(pick(r, "UBICACION_PRINCIPAL", "UBICACION")),
-      unidad_medida: normalizeUpperText(pick(r, "UNIDAD_MEDIDA", "UNIDADMEDIDA")) || "UNIDAD",
+      unidad_medida: normalizeUpperText(pick(r, "UNIDAD_MEDIDA", "UNIDADMEDIDA")) || (esInstanciaLR() ? "PZA." : "UNIDAD"),
       costo_promedio: pickNumber(r, "COSTO_PROMEDIO"),
       precio_venta: pickNumber(r, "PRECIO_VENTA"),
       stock_actual: pickNumber(r, "STOCK_ACTUAL"),
