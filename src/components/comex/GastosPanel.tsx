@@ -303,7 +303,7 @@ export default function GastosPanel({
               <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={f.lleva_iva} onChange={(e) => setF({ ...f, lleva_iva: e.target.checked })} className="h-4 w-4 rounded border-slate-300" />
                 Lleva IVA (10%)
-                <span className="text-xs text-slate-400">— costo 90% sin IVA, pago 100% con IVA</span>
+                <span className="text-xs text-slate-400">— el monto incluye el IVA (IVA = monto ÷ 11)</span>
               </label>
             </div>
             <div className="flex gap-2">
@@ -330,7 +330,7 @@ export default function GastosPanel({
           )}
           {f.lleva_iva && Number(f.monto) > 0 && (
             <p className="text-xs text-slate-500">
-              Pago (100% con IVA): {monto(Number(f.monto), f.moneda)} · Costo (90% sin IVA): {monto(Number(f.monto) * FACTOR_COSTO_SIN_IVA, f.moneda)}.
+              Pago (IVA incluido): {monto(Number(f.monto), f.moneda)} · IVA (÷ 11): {monto(Number(f.monto) / 11, f.moneda)} · Costo sin IVA: {monto(Number(f.monto) * FACTOR_COSTO_SIN_IVA, f.moneda)}.
             </p>
           )}
         </div>
@@ -366,7 +366,7 @@ export default function GastosPanel({
                 <td className="px-4 py-2">
                   <span className="font-medium text-slate-800">{g.tipo}</span>
                   {g.lleva_iva && (
-                    <span className="ml-1.5 inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700" title="Lleva IVA: costo 90% sin IVA, pago 100% con IVA">
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700" title="Lleva IVA 10% incluido: IVA = monto ÷ 11, costo sin IVA = monto × 10/11">
                       IVA
                     </span>
                   )}

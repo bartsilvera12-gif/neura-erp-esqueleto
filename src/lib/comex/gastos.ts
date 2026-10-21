@@ -30,27 +30,33 @@ export interface GastoComex {
   pagado: boolean;
   /** Cuenta del plan de cuentas, para que el gasto llegue a contabilidad. */
   cuenta_codigo: string | null;
-  /** Si el gasto lleva IVA (10%): el monto es el pago (100% con IVA) y el costo
-   *  que entra al costeo es el 90% sin IVA. */
+  /** Si el gasto lleva IVA (10%): el monto es el pago (100%, IVA incluido) y el
+   *  costo que entra al costeo es el monto sin IVA = monto ÷ 1,1. */
   lleva_iva?: boolean;
   usuario_nombre: string | null;
   created_at: string;
 }
 
-/** Factor del costo (sin IVA) cuando el gasto lleva IVA: 90% del monto. */
-export const FACTOR_COSTO_SIN_IVA = 0.9;
+/**
+ * Factor del costo (sin IVA) cuando el gasto lleva IVA 10% incluido.
+ * En Paraguay el monto gravado YA incluye el IVA, así que:
+ *   - IVA (crédito fiscal) = monto ÷ 11
+ *   - Costo sin IVA        = monto − IVA = monto × 10/11
+ * (antes se usaba 0,9, que calculaba IVA = monto × 10%, incorrecto).
+ */
+export const FACTOR_COSTO_SIN_IVA = 10 / 11;
 
 /** El gasto (pago, 100% con IVA) llevado a guaraníes (en PYG el t.c. es 1). */
 export const gastoEnGuaranies = (g: Pick<GastoComex, "monto" | "tipo_cambio">) =>
   Math.round((Number(g.monto) || 0) * (Number(g.tipo_cambio) || 1));
 
-/** El COSTO del gasto en Gs. (lo que se capitaliza): 90% sin IVA si lleva_iva. */
+/** El COSTO del gasto en Gs. (lo que se capitaliza): sin IVA (monto × 10/11) si lleva_iva. */
 export const gastoCostoGuaranies = (g: Pick<GastoComex, "monto" | "tipo_cambio" | "lleva_iva">) => {
   const gs = (Number(g.monto) || 0) * (Number(g.tipo_cambio) || 1);
   return Math.round(g.lleva_iva ? gs * FACTOR_COSTO_SIN_IVA : gs);
 };
 
-/** Totales en Gs.: pago (100% con IVA), costo (90% sin IVA donde aplica),
+/** Totales en Gs.: pago (100%, IVA incluido), costo (sin IVA donde aplica),
  *  pendiente de pago y subtotales por tipo (sobre el pago). */
 export function totalesGastos(gastos: GastoComex[]) {
   let total = 0;
