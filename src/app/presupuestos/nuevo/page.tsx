@@ -147,6 +147,24 @@ export default function NuevoPresupuestoPage() {
     }
   }
 
+  // Al escribir el RUC: si ya existe un cliente con ese RUC, se autocompleta y
+  // se enlaza (para no duplicar clientes). Compara por dígitos (ignora guiones).
+  const soloDigitos = (s: string) => s.replace(/[^0-9kK]/g, "").toUpperCase();
+  function onRucChange(ruc: string) {
+    setClienteRuc(ruc);
+    const r = soloDigitos(ruc);
+    if (r.length < 4) return;
+    const match = clientes.find((c) => c.ruc && soloDigitos(c.ruc) === r);
+    if (match && match.id !== clienteId) {
+      setClienteId(match.id);
+      setClienteNombre(match.nombre);
+      setClienteRuc(match.ruc ?? ruc);
+      setClienteTel(match.telefono ?? "");
+      setClienteDir(match.direccion ?? "");
+    }
+  }
+  const clienteExistentePorRuc = clienteId ? clientes.find((c) => c.id === clienteId) ?? null : null;
+
   function agregarProducto() {
     const p = productos.find((x) => x.id === selProd);
     if (!p) return;
@@ -308,7 +326,10 @@ export default function NuevoPresupuestoPage() {
           </div>
           <div>
             <label className={labelClass}>RUC / CI</label>
-            <input value={clienteRuc} onChange={(e) => setClienteRuc(e.target.value)} className={inputClass} />
+            <input value={clienteRuc} onChange={(e) => onRucChange(e.target.value)} className={inputClass} placeholder="Escribí el RUC para buscar" />
+            {clienteExistentePorRuc && (
+              <p className="mt-1 text-[11px] font-medium text-emerald-600">✓ Cliente existente: {clienteExistentePorRuc.nombre} (no se duplica)</p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Teléfono</label>
