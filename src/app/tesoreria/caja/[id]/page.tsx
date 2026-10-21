@@ -7,6 +7,7 @@ import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import ArqueoDenominaciones, { arqueoVacio, cantidadesAArqueo, totalArqueo, type ArqueoCantidades } from "@/components/caja/ArqueoDenominaciones";
 import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaES, fechaHora, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "@/components/comex/ui";
 import { ModalCaja, ModalTransferencia, plata, useTesoreria, type Caja } from "../../_components/comun";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 type Mov = { id: string; tipo: string; monto: number; fecha: string; referencia: string | null; observacion: string | null; compra_id: string | null; usuario_nombre: string | null; saldo: number };
 type Arqueo = { id: string; fecha: string; saldo_sistema: number; contado: number; diferencia: number; observacion: string | null; ajuste_movimiento_id: string | null; usuario_nombre: string | null };
@@ -108,6 +109,11 @@ export default function CajaChicaPage({ params }: { params: Promise<{ id: string
           <Calculator className="h-3.5 w-3.5" /> Hacer arqueo
         </button>
         <button onClick={() => setModal("devolver")} className={btnSecundario}>Devolver al banco</button>
+        {esInstanciaLR() && (
+          <a href={`/api/tesoreria/cajas/${id}/reporte?auto=1`} target="_blank" rel="noopener noreferrer" className={btnSecundario}>
+            Reporte histórico
+          </a>
+        )}
         {isAdmin && <button onClick={() => setModal("editar")} className={btnSecundario}>Editar caja</button>}
       </div>
       {error && <Aviso>{error}</Aviso>}
