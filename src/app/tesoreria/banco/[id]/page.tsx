@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import { Aviso, ModalShell, api, btnPrimario, btnSecundario, fechaES, hoyPY, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "@/components/comex/ui";
 import { ModalBanco, ModalTransferencia, plata, useTesoreria, type Banco } from "../../_components/comun";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 type Mov = { id: string; tipo: string; monto: number; fecha: string; referencia: string | null; observacion: string | null; compra_id: string | null; usuario_nombre: string | null; saldo: number };
 const INGRESO = new Set(["deposito", "transferencia_in", "ajuste"]);
@@ -55,6 +56,11 @@ export default function BancoPage({ params }: { params: Promise<{ id: string }> 
         <button onClick={() => setModal("deposito")} className={btnPrimario}>+ Ingreso</button>
         <button onClick={() => setModal("retiro")} className={btnSecundario}>− Egreso</button>
         <button onClick={() => setModal("transferir")} className={btnSecundario}>Transferir / reponer caja</button>
+        {esInstanciaLR() && (
+          <a href={`/api/tesoreria/bancos/${id}/reporte?auto=1`} target="_blank" rel="noopener noreferrer" className={btnSecundario}>
+            Reporte histórico
+          </a>
+        )}
         {isAdmin && <button onClick={() => setModal("editar")} className={btnSecundario}>Editar cuenta</button>}
       </div>
       {error && <Aviso>{error}</Aviso>}
