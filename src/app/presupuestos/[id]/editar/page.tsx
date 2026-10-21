@@ -8,6 +8,7 @@ import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session"
 import SelectFromList from "@/components/inventario/SelectFromList";
 import ClienteBuscador, { type ClienteBuscadorItem } from "@/components/clientes/ClienteBuscador";
 import { calcMontoIvaIncluido, type IvaTipoPresupuesto } from "@/lib/presupuestos/types";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 type ProductoLite = { id: string; nombre: string; sku: string; precio_venta: number; unidad_medida: string; };
 type ClienteLite = { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; };
@@ -20,15 +21,22 @@ type Item = {
   precio_unitario: number;
   iva_tipo: IvaTipoPresupuesto;
   descuento: number;
+  descuento_pct: number;
 };
 
 function fmtGs(n: number) {
   return "Gs. " + (Number(n) || 0).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 }
 function round2(n: number) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+/** Descuento absoluto de la línea. En Living Room es % del bruto; en el resto, monto directo. */
+function descuentoAbsoluto(it: Item) {
+  const bruto = (Number(it.precio_unitario) || 0) * (Number(it.cantidad) || 0);
+  if (esInstanciaLR()) return round2(bruto * (Number(it.descuento_pct) || 0) / 100);
+  return Math.max(0, Number(it.descuento) || 0);
+}
 function itemTotals(it: Item) {
   const bruto = (Number(it.precio_unitario) || 0) * (Number(it.cantidad) || 0);
-  const total = Math.max(0, bruto - (Number(it.descuento) || 0));
+  const total = Math.max(0, bruto - descuentoAbsoluto(it));
   const iva = round2(calcMontoIvaIncluido(it.iva_tipo, total));
   return { total: round2(total), iva, subtotal: round2(total - iva) };
 }
@@ -40,6 +48,7 @@ const inputClass = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm";
 export default function EditarPresupuestoPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const usaLR = esInstanciaLR();
   const presupuestoId = params?.id ?? "";
 
   const [productos, setProductos] = useState<ProductoLite[]>([]);
@@ -129,6 +138,7 @@ export default function EditarPresupuestoPage() {
           precio_unitario: Number(it.precio_unitario) || 0,
           iva_tipo: (it.iva_tipo === "5%" || it.iva_tipo === "EXENTA" ? it.iva_tipo : "10%") as IvaTipoPresupuesto,
           descuento: Number(it.descuento) || 0,
+          descuento_pct: Number(it.descuento_pct) || 0,
         })));
         setCargando(false);
       } catch {
@@ -168,14 +178,14 @@ export default function EditarPresupuestoPage() {
     if (items.some((it) => it.producto_id === p.id)) return;
     setItems((prev) => [...prev, {
       producto_id: p.id, producto_nombre: p.nombre, sku: p.sku || null,
-      cantidad: 1, unidad_medida: p.unidad_medida, precio_unitario: p.precio_venta, iva_tipo: "10%", descuento: 0,
+      cantidad: 1, unidad_medida: p.unidad_medida, precio_unitario: p.precio_venta, iva_tipo: "10%", descuento: 0, descuento_pct: 0,
     }]);
     setSelProd("");
   }
   function agregarManual() {
     setItems((prev) => [...prev, {
       producto_id: null, producto_nombre: "", sku: null,
-      cantidad: 1, unidad_medida: null, precio_unitario: 0, iva_tipo: "10%", descuento: 0,
+      cantidad: 1, unidad_medida: null, precio_unitario: 0, iva_tipo: "10%", descuento: 0, descuento_pct: 0,
     }]);
   }
   function updItem(i: number, patch: Partial<Item>) {
@@ -189,7 +199,7 @@ export default function EditarPresupuestoPage() {
     let subtotal = 0, iva = 0, desc = 0, total = 0;
     for (const it of items) {
       const t = itemTotals(it);
-      subtotal += t.subtotal; iva += t.iva; total += t.total; desc += Number(it.descuento) || 0;
+      subtotal += t.subtotal; iva += t.iva; total += t.total; desc += descuentoAbsoluto(it);
     }
     return { subtotal: round2(subtotal), iva: round2(iva), desc: round2(desc), total: round2(total) };
   }, [items]);
@@ -226,7 +236,8 @@ export default function EditarPresupuestoPage() {
             unidad_medida: it.unidad_medida,
             precio_unitario: Number(it.precio_unitario),
             iva_tipo: it.iva_tipo,
-            descuento: Number(it.descuento) || 0,
+            descuento: descuentoAbsoluto(it),
+            descuento_pct: esInstanciaLR() ? Number(it.descuento_pct) || 0 : null,
           })),
         }),
       });
@@ -361,7 +372,7 @@ export default function EditarPresupuestoPage() {
                   <th className="py-2 px-2 w-20">Cant.</th>
                   <th className="py-2 px-2 w-32">Precio unit.</th>
                   <th className="py-2 px-2 w-24">IVA</th>
-                  <th className="py-2 px-2 w-28">Descuento</th>
+                  <th className="py-2 px-2 w-28">{usaLR ? "Desc. %" : "Descuento"}</th>
                   <th className="py-2 px-2 w-32 text-right">Total</th>
                   <th className="py-2 pl-2 w-10"></th>
                 </tr>
@@ -388,8 +399,22 @@ export default function EditarPresupuestoPage() {
                         <span className="mt-0.5 block h-4" aria-hidden />
                       </td>
                       <td className="py-2 px-2">
-                        <input type="number" min="0" step="1" value={it.descuento || ""} onChange={(e) => updItem(i, { descuento: Number(e.target.value) })} className={inputClass} />
-                        <span className="mt-0.5 block h-4" aria-hidden />
+                        {usaLR ? (
+                          <>
+                            <div className="relative">
+                              <input type="number" min="0" max="100" step="1" value={it.descuento_pct || ""} onChange={(e) => updItem(i, { descuento_pct: Math.max(0, Math.min(100, Number(e.target.value))) })} className={`${inputClass} pr-6`} placeholder="0" />
+                              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                            </div>
+                            <span className="mt-0.5 block h-4 text-[11px] text-slate-500">
+                              {Number(it.descuento_pct) > 0 ? `P. unit c/desc: ${fmtGs(Math.max(0, (Number(it.precio_unitario) || 0) * (1 - (Number(it.descuento_pct) || 0) / 100)))}` : ""}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <input type="number" min="0" step="1" value={it.descuento || ""} onChange={(e) => updItem(i, { descuento: Number(e.target.value) })} className={inputClass} />
+                            <span className="mt-0.5 block h-4" aria-hidden />
+                          </>
+                        )}
                       </td>
                       <td className="py-2 px-2 pt-4 text-right tabular-nums font-medium">{fmtGs(t.total)}</td>
                       <td className="py-2 pl-2 pt-3.5 text-right">

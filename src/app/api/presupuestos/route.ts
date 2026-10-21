@@ -36,6 +36,7 @@ function parseItems(raw: unknown): PresupuestoItemInput[] | null {
       precio_unitario: precio,
       iva_tipo: asIva(r.iva_tipo),
       descuento: Math.max(0, Number(r.descuento) || 0),
+      descuento_pct: r.descuento_pct == null ? null : Math.max(0, Math.min(100, Number(r.descuento_pct) || 0)),
     });
   }
   return out;
