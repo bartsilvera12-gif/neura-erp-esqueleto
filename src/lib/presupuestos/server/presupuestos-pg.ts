@@ -1,5 +1,6 @@
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { calcMontoIvaIncluido, type IvaTipoPresupuesto } from "@/lib/presupuestos/types";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 /** Item crudo que llega del cliente; los totales se recalculan en el server. */
 export interface PresupuestoItemInput {
@@ -11,6 +12,8 @@ export interface PresupuestoItemInput {
   precio_unitario: number;
   iva_tipo: IvaTipoPresupuesto;
   descuento: number;
+  /** % de descuento por línea (Living Room). El `descuento` absoluto se calcula igual. */
+  descuento_pct?: number | null;
 }
 
 export interface CrearPresupuestoInput {
@@ -143,6 +146,8 @@ export async function crearPresupuesto(
   if (ins.error) throw new Error(ins.error.message);
   const presupuestoId = String((ins.data as { id: string }).id);
 
+  // La columna descuento_pct solo existe en esqueletoerp (Living Room).
+  const lr = esInstanciaLR();
   const itemsRows = calculados.map(({ raw, calc }) => ({
     empresa_id: empresaId,
     presupuesto_id: presupuestoId,
@@ -157,6 +162,7 @@ export async function crearPresupuesto(
     monto_iva: calc.monto_iva,
     descuento: calc.descuento,
     total: calc.total,
+    ...(lr ? { descuento_pct: raw.descuento_pct ?? null } : {}),
   }));
   const insItems = await sb.from("presupuesto_items").insert(itemsRows);
   if (insItems.error) {

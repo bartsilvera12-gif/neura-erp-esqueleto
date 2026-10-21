@@ -35,6 +35,8 @@ type Item = {
   precio_unitario: number;
   iva_tipo: IvaTipoPresupuesto;
   descuento: number;
+  /** Living Room: descuento por % (el `descuento` absoluto se calcula). */
+  descuento_pct: number;
 };
 
 function fmtGs(n: number) {
@@ -43,9 +45,15 @@ function fmtGs(n: number) {
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
+/** Descuento absoluto de la línea. En Living Room es % del bruto; en el resto, monto directo. */
+function descuentoAbsoluto(it: Item) {
+  const bruto = (Number(it.precio_unitario) || 0) * (Number(it.cantidad) || 0);
+  if (esInstanciaLR()) return round2(bruto * (Number(it.descuento_pct) || 0) / 100);
+  return Math.max(0, Number(it.descuento) || 0);
+}
 function itemTotals(it: Item) {
   const bruto = (Number(it.precio_unitario) || 0) * (Number(it.cantidad) || 0);
-  const total = Math.max(0, bruto - (Number(it.descuento) || 0));
+  const total = Math.max(0, bruto - descuentoAbsoluto(it));
   const iva = round2(calcMontoIvaIncluido(it.iva_tipo, total));
   return { total: round2(total), iva, subtotal: round2(total - iva) };
 }
@@ -180,6 +188,7 @@ export default function NuevoPresupuestoPage() {
         precio_unitario: p.precio_venta,
         iva_tipo: "10%",
         descuento: 0,
+        descuento_pct: 0,
       },
     ]);
     setSelProd("");
@@ -197,6 +206,7 @@ export default function NuevoPresupuestoPage() {
         precio_unitario: 0,
         iva_tipo: "10%",
         descuento: 0,
+        descuento_pct: 0,
       },
     ]);
   }
@@ -218,7 +228,7 @@ export default function NuevoPresupuestoPage() {
       subtotal += t.subtotal;
       iva += t.iva;
       total += t.total;
-      desc += Number(it.descuento) || 0;
+      desc += descuentoAbsoluto(it);
     }
     return { subtotal: round2(subtotal), iva: round2(iva), desc: round2(desc), total: round2(total) };
   }, [items]);
@@ -226,6 +236,7 @@ export default function NuevoPresupuestoPage() {
   // Living Room (esqueletoerp): se permite presupuestar sin stock (mercadería en
   // tránsito o por comprar), solo se avisa. En otros clientes se sigue bloqueando.
   const permiteSinStock = esInstanciaLR();
+  const usaLR = esInstanciaLR();
   const stockDe = useMemo(() => new Map(productos.map((p) => [p.id, p.stock])), [productos]);
   const faltaStock = (it: Item) => {
     if (!it.producto_id) return false;
@@ -268,7 +279,8 @@ export default function NuevoPresupuestoPage() {
             unidad_medida: it.unidad_medida,
             precio_unitario: Number(it.precio_unitario),
             iva_tipo: it.iva_tipo,
-            descuento: Number(it.descuento) || 0,
+            descuento: descuentoAbsoluto(it),
+            descuento_pct: esInstanciaLR() ? Number(it.descuento_pct) || 0 : null,
           })),
         }),
       });
@@ -377,7 +389,7 @@ export default function NuevoPresupuestoPage() {
                   <th className="py-2 px-2 w-20">Cant.</th>
                   <th className="py-2 px-2 w-32">Precio unit.</th>
                   <th className="py-2 px-2 w-24">IVA</th>
-                  <th className="py-2 px-2 w-28">Descuento</th>
+                  <th className="py-2 px-2 w-28">{usaLR ? "Desc. %" : "Descuento"}</th>
                   <th className="py-2 px-2 w-32 text-right">Total</th>
                   <th className="py-2 pl-2 w-10"></th>
                 </tr>
@@ -416,8 +428,22 @@ export default function NuevoPresupuestoPage() {
                         <span className="mt-0.5 block h-4" aria-hidden />
                       </td>
                       <td className="py-2 px-2">
-                        <input type="number" min="0" step="1" value={it.descuento || ""} onChange={(e) => updItem(i, { descuento: Number(e.target.value) })} className={inputClass} />
-                        <span className="mt-0.5 block h-4" aria-hidden />
+                        {usaLR ? (
+                          <>
+                            <div className="relative">
+                              <input type="number" min="0" max="100" step="1" value={it.descuento_pct || ""} onChange={(e) => updItem(i, { descuento_pct: Math.max(0, Math.min(100, Number(e.target.value))) })} className={`${inputClass} pr-6`} placeholder="0" />
+                              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                            </div>
+                            <span className="mt-0.5 block h-4 text-[11px] text-slate-500">
+                              {Number(it.descuento_pct) > 0 ? `P. unit c/desc: ${fmtGs(Math.max(0, (Number(it.precio_unitario) || 0) * (1 - (Number(it.descuento_pct) || 0) / 100)))}` : ""}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <input type="number" min="0" step="1" value={it.descuento || ""} onChange={(e) => updItem(i, { descuento: Number(e.target.value) })} className={inputClass} />
+                            <span className="mt-0.5 block h-4" aria-hidden />
+                          </>
+                        )}
                       </td>
                       <td className="py-2 px-2 pt-4 text-right tabular-nums font-medium">{fmtGs(t.total)}</td>
                       <td className="py-2 pl-2 pt-3.5 text-right">

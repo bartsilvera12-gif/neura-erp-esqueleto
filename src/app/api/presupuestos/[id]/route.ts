@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 
     const itq = await ctx.supabase
       .from("presupuesto_items")
-      .select(ITEM_COLS)
+      .select(esInstanciaLR() ? ITEM_COLS + ", descuento_pct" : ITEM_COLS)
       .eq("empresa_id", ctx.auth.empresa_id)
       .eq("presupuesto_id", id)
       .order("created_at", { ascending: true });
@@ -131,6 +131,7 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
           monto_iva: Math.round(iva),
           descuento: desc,
           total: Math.round(bruto),
+          ...(esInstanciaLR() ? { descuento_pct: it.descuento_pct == null ? null : Math.max(0, Math.min(100, Number(it.descuento_pct) || 0)) } : {}),
         });
       }
 
