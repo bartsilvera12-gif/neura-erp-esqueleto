@@ -229,6 +229,7 @@ const MENU_STRUCTURE: MenuItem[] = [
   ]},
   { key: "produccion", slug: "produccion", label: "Producción", href: "/produccion/proyectos", icon: Hammer, children: [
     { label: "Proyectos", href: "/produccion/proyectos" },
+    { label: "Inventario", href: "/produccion/inventario" },
     { label: "Catálogo de tableros", href: "/produccion/tableros" },
     { label: "Catálogo de herrajes", href: "/produccion/herrajes" },
     { label: "Contratistas", href: "/produccion/contratistas" },
