@@ -1,6 +1,7 @@
 import "server-only";
 import { getChatPostgresPool, quoteSchemaTable } from "@/lib/supabase/chat-pg-pool";
 import { assertAllowedChatDataSchema } from "@/lib/supabase/chat-data-schema";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 /**
  * Libro de Compras — comprobantes de compra con su desglose de IVA.
@@ -79,6 +80,7 @@ export async function listLibroCompras(
 
   const schema = assertAllowedChatDataSchema(schemaRaw);
   const tC = quoteSchemaTable(schema, "compras");
+  const tLC = quoteSchemaTable(schema, "libro_compras");
   const tPr = quoteSchemaTable(schema, "proveedores");
 
   const params: unknown[] = [empresaId];
@@ -94,8 +96,35 @@ export async function listLibroCompras(
   if (f.tipo_comprobante) outer.push(`x.tipo_comprobante = ${add(f.tipo_comprobante)}`);
   const outerWhere = outer.length ? `WHERE ${outer.join(" AND ")}` : "";
 
-  const sql = `
-    WITH unificado AS (
+  // Living Room (esqueletoerp) carga las compras fiscales en `libro_compras`
+  // (una fila por comprobante, con el desglose de IVA en la cabecera). El resto
+  // de los clientes usa la tabla `compras` (líneas que se agrupan por comprobante).
+  const innerLR = `
+      SELECT 'compra'::text AS origen_tipo,
+             'Compra'::text AS origen,
+             c.fecha::date   AS fecha,
+             COALESCE(c.proveedor_nombre, pr.nombre) AS proveedor,
+             COALESCE(NULLIF(c.proveedor_ruc, ''), pr.ruc) AS ruc,
+             COALESCE(NULLIF(c.tipo_nombre, ''), 'Factura') AS tipo_comprobante,
+             c.timbrado      AS timbrado,
+             COALESCE(NULLIF(c.nro_comprobante, ''), c.numero_control) AS numero,
+             c.condicion     AS condicion,
+             COALESCE(c.total_exentas, 0)  AS exento,
+             COALESCE(c.total_gravado5, 0) AS gravado5,
+             COALESCE(c.iva5, 0)           AS iva5,
+             COALESCE(c.total_gravado10, 0) AS gravado10,
+             COALESCE(c.iva10, 0)          AS iva10,
+             COALESCE(c.total, 0)          AS total,
+             COALESCE(c.estado, '')        AS estado,
+             c.proveedor_id                AS proveedor_id
+        FROM ${tLC} c
+        LEFT JOIN ${tPr} pr ON pr.id = c.proveedor_id
+       WHERE c.empresa_id = $1::uuid
+         AND COALESCE(c.estado, '') <> 'anulada'
+         AND c.timbrado IS NOT NULL
+         AND btrim(c.timbrado) <> ''`;
+
+  const innerCompras = `
       SELECT 'compra'::text AS origen_tipo,
              'Compra'::text AS origen,
              c.fecha::date   AS fecha,
@@ -105,7 +134,6 @@ export async function listLibroCompras(
              c.nro_timbrado  AS timbrado,
              COALESCE(NULLIF(MIN(c.numero_factura), ''), c.numero_control) AS numero,
              MIN(c.tipo_pago) AS condicion,
-             -- Desglose de IVA sumando las líneas del mismo comprobante.
              COALESCE(SUM(CASE WHEN c.iva_tipo = 'exenta' THEN c.subtotal  ELSE 0 END), 0) AS exento,
              COALESCE(SUM(CASE WHEN c.iva_tipo = '5'      THEN c.subtotal  ELSE 0 END), 0) AS gravado5,
              COALESCE(SUM(CASE WHEN c.iva_tipo = '5'      THEN c.monto_iva ELSE 0 END), 0) AS iva5,
@@ -120,7 +148,11 @@ export async function listLibroCompras(
          AND COALESCE(c.estado, '') <> 'anulada'
          AND c.nro_timbrado IS NOT NULL
          AND btrim(c.nro_timbrado) <> ''
-       GROUP BY c.numero_control, c.fecha::date, c.nro_timbrado
+       GROUP BY c.numero_control, c.fecha::date, c.nro_timbrado`;
+
+  const sql = `
+    WITH unificado AS (
+      ${esInstanciaLR() ? innerLR : innerCompras}
     )
     SELECT x.* FROM unificado x
     ${outerWhere}
