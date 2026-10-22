@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { MONEDAS_COMEX, TIPOS_GASTO_COMEX, FACTOR_COSTO_SIN_IVA, gastoEnGuaranies, totalesGastos, type GastoComex } from "@/lib/comex/gastos";
 import { Aviso, api, btnPrimario, btnSecundario, fechaES, hoyPY, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "./ui";
+import ImportExcelButton from "@/components/ui/ImportExcelButton";
 
 const gs = (n: number) => `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
 const monto = (n: number, moneda: string) =>
@@ -190,9 +191,22 @@ export default function GastosPanel({
       {error && <Aviso>{error}</Aviso>}
 
       {!bloqueado && !abierto && (
-        <button type="button" onClick={() => setAbierto(true)} className={btnPrimario}>
-          <Plus className="h-3.5 w-3.5" /> Cargar gasto
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setAbierto(true)} className={btnPrimario}>
+            <Plus className="h-3.5 w-3.5" /> Cargar gasto
+          </button>
+          {origenTipo === "IMPORTACION" && (
+            <ImportExcelButton
+              entidad="Gastos"
+              previewUrl={`/api/importaciones/${origenId}/gastos/import/preview`}
+              commitUrl={`/api/importaciones/${origenId}/gastos/import/commit`}
+              templateUrl={`/api/importaciones/${origenId}/gastos/import/template`}
+              label="Cargar por Excel"
+              titulo="Importar gastos desde Excel"
+              onCompleted={() => { void cargar(); onCambio?.(); }}
+            />
+          )}
+        </div>
       )}
 
       {!bloqueado && abierto && (
