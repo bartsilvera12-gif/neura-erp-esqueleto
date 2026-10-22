@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Hammer,
   LayoutDashboard,
   ShoppingCart,
   Package,
@@ -226,6 +227,9 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Tablero", href: "/dashboard/proyectos", exactMatch: true },
     { label: "Fondos por proyecto", href: "/dashboard/proyectos/fondos" },
   ]},
+  { key: "produccion", slug: "produccion", label: "Producción", href: "/produccion/tableros", icon: Hammer, children: [
+    { label: "Catálogo de tableros", href: "/produccion/tableros" },
+  ]},
   { key: "rrhh", slug: "rrhh", label: "RRHH", href: "/rrhh/empleados", icon: Briefcase, children: [
     { label: "Empleados", href: "/rrhh/empleados" },
     { label: "Control horario", href: "/rrhh/control-horario" },
@@ -248,6 +252,7 @@ const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "facturas_exportacion", "importaciones"] },
   { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
   { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
+  { id: "produccion", titulo: "Producción", keys: ["produccion"] },
   { id: "contabilidad", titulo: "Contabilidad", keys: ["contabilidad"] },
   { id: "rrhh", titulo: "Recursos Humanos", keys: ["rrhh"] },
   { id: "analisis", titulo: "Análisis", keys: ["reportes"] },
