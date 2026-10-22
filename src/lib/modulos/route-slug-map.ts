@@ -32,6 +32,7 @@ const SIDEBAR_SLUG_HREF_ORDER: { slug: string; href: string }[] = [
   { slug: "planes", href: "/planes" },
   { slug: "gestion-clientes", href: "/gestion-clientes" },
   { slug: "crm", href: "/crm" },
+  { slug: "produccion", href: "/produccion/tableros" },
   { slug: "marketing", href: "/marketing" },
   { slug: "marketing_ops", href: "/dashboard/marketing-ops" },
   { slug: "sorteos", href: "/sorteos" },
@@ -162,6 +163,7 @@ export function pathRequiresModuleSlug(pathname: string): string | null {
   if (p.startsWith("/planes")) return "planes";
   if (p.startsWith("/gestion-clientes")) return "gestion-clientes";
   if (p.startsWith("/crm")) return "crm";
+  if (p.startsWith("/produccion")) return "produccion";
   if (p.startsWith("/marketing")) return "marketing";
   if (p.startsWith("/sorteos")) return "sorteos";
   if (p.startsWith("/contabilidad")) return "contabilidad";
