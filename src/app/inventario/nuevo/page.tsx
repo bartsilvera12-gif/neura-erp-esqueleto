@@ -10,13 +10,14 @@ import CrearProveedorModal from "@/components/inventario/CrearProveedorModal";
 import { productoExiste, saveProducto } from "@/lib/inventario/storage";
 import type { MetodoValuacion } from "@/lib/inventario/types";
 import { Select } from "@/components/ui/Select";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import { AlertTriangle } from "lucide-react";
 import ImportExcelButton from "@/components/ui/ImportExcelButton";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 
 // Opciones estándar de unidad de medida para gastro
 const UNIDADES_OPCIONES = [
-  "UNIDAD","PZA","KG","G","LT","ML","CAJA","BOLSA","PAQUETE","DOCENA","LATA","BOTELLA","PORCION","COMBO",
+  "PZA.","UNIDAD","PZA","KG","G","LT","ML","CAJA","BOLSA","PAQUETE","DOCENA","LATA","BOTELLA","PORCION","COMBO",
 ] as const;
 
 interface CatRow { id: string; nombre: string }
@@ -40,7 +41,7 @@ export default function NuevoProductoPage() {
     precio_venta: "",
     stock_actual: "",
     stock_minimo: "",
-    unidad_medida: "UNIDAD",
+    unidad_medida: esInstanciaLR() ? "PZA." : "UNIDAD",
     metodo_valuacion: "CPP" as MetodoValuacion,
     // Fijo: esta pantalla solo da de alta productos de reventa.
     tipo_producto: "reventa" as const,
