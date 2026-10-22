@@ -41,6 +41,11 @@ export async function contabilizarImportacionCierre(
   const schema = assertAllowedChatDataSchema(schemaRaw);
   const config = await getConfigContable(schema, empresaId);
 
+  // Si la empresa todavía no configuró la contabilidad (no hay fila de
+  // configuración contable), la importación se puede cerrar igual: no se genera
+  // asiento. Cuando activen la contabilidad, los asientos se arman normalmente.
+  if (!config) return null;
+
   const tImp = quoteSchemaTable(schema, "importaciones");
   const tItems = quoteSchemaTable(schema, "importacion_items");
   const tGastos = quoteSchemaTable(schema, "comex_gastos");
