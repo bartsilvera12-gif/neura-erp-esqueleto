@@ -19,7 +19,7 @@ export function fechaDoc(iso: unknown): string {
 export const CSS_DOC = `
   *{box-sizing:border-box} html,body{margin:0;padding:0}
   body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#f3f4f6;font-size:12px}
-  .page{width:210mm;margin:0 auto;background:#fff;padding:10mm}
+  .page{width:216mm;margin:0 auto;background:#fff;padding:10mm}
   .box{border:1px solid #000;margin-bottom:3px}
   .pad{padding:8px 12px}
   .cab{display:flex;gap:3px;margin-bottom:3px}
@@ -49,7 +49,7 @@ export const CSS_DOC = `
   .toolbar button{background:#4FAEB2;color:#fff;border:0;padding:8px 16px;border-radius:6px;font-size:14px;cursor:pointer}
   /* Margen 0 en @page: así el navegador no agrega la fecha arriba ni la dirección
      abajo. El margen real lo pone el padding de .page. */
-  @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;margin:0;padding:11mm}@page{size:A4;margin:0}}
+  @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;margin:0;padding:11mm}@page{size:letter;margin:0}}
 `;
 
 /** Cabecera: [logo] [datos de la empresa] [título + número]. */
