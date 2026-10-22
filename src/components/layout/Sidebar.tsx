@@ -227,7 +227,8 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Tablero", href: "/dashboard/proyectos", exactMatch: true },
     { label: "Fondos por proyecto", href: "/dashboard/proyectos/fondos" },
   ]},
-  { key: "produccion", slug: "produccion", label: "Producción", href: "/produccion/tableros", icon: Hammer, children: [
+  { key: "produccion", slug: "produccion", label: "Producción", href: "/produccion/proyectos", icon: Hammer, children: [
+    { label: "Proyectos", href: "/produccion/proyectos" },
     { label: "Catálogo de tableros", href: "/produccion/tableros" },
     { label: "Catálogo de herrajes", href: "/produccion/herrajes" },
     { label: "Contratistas", href: "/produccion/contratistas" },
