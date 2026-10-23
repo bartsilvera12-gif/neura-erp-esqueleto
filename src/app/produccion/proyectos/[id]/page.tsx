@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Loader2, Package } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { ESTADOS_PROYECTO, ESTADO_PROYECTO_LABEL } from "@/lib/produccion/estados";
+import MaterialesProyecto from "./MaterialesProyecto";
 import PresupuestosProyecto from "./PresupuestosProyecto";
 import OrdenesContratista from "./OrdenesContratista";
 import NotasEntrega from "./NotasEntrega";
@@ -120,6 +121,7 @@ export default function ProyectoDetallePage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
+      <MaterialesProyecto proyectoId={proy.id} />
       <PresupuestosProyecto proyectoId={proy.id} />
       <OrdenesContratista proyectoId={proy.id} />
       <NotasEntrega proyectoId={proy.id} />

@@ -56,6 +56,26 @@ export async function stockDeArticulo(sb: AppSupabaseClient, emp: string, tipo: 
   return { fisico, utilizable, reservado, disponible: utilizable - reservado };
 }
 
+/**
+ * Costo promedio por artículo (método PROMEDIO, definido por el cliente).
+ * promedio = Σ(costo_unitario × cantidad) / Σ(cantidad) sobre las recepciones
+ * de compra que tienen costo cargado. Mapa articulo_id → costo promedio.
+ */
+export async function costoPromedioPorTipo(sb: AppSupabaseClient, emp: string, tipo: ArticuloTipo): Promise<Record<string, number>> {
+  const { data } = await sb.from("prod_inventario_movimientos").select("articulo_id, cantidad, costo_unitario").eq("empresa_id", emp).eq("articulo_tipo", tipo).eq("tipo", "recepcion_compra");
+  const acc: Record<string, { costo: number; cant: number }> = {};
+  for (const r of (data ?? []) as { articulo_id: string; cantidad: number | null; costo_unitario: number | null }[]) {
+    if (r.costo_unitario == null) continue;
+    const a = (acc[r.articulo_id] ??= { costo: 0, cant: 0 });
+    const c = Math.abs(Number(r.cantidad) || 0);
+    a.costo += (Number(r.costo_unitario) || 0) * c;
+    a.cant += c;
+  }
+  const out: Record<string, number> = {};
+  for (const id of Object.keys(acc)) out[id] = acc[id].cant > 0 ? acc[id].costo / acc[id].cant : 0;
+  return out;
+}
+
 /** Calcula el stock de todos los artículos de un tipo (mapa articulo_id → stock). */
 export async function stockPorTipo(sb: AppSupabaseClient, emp: string, tipo: ArticuloTipo): Promise<Record<string, StockArticulo>> {
   const out: Record<string, StockArticulo> = {};

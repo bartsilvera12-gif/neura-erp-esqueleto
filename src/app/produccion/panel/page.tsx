@@ -7,8 +7,8 @@ import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session"
 import { ESTADO_PROYECTO_LABEL } from "@/lib/produccion/estados";
 
 type ProyectoPanel = { id: string; codigo: string; nombre: string; cliente_nombre: string | null; estado: string; fecha_entrega_prevista: string | null; costo_presupuestado: number; costo_real: number; ingreso_final: number; utilidad_real: number; margen_real: number | null; desviacion: number; retrasado: boolean };
-type InventarioPanel = { articulo_tipo: string; codigo: string; descripcion: string; unidad: string; fisico: number; reservado: number; disponible: number; stock_minimo: number | null; bajo: boolean };
-type Datos = { proyectos: ProyectoPanel[]; resumen_estados: Record<string, number>; retrasados: number; proximos: number; inventario: InventarioPanel[]; bajo_minimo: number; desviaciones_causa: { causa: string; label: string; monto: number }[] };
+type InventarioPanel = { articulo_tipo: string; codigo: string; descripcion: string; unidad: string; fisico: number; reservado: number; disponible: number; stock_minimo: number | null; bajo: boolean; costo_promedio: number; valorizacion: number };
+type Datos = { proyectos: ProyectoPanel[]; resumen_estados: Record<string, number>; retrasados: number; proximos: number; inventario: InventarioPanel[]; bajo_minimo: number; valorizacion_total: number; desviaciones_causa: { causa: string; label: string; monto: number }[] };
 
 const gs = (n: unknown) => "₲ " + Math.round(Number(n) || 0).toLocaleString("es-PY");
 const fFecha = (v: unknown) => (v ? String(v).slice(0, 10).split("-").reverse().join("/") : "—");
@@ -25,11 +25,11 @@ export default function PanelProduccionPage() {
   }, []);
   useEffect(() => { void cargar(); }, [cargar]);
 
-  async function exportar(reporte: string) {
-    const r = await fetchWithSupabaseSession(`/api/produccion/panel/export?reporte=${reporte}`, { cache: "no-store" });
+  async function exportar(reporte: string, formato: "excel" | "pdf" = "excel") {
+    const r = await fetchWithSupabaseSession(`/api/produccion/panel/export?reporte=${reporte}&formato=${formato}`, { cache: "no-store" });
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `produccion-${reporte}.xlsx`; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = `produccion-${reporte}.${formato === "pdf" ? "pdf" : "xlsx"}`; a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -50,6 +50,7 @@ export default function PanelProduccionPage() {
         <div className="zx-surface p-4"><p className="flex items-center gap-1 text-xs text-slate-400"><AlertTriangle className="h-3.5 w-3.5" /> Retrasados</p><p className="text-2xl font-bold text-rose-600">{d.retrasados}</p></div>
         <div className="zx-surface p-4"><p className="text-xs text-slate-400">Artículos bajo mínimo</p><p className="text-2xl font-bold text-rose-600">{d.bajo_minimo}</p></div>
       </div>
+      <div className="zx-surface mb-5 p-4"><p className="text-xs text-slate-400">Valorización del inventario (promedio)</p><p className="text-2xl font-bold text-slate-900">{gs(d.valorizacion_total)}</p></div>
 
       {/* Proyectos por estado */}
       <div className="zx-surface mb-5 p-4">
@@ -66,7 +67,7 @@ export default function PanelProduccionPage() {
       <div className="zx-surface mb-5 p-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">Presupuesto vs. real · Rentabilidad por proyecto</h2>
-          <button onClick={() => exportar("rentabilidad")} className={btnExp}><Download className="h-3.5 w-3.5" /> Excel</button>
+          <div className="flex gap-1"><button onClick={() => exportar("rentabilidad", "excel")} className={btnExp}><Download className="h-3.5 w-3.5" /> Excel</button><button onClick={() => exportar("rentabilidad", "pdf")} className={btnExp}><Download className="h-3.5 w-3.5" /> PDF</button></div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -100,18 +101,18 @@ export default function PanelProduccionPage() {
         <div className="zx-surface p-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-700">Inventario</h2>
-            <button onClick={() => exportar("inventario")} className={btnExp}><Download className="h-3.5 w-3.5" /> Excel</button>
+            <div className="flex gap-1"><button onClick={() => exportar("inventario", "excel")} className={btnExp}><Download className="h-3.5 w-3.5" /> Excel</button><button onClick={() => exportar("inventario", "pdf")} className={btnExp}><Download className="h-3.5 w-3.5" /> PDF</button></div>
           </div>
           <div className="max-h-80 overflow-y-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-slate-100 text-left text-xs text-slate-400"><th className="px-2 py-1.5 font-medium">Artículo</th><th className="px-2 py-1.5 text-right font-medium">Disp.</th><th className="px-2 py-1.5 text-right font-medium">Mín.</th></tr></thead>
+              <thead><tr className="border-b border-slate-100 text-left text-xs text-slate-400"><th className="px-2 py-1.5 font-medium">Artículo</th><th className="px-2 py-1.5 text-right font-medium">Disp.</th><th className="px-2 py-1.5 text-right font-medium">Valorización</th></tr></thead>
               <tbody>
                 {d.inventario.length === 0 && <tr><td colSpan={3} className="px-2 py-4 text-center text-slate-400">Sin artículos.</td></tr>}
                 {d.inventario.map((a) => (
                   <tr key={`${a.articulo_tipo}-${a.codigo}`} className="border-b border-slate-50 last:border-0">
                     <td className="px-2 py-1.5"><span className="font-mono text-xs text-[#3F8E91]">{a.codigo}</span> <span className="text-xs text-slate-600">{a.descripcion}</span></td>
                     <td className={`px-2 py-1.5 text-right font-mono ${a.bajo ? "font-bold text-rose-600" : ""}`}>{a.disponible} <span className="text-[11px] text-slate-400">{a.unidad}</span></td>
-                    <td className="px-2 py-1.5 text-right text-xs text-slate-400">{a.stock_minimo ?? "—"}</td>
+                    <td className="px-2 py-1.5 text-right font-mono text-xs">{gs(a.valorizacion)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -123,7 +124,7 @@ export default function PanelProduccionPage() {
         <div className="zx-surface p-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-700">Causas de desviación (adicionales)</h2>
-            <button onClick={() => exportar("desviaciones")} className={btnExp}><Download className="h-3.5 w-3.5" /> Excel</button>
+            <div className="flex gap-1"><button onClick={() => exportar("desviaciones", "excel")} className={btnExp}><Download className="h-3.5 w-3.5" /> Excel</button><button onClick={() => exportar("desviaciones", "pdf")} className={btnExp}><Download className="h-3.5 w-3.5" /> PDF</button></div>
           </div>
           <table className="w-full text-sm">
             <tbody>
