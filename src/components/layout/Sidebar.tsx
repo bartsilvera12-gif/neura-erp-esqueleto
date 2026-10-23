@@ -228,6 +228,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Fondos por proyecto", href: "/dashboard/proyectos/fondos" },
   ]},
   { key: "produccion", slug: "produccion", label: "Producción", href: "/produccion/proyectos", icon: Hammer, children: [
+    { label: "Panel", href: "/produccion/panel" },
     { label: "Proyectos", href: "/produccion/proyectos" },
     { label: "Inventario", href: "/produccion/inventario" },
     { label: "Catálogo de tableros", href: "/produccion/tableros" },
