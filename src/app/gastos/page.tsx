@@ -2,15 +2,27 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getGastos, deleteGasto } from "@/lib/gastos/actions";
+import { getGastos, getFacturasGasto, deleteGasto } from "@/lib/gastos/actions";
 import { esInstanciaLR } from "@/lib/inventario/campos-lr";
-import type { Gasto } from "@/lib/gastos/actions";
+import type { Gasto, FacturaGasto } from "@/lib/gastos/actions";
 import { ClipboardList } from "lucide-react";
 
 function formatGs(valor: number) {
   return `${valor.toLocaleString("es-PY")} ₲`;
 }
+
+/** Monto con su moneda: las facturas del libro de compras pueden ser USD/BOB. */
+function formatMonto(valor: number, moneda: string) {
+  if (moneda && moneda !== "PYG") {
+    return `${moneda} ${valor.toLocaleString("es-PY", { maximumFractionDigits: 2 })}`;
+  }
+  return formatGs(valor);
+}
+
+/** Fila unificada: un recibo (tabla gastos) o una factura (libro de compras). */
+type FilaRecibo = { kind: "recibo"; fechaOrden: string } & Gasto;
+type FilaFactura = { kind: "factura"; fechaOrden: string } & FacturaGasto;
+type Fila = FilaRecibo | FilaFactura;
 
 function formatFecha(fecha: string) {
   try {
@@ -31,17 +43,28 @@ const tipoBadge: Record<string, string> = {
 };
 
 export default function GastosPage() {
-  const router = useRouter();
   const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [facturas, setFacturas] = useState<FacturaGasto[]>([]);
   const [cargando, setCargando] = useState(true);
   const [eliminando, setEliminando] = useState<string | null>(null);
 
   useEffect(() => {
-    getGastos()
-      .then(setGastos)
-      .catch(() => setGastos([]))
+    Promise.all([
+      getGastos().catch(() => [] as Gasto[]),
+      getFacturasGasto().catch(() => [] as FacturaGasto[]),
+    ])
+      .then(([g, f]) => {
+        setGastos(g);
+        setFacturas(f);
+      })
       .finally(() => setCargando(false));
   }, []);
+
+  // Recibos (sin factura) + facturas del libro de compras, todo junto por fecha.
+  const filas: Fila[] = [
+    ...gastos.map((g): FilaRecibo => ({ ...g, kind: "recibo", fechaOrden: (g.fecha || "").slice(0, 10) })),
+    ...facturas.map((f): FilaFactura => ({ ...f, kind: "factura", fechaOrden: (f.fecha || "").slice(0, 10) })),
+  ].sort((a, b) => b.fechaOrden.localeCompare(a.fechaOrden));
 
   async function handleEliminar(g: Gasto) {
     if (!confirm(`¿Eliminar el gasto "${g.descripcion || g.categoria || "sin descripción"}"?`)) return;
@@ -106,7 +129,7 @@ export default function GastosPage() {
       <div className="zx-surface zx-surface-accent overflow-hidden">
         {cargando ? (
           <div className="py-16 text-center text-gray-400 text-sm animate-pulse">Cargando gastos…</div>
-        ) : gastos.length === 0 ? (
+        ) : filas.length === 0 ? (
           <div className="py-16 text-center text-gray-400">
             <ClipboardList className="mx-auto mb-3 h-10 w-10 text-slate-300" aria-hidden />
             <p className="font-medium text-gray-600">No hay gastos registrados</p>
@@ -122,69 +145,107 @@ export default function GastosPage() {
             <thead>
               <tr className="zx-thead">
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Fecha</th>
+                <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Comprobante</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Categoría</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Descripción</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Monto</th>
-                <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Tipo</th>
                 <th className="text-left text-sm font-semibold text-slate-600 px-5 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {gastos.map((g) => (
-                <tr key={g.id} className="hover:bg-[#4FAEB2]/[0.04] transition-colors">
-                  <td className="px-5 py-3.5 text-sm text-gray-600">{formatFecha(g.fecha)}</td>
-                  <td className="px-5 py-3.5 text-sm font-medium text-gray-800">{g.categoria || "—"}</td>
-                  <td className="px-5 py-3.5 text-sm text-gray-600 max-w-[200px] truncate">
-                    {g.descripcion || "—"}
-                  </td>
-                  <td className="px-5 py-3.5 text-sm font-semibold text-gray-800 tabular-nums">
-                    {formatGs(g.monto)}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span
-                      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${tipoBadge[g.tipo] ?? "bg-slate-100"}`}
-                    >
-                      {g.tipo}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex gap-2">
-                      {esInstanciaLR() && g.facturado === false && (
-                        <a
-                          href={`/api/gastos/${g.id}/recibo?auto=1`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-[#3F8E91] hover:text-[#2F6E71] underline"
-                        >
-                          Recibo
-                        </a>
-                      )}
+              {filas.map((fila) =>
+                fila.kind === "factura" ? (
+                  <tr key={`f-${fila.id}`} className="hover:bg-[#4FAEB2]/[0.04] transition-colors">
+                    <td className="px-5 py-3.5 text-sm text-gray-600">{formatFecha(fila.fecha)}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                        Factura
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm font-medium text-gray-800">{fila.proveedor || "—"}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-600 max-w-[220px] truncate">
+                      {[fila.tipo_nombre, fila.nro_comprobante ? `N° ${fila.nro_comprobante}` : ""]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </td>
+                    <td className="px-5 py-3.5 text-sm font-semibold text-gray-800 tabular-nums">
+                      {formatMonto(fila.total, fila.moneda)}
+                    </td>
+                    <td className="px-5 py-3.5">
                       <Link
-                        href={`/gastos/${g.id}/editar`}
-                        className="text-xs text-gray-500 hover:text-gray-800 underline"
+                        href={`/libro-compras/${fila.id}`}
+                        className="text-xs text-[#3F8E91] hover:text-[#2F6E71] underline"
                       >
-                        Editar
+                        Ver / Editar
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleEliminar(g)}
-                        disabled={eliminando === g.id}
-                        className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50"
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={`g-${fila.id}`} className="hover:bg-[#4FAEB2]/[0.04] transition-colors">
+                    <td className="px-5 py-3.5 text-sm text-gray-600">{formatFecha(fila.fecha)}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[#4FAEB2]/15 text-[#2F6E71]">
+                        Recibo
+                      </span>
+                      <span
+                        className={`ml-1 inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${tipoBadge[fila.tipo] ?? "bg-slate-100"}`}
                       >
-                        {eliminando === g.id ? "…" : "Eliminar"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {fila.tipo}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm font-medium text-gray-800">{fila.categoria || "—"}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray-600 max-w-[220px] truncate">
+                      {fila.descripcion || "—"}
+                    </td>
+                    <td className="px-5 py-3.5 text-sm font-semibold text-gray-800 tabular-nums">
+                      {formatGs(fila.monto)}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex gap-2">
+                        {esInstanciaLR() && fila.facturado === false && (
+                          <a
+                            href={`/api/gastos/${fila.id}/recibo?auto=1`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-[#3F8E91] hover:text-[#2F6E71] underline"
+                          >
+                            Recibo
+                          </a>
+                        )}
+                        <Link
+                          href={`/gastos/${fila.id}/editar`}
+                          className="text-xs text-gray-500 hover:text-gray-800 underline"
+                        >
+                          Editar
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleEliminar(fila)}
+                          disabled={eliminando === fila.id}
+                          className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50"
+                        >
+                          {eliminando === fila.id ? "…" : "Eliminar"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         )}
       </div>
 
-      {gastos.length > 0 && (
+      {filas.length > 0 && (
         <p className="text-sm text-gray-500">
-          <span className="font-semibold text-gray-800">{gastos.length}</span> gastos
+          <span className="font-semibold text-gray-800">{filas.length}</span> registros
+          {facturas.length > 0 && (
+            <>
+              {" "}
+              · {gastos.length} recibo{gastos.length === 1 ? "" : "s"} · {facturas.length} factura
+              {facturas.length === 1 ? "" : "s"}
+            </>
+          )}
         </p>
       )}
     </div>

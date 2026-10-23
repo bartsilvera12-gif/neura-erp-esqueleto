@@ -82,6 +82,47 @@ export async function getGastos(): Promise<Gasto[]> {
   return (data ?? []).map(mapRow);
 }
 
+/**
+ * Living Room: una factura de gasto cargada en el Libro de Compras, mapeada para
+ * mostrarse junto a los recibos en la pantalla de Gastos operativos.
+ */
+export type FacturaGasto = {
+  id: string;
+  fecha: string;
+  proveedor: string;
+  nro_comprobante: string;
+  tipo_nombre: string;
+  moneda: string;
+  total: number;
+};
+
+/**
+ * Trae las facturas de gasto (comprobantes vigentes del Libro de Compras) para
+ * listarlas en Gastos operativos. Solo Living Room: en otras instancias no hay
+ * libro de compras y se devuelve vacío. Nunca lanza: si falla, devuelve [].
+ */
+export async function getFacturasGasto(): Promise<FacturaGasto[]> {
+  if (typeof window === "undefined" || !esInstanciaLR()) return [];
+  try {
+    const res = await fetchWithSupabaseSession("/api/libro-compras?estado=registrada", { cache: "no-store" });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { success?: boolean; data?: { compras?: Record<string, unknown>[] } };
+    const compras = json?.data?.compras;
+    if (!Array.isArray(compras)) return [];
+    return compras.map((c) => ({
+      id: String(c.id),
+      fecha: String(c.fecha ?? ""),
+      proveedor: String(c.proveedor_nombre ?? ""),
+      nro_comprobante: String(c.nro_comprobante ?? ""),
+      tipo_nombre: String(c.tipo_nombre ?? ""),
+      moneda: String(c.moneda ?? "PYG"),
+      total: Number(c.total) || 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /** Obtiene los gastos del mes actual (para Dashboard). RLS filtra por empresa. */
 export async function getGastosMesActual(): Promise<Gasto[]> {
   const supabase = await getBrowserSupabaseForEmpresaData();

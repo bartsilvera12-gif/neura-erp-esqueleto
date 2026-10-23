@@ -110,7 +110,7 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ n
   .firmas{display:flex;gap:40px;margin-top:48px}
   .firma{flex:1;border-top:1px solid #9ca3af;padding-top:6px;text-align:center;color:#6b7280;font-size:11px}
   .pie{margin-top:22px;font-size:10px;color:#9ca3af;text-align:center}
-  @media print{body{padding:0}.noprint{display:none}}
+  @media print{body{padding:0}.noprint{display:none}@page{size:Letter;margin:14mm}}
 </style></head>
 <body><div class="wrap">
   ${membreteA4(origin)}

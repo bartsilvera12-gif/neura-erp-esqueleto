@@ -84,7 +84,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   .tot.big { font-weight: 800; font-size: 15px; background: #ecfdf5; border-radius: 6px; margin-top: 4px; }
   .foot { margin-top: 40px; display: flex; justify-content: space-around; font-size: 12px; }
   .firma { border-top: 1px solid #9ca3af; padding-top: 4px; width: 220px; text-align: center; }
-  @media print { body { padding: 0; } .noprint { display: none; } }
+  @media print { body { padding: 0; } .noprint { display: none; } @page { size: Letter; margin: 14mm; } }
 </style></head>
 <body><div class="wrap">
   ${membreteA4()}
