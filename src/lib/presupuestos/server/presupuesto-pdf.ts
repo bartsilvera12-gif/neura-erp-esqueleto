@@ -1,5 +1,5 @@
 /**
- * Genera el PDF de un presupuesto (pdf-lib, A4) con un diseño formal, pensado
+ * Genera el PDF de un presupuesto (pdf-lib, PAGE) con un diseño formal, pensado
  * para que el cliente lo presente ante una empresa. Membrete con datos del
  * emisor, cajas de cliente/detalle, tabla de ítems con ajuste de línea, totales
  * con acento, condiciones comerciales, observaciones y área de firmas.
@@ -20,9 +20,9 @@ const GRIS = rgb(0.42, 0.45, 0.5);
 const GRIS_CLARO = rgb(0.85, 0.87, 0.89);
 const GRIS_LINEA = rgb(0.91, 0.93, 0.94);
 
-const A4: [number, number] = [595.28, 841.89];
+const PAGE: [number, number] = [612, 792]; // tamaño carta (Letter); antes A4 (595.28 × 841.89)
 const MX = 48;
-const TOP = 800;
+const TOP = PAGE[1] - 42; // margen superior equivalente al que tenía en A4
 const BOTTOM = 92; // deja lugar para firmas + pie
 
 export interface PresupuestoPdfData {
@@ -132,7 +132,7 @@ interface Ctx {
 
 function membrete(c: Ctx) {
   const { page, bold, reg, emisor } = c;
-  const rightX = A4[0] - MX;
+  const rightX = PAGE[0] - MX;
   let ly = c.y;
 
   if (c.logo) {
@@ -156,20 +156,20 @@ function membrete(c: Ctx) {
 
   c.y -= 58;
   // Regla fina bajo el membrete.
-  page.drawRectangle({ x: MX, y: c.y, width: A4[0] - MX * 2, height: 1.4, color: TINTA });
+  page.drawRectangle({ x: MX, y: c.y, width: PAGE[0] - MX * 2, height: 1.4, color: TINTA });
   c.y -= 26;
 }
 
 function pie(doc: PDFDocument, reg: PDFFont) {
   const paginas = doc.getPages();
   paginas.forEach((p, i) => {
-    p.drawRectangle({ x: MX, y: 60, width: A4[0] - MX * 2, height: 0.6, color: GRIS_LINEA });
+    p.drawRectangle({ x: MX, y: 60, width: PAGE[0] - MX * 2, height: 0.6, color: GRIS_LINEA });
     const nota = "Presupuesto sujeto a disponibilidad de stock y a la validez indicada · Documento no fiscal, no válido como factura.";
     const nw = reg.widthOfTextAtSize(nota, 7);
-    p.drawText(nota, { x: (A4[0] - nw) / 2, y: 48, size: 7, font: reg, color: GRIS });
+    p.drawText(nota, { x: (PAGE[0] - nw) / 2, y: 48, size: 7, font: reg, color: GRIS });
     const pg = `Página ${i + 1} de ${paginas.length}`;
     const pw = reg.widthOfTextAtSize(pg, 7);
-    p.drawText(pg, { x: A4[0] - MX - pw, y: 48, size: 7, font: reg, color: GRIS });
+    p.drawText(pg, { x: PAGE[0] - MX - pw, y: 48, size: 7, font: reg, color: GRIS });
   });
 }
 
@@ -184,8 +184,8 @@ export async function buildPresupuestoPdf(
   const logo = lb ? (lb.tipo === "jpg" ? await doc.embedJpg(lb.bytes) : await doc.embedPng(lb.bytes)) : null;
   const moneda = data.moneda === "USD" ? "USD" : "PYG";
 
-  const c: Ctx = { doc, page: doc.addPage(A4), y: TOP, reg, bold, logo, emisor };
-  const W = A4[0] - MX * 2;
+  const c: Ctx = { doc, page: doc.addPage(PAGE), y: TOP, reg, bold, logo, emisor };
+  const W = PAGE[0] - MX * 2;
   membrete(c);
 
   // ── Título + meta ──────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ export async function buildPresupuestoPdf(
 
   // Caja meta a la derecha.
   const metaW = 210;
-  const metaX = A4[0] - MX - metaW;
+  const metaX = PAGE[0] - MX - metaW;
   const metaRows: Array<[string, string]> = [
     ["N° de presupuesto", data.numero_control],
     ["Fecha de emisión", fecha(data.fecha)],
@@ -287,7 +287,7 @@ export async function buildPresupuestoPdf(
     const rowH = nameLines.length * NAME_LH + (skuTxt ? SKU_LH : 0) + PAD;
     // salto de página (el pie y la numeración se dibujan al final, en pie()).
     if (c.y - rowH < BOTTOM + 40) {
-      c.page = doc.addPage(A4);
+      c.page = doc.addPage(PAGE);
       c.y = TOP;
       membrete(c);
       drawHeader();
@@ -324,12 +324,12 @@ export async function buildPresupuestoPdf(
 
   // ── Totales ─────────────────────────────────────────────────────────────────
   const totW = 250;
-  const totX = A4[0] - MX - totW;
-  if (c.y < BOTTOM + 96) { c.page = doc.addPage(A4); c.y = TOP; membrete(c); }
+  const totX = PAGE[0] - MX - totW;
+  if (c.y < BOTTOM + 96) { c.page = doc.addPage(PAGE); c.y = TOP; membrete(c); }
   c.y -= 16; // aire después de la tabla
   const totLine = (k: string, v: string) => {
     c.page.drawText(k, { x: totX, y: c.y, size: 9.5, font: reg, color: GRIS });
-    c.page.drawText(v, { x: A4[0] - MX - reg.widthOfTextAtSize(v, 9.5), y: c.y, size: 9.5, font: reg, color: SLATE });
+    c.page.drawText(v, { x: PAGE[0] - MX - reg.widthOfTextAtSize(v, 9.5), y: c.y, size: 9.5, font: reg, color: SLATE });
     c.y -= 16;
   };
   totLine("Subtotal (sin IVA)", money(data.subtotal, moneda));
@@ -342,7 +342,7 @@ export async function buildPresupuestoPdf(
   const barMid = c.y - barH / 2;
   c.page.drawText("TOTAL", { x: totX, y: barMid - 4.5, size: 12, font: bold, color: rgb(1, 1, 1) });
   const totalTxt = money(data.total, moneda);
-  c.page.drawText(totalTxt, { x: A4[0] - MX - bold.widthOfTextAtSize(totalTxt, 14), y: barMid - 5, size: 14, font: bold, color: rgb(1, 1, 1) });
+  c.page.drawText(totalTxt, { x: PAGE[0] - MX - bold.widthOfTextAtSize(totalTxt, 14), y: barMid - 5, size: 14, font: bold, color: rgb(1, 1, 1) });
   c.y -= barH + 24;
 
   // ── Condiciones + observaciones ─────────────────────────────────────────────
@@ -353,7 +353,7 @@ export async function buildPresupuestoPdf(
   if (data.plazo_entrega) condiciones.push(`Plazo de entrega: ${data.plazo_entrega}.`);
 
   const needCond = 20 + condiciones.length * 12 + (data.observaciones ? 40 : 0);
-  if (c.y - needCond < BOTTOM + 60) { c.page = doc.addPage(A4); c.y = TOP; membrete(c); }
+  if (c.y - needCond < BOTTOM + 60) { c.page = doc.addPage(PAGE); c.y = TOP; membrete(c); }
 
   c.page.drawText("CONDICIONES COMERCIALES", { x: MX, y: c.y, size: 8, font: bold, color: ACENTO });
   c.y -= 15;
@@ -369,7 +369,7 @@ export async function buildPresupuestoPdf(
     c.page.drawText("OBSERVACIONES", { x: MX, y: c.y, size: 8, font: bold, color: ACENTO });
     c.y -= 14;
     for (const ln of wrap(data.observaciones, reg, 9, W)) {
-      if (c.y < BOTTOM + 60) { c.page = doc.addPage(A4); c.y = TOP; membrete(c); }
+      if (c.y < BOTTOM + 60) { c.page = doc.addPage(PAGE); c.y = TOP; membrete(c); }
       c.page.drawText(ln, { x: MX, y: c.y, size: 9, font: reg, color: SLATE });
       c.y -= 12;
     }

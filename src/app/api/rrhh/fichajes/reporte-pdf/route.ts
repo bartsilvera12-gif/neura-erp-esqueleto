@@ -46,10 +46,11 @@ export async function GET(request: NextRequest) {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const A4 = [595.28, 841.89] as [number, number];
+  const PAGE = [612, 792] as [number, number]; // tamaño carta (Letter); antes A4 (595.28 × 841.89)
   const MX = 36;
-  let page = doc.addPage(A4);
-  let y = 800;
+  const topY = PAGE[1] - 42; // margen superior equivalente al que tenía en A4
+  let page = doc.addPage(PAGE);
+  let y = topY;
 
   const line = (
     text: string,
@@ -57,8 +58,8 @@ export async function GET(request: NextRequest) {
   ) => {
     const size = opts.size ?? 10;
     if (y < 60) {
-      page = doc.addPage(A4);
-      y = 800;
+      page = doc.addPage(PAGE);
+      y = topY;
     }
     page.drawText(text, {
       x: MX,
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
   line(`Rango: ${desde} al ${hasta}`, { size: 10, color: [0.4, 0.4, 0.4] });
   y -= 6;
 
-  page.drawLine({ start: { x: MX, y }, end: { x: A4[0] - MX, y }, thickness: 0.5 });
+  page.drawLine({ start: { x: MX, y }, end: { x: PAGE[0] - MX, y }, thickness: 0.5 });
   y -= 10;
 
   // Header de tabla
@@ -92,8 +93,8 @@ export async function GET(request: NextRequest) {
     const horas = Number(r.horas) || 0;
     totalHoras += horas;
     if (y < 60) {
-      page = doc.addPage(A4);
-      y = 800;
+      page = doc.addPage(PAGE);
+      y = topY;
     }
     page.drawText(String(r.fecha), { x: MX, y, size: 9, font });
     page.drawText(String(emp?.nombre ?? "").slice(0, 30), { x: MX + 80, y, size: 9, font });
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest) {
   }
 
   y -= 8;
-  page.drawLine({ start: { x: MX, y }, end: { x: A4[0] - MX, y }, thickness: 0.5 });
+  page.drawLine({ start: { x: MX, y }, end: { x: PAGE[0] - MX, y }, thickness: 0.5 });
   y -= 12;
   line(`Total horas registradas: ${totalHoras.toFixed(1)}`, { bold: true });
   line(`Registros: ${rows.length}`);
