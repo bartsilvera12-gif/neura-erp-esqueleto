@@ -211,7 +211,7 @@ export default function InventarioPage() {
     // Sin acentos y sin importar el orden ("35 aspir" encuentra "Aspiradora … 35 litros").
     const términos = foldText(busqueda).split(/\s+/).filter(Boolean);
     if (términos.length > 0) {
-      const heno = `${foldText(p.nombre)} ${foldText(p.sku ?? "")}`;
+      const heno = `${foldText(p.nombre)} ${foldText(p.sku ?? "")} ${foldText(p.codigo_barras ?? "")}`;
       if (!términos.every((t) => heno.includes(t))) return false;
     }
 
@@ -530,7 +530,7 @@ export default function InventarioPage() {
               </svg>
               <input
                 type="text"
-                placeholder="Nombre o SKU… (ej: «compresor 100» o «INS-0006»)"
+                placeholder="Nombre, SKU o código de barras…"
                 value={busqueda}
                 onChange={(e) => { setBusqueda(e.target.value); setPagina(1); }}
                 className="zx-surface w-full py-2 pl-9 pr-8 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20"
