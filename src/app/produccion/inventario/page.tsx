@@ -137,12 +137,13 @@ function ModalMovimiento({ fila, onClose, onOk }: { fila: Fila; onClose: () => v
   const [ubicacion, setUbicacion] = useState("");
   const [referencia, setReferencia] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [costoUnitario, setCostoUnitario] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
   async function guardar() {
     setErr(null); setGuardando(true);
-    const body = { articulo_tipo: fila.articulo_tipo, articulo_id: fila.articulo_id, tipo, cantidad: Number(cantidad) || 0, salida: tipo === "ajuste_conteo" ? salida : false, unidad: fila.unidad, ubicacion, referencia, motivo };
+    const body = { articulo_tipo: fila.articulo_tipo, articulo_id: fila.articulo_id, tipo, cantidad: Number(cantidad) || 0, salida: tipo === "ajuste_conteo" ? salida : false, unidad: fila.unidad, ubicacion, referencia, motivo, costo_unitario: tipo === "recepcion_compra" ? Number(costoUnitario) || 0 : undefined };
     const r = await fetchWithSupabaseSession("/api/produccion/inventario/movimientos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({ success: false, error: "Error de red." }));
     setGuardando(false);
     if (r?.success) onOk(); else setErr(r?.error ?? "No se pudo registrar.");
@@ -166,6 +167,7 @@ function ModalMovimiento({ fila, onClose, onOk }: { fila: Fila; onClose: () => v
             <div className="flex-1"><label className="text-xs text-slate-400">Cantidad</label><input type="number" value={cantidad} onChange={(e) => setCantidad(e.target.value)} className={input} /></div>
             {esAjuste && <div className="flex-1"><label className="text-xs text-slate-400">Sentido</label><select value={salida ? "salida" : "entrada"} onChange={(e) => setSalida(e.target.value === "salida")} className={input}><option value="entrada">Suma (+)</option><option value="salida">Resta (−)</option></select></div>}
           </div>
+          {tipo === "recepcion_compra" && <div><label className="text-xs text-slate-400">Costo unitario (Gs.) — para la valuación promedio</label><input type="number" value={costoUnitario} onChange={(e) => setCostoUnitario(e.target.value)} className={input} /></div>}
           <div><label className="text-xs text-slate-400">Ubicación</label><input value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} className={input} /></div>
           <div><label className="text-xs text-slate-400">Referencia (comprobante / documento)</label><input value={referencia} onChange={(e) => setReferencia(e.target.value)} className={input} /></div>
           <div><label className="text-xs text-slate-400">Motivo {esAjuste && <span className="text-rose-500">*</span>}</label><input value={motivo} onChange={(e) => setMotivo(e.target.value)} className={input} /></div>
