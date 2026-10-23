@@ -7,6 +7,7 @@ import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session"
 import { ESTADOS_PROYECTO, ESTADO_PROYECTO_LABEL } from "@/lib/produccion/estados";
 import PresupuestosProyecto from "./PresupuestosProyecto";
 import OrdenesContratista from "./OrdenesContratista";
+import NotasEntrega from "./NotasEntrega";
 
 type Proyecto = Record<string, unknown> & { id: string; codigo: string; nombre: string; estado: string; prioridad: string };
 type Mueble = { id: string; codigo: string | null; descripcion: string; cantidad: number; estado: string; observaciones: string | null };
@@ -116,6 +117,7 @@ export default function ProyectoDetallePage({ params }: { params: Promise<{ id: 
 
       <PresupuestosProyecto proyectoId={proy.id} />
       <OrdenesContratista proyectoId={proy.id} />
+      <NotasEntrega proyectoId={proy.id} />
     </div>
   );
 }
