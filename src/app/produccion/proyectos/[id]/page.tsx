@@ -8,6 +8,9 @@ import { ESTADOS_PROYECTO, ESTADO_PROYECTO_LABEL } from "@/lib/produccion/estado
 import PresupuestosProyecto from "./PresupuestosProyecto";
 import OrdenesContratista from "./OrdenesContratista";
 import NotasEntrega from "./NotasEntrega";
+import GastosProyecto from "./GastosProyecto";
+import RentabilidadProyecto from "./RentabilidadProyecto";
+import CierreProyecto from "./CierreProyecto";
 
 type Proyecto = Record<string, unknown> & { id: string; codigo: string; nombre: string; estado: string; prioridad: string };
 type Mueble = { id: string; codigo: string | null; descripcion: string; cantidad: number; estado: string; observaciones: string | null };
@@ -52,7 +55,9 @@ export default function ProyectoDetallePage({ params }: { params: Promise<{ id: 
   if (!proy) return <p className="p-6 text-sm text-red-600">{error ?? "No encontrado."}</p>;
 
   const i = ESTADOS_PROYECTO.indexOf(proy.estado as (typeof ESTADOS_PROYECTO)[number]);
-  const siguiente = i >= 0 && i < ESTADOS_PROYECTO.length - 1 ? ESTADOS_PROYECTO[i + 1] : null;
+  // El paso a "cerrado" se hace desde el panel de cierre (con inspección y validaciones), no desde el botón genérico.
+  const siguienteRaw = i >= 0 && i < ESTADOS_PROYECTO.length - 1 ? ESTADOS_PROYECTO[i + 1] : null;
+  const siguiente = siguienteRaw === "cerrado" ? null : siguienteRaw;
   const anterior = i > 0 ? ESTADOS_PROYECTO[i - 1] : null;
   const cerrado = proy.estado === "cerrado" || proy.estado === "cancelado";
 
@@ -118,6 +123,9 @@ export default function ProyectoDetallePage({ params }: { params: Promise<{ id: 
       <PresupuestosProyecto proyectoId={proy.id} />
       <OrdenesContratista proyectoId={proy.id} />
       <NotasEntrega proyectoId={proy.id} />
+      <GastosProyecto proyectoId={proy.id} />
+      <RentabilidadProyecto proyectoId={proy.id} />
+      <CierreProyecto proyectoId={proy.id} onCambio={cargar} />
     </div>
   );
 }
