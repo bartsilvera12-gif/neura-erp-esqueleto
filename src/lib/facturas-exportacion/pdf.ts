@@ -9,8 +9,9 @@ import type { FacturaExportacion, FacturaConfigFiscal } from "./types";
 import { EMPRESA_FACTURA, BANCO_EXPORTACION, NOMBRE_MONEDA, TIPOS_FACTURA } from "./config";
 import { numeroALetras } from "./numero-a-letras";
 
-const W = 595.28;
-const H = 841.89;
+// Tamaño carta (Letter) en puntos. Antes era A4 (595.28 × 841.89).
+const W = 612;
+const H = 792;
 const MX = 30;
 const CW = W - MX * 2;
 
