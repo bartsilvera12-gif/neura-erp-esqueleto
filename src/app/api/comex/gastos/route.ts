@@ -2,45 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { getComexCtx, esUuid, estadoOperacion, nombreUsuario, operacionCerrada, registrarHistorial } from "@/lib/comex/server";
-import { MONEDAS_COMEX, TIPOS_GASTO_COMEX } from "@/lib/comex/gastos";
+import { datosGasto } from "@/lib/comex/gastos";
 
 const COLS =
   "id, origen_tipo, origen_id, fecha, tipo, descripcion, proveedor_nombre, comprobante, monto, moneda, tipo_cambio, pagado, cuenta_codigo, lleva_iva, usuario_nombre, created_at";
 
 /** Solo importación y exportación tienen gastos propios. */
 const ORIGENES_GASTO = new Set(["IMPORTACION", "EXPORTACION"]);
-
-/** Valida y normaliza el cuerpo que llega del formulario. */
-function datosGasto(b: Record<string, unknown>): { datos: Record<string, unknown> } | { error: string } {
-  const monto = Number(b.monto);
-  if (!(monto > 0)) return { error: "El monto tiene que ser mayor a 0." };
-  const moneda = String(b.moneda ?? "PYG").toUpperCase();
-  if (!MONEDAS_COMEX.includes(moneda)) return { error: "Moneda no soportada." };
-  const tipoCambio = moneda === "PYG" ? 1 : Number(b.tipo_cambio);
-  if (!(tipoCambio > 0)) return { error: "Poné el tipo de cambio a guaraníes." };
-  const tipo = String(b.tipo ?? "").trim();
-  if (!TIPOS_GASTO_COMEX.includes(tipo)) return { error: "Elegí un tipo de gasto." };
-  const texto = (v: unknown, max: number) => {
-    const s = String(v ?? "").trim();
-    return s ? s.slice(0, max) : null;
-  };
-  if (tipo === "OTRO" && !texto(b.descripcion, 300)) return { error: 'Cuando el concepto es "OTRO", poné el detalle del gasto.' };
-  return {
-    datos: {
-      fecha: /^\d{4}-\d{2}-\d{2}$/.test(String(b.fecha ?? "")) ? String(b.fecha) : new Date().toISOString().slice(0, 10),
-      tipo,
-      descripcion: texto(b.descripcion, 300),
-      proveedor_nombre: texto(b.proveedor_nombre, 200),
-      comprobante: texto(b.comprobante, 60),
-      cuenta_codigo: texto(b.cuenta_codigo, 40),
-      monto,
-      moneda,
-      tipo_cambio: tipoCambio,
-      pagado: b.pagado === true,
-      lleva_iva: b.lleva_iva === true,
-    },
-  };
-}
 
 /** GET ?origen_tipo=&origen_id= — los gastos de una operación, lo último arriba. */
 export async function GET(request: NextRequest) {

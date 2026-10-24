@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { getComexCtx, estadoOperacion, operacionCerrada, registrarHistorial } from "@/lib/comex/server";
+import { datosGasto } from "@/lib/comex/gastos";
 
 const COLS = "id, origen_tipo, origen_id, tipo, monto, moneda, pagado";
 
@@ -22,13 +23,33 @@ async function gastoEditable(request: NextRequest, id: string): Promise<Editable
   return { ok: true, ctx, gasto };
 }
 
-/** PATCH { pagado } — marcar el gasto como pagado o pendiente. */
+/** PATCH — edita el gasto completo (si viene `monto`) o solo marca pagado/pendiente. */
 export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctxParams.params;
     const r = await gastoEditable(request, id);
     if (!r.ok) return NextResponse.json(errorResponse(r.error), { status: r.status });
     const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+
+    // Edición completa del gasto (el formulario manda todos los campos, incluido el monto).
+    if (b.monto !== undefined) {
+      const d = datosGasto(b);
+      if ("error" in d) return NextResponse.json(errorResponse(d.error), { status: 400 });
+      const { error } = await r.ctx.supabase
+        .from("comex_gastos")
+        .update({ ...d.datos, updated_at: new Date().toISOString() })
+        .eq("empresa_id", r.ctx.auth.empresa_id)
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+      await registrarHistorial(r.ctx.supabase, r.ctx.auth, r.gasto.origen_tipo, r.gasto.origen_id, "EDITAR_GASTO", {
+        tipo: d.datos.tipo,
+        monto: d.datos.monto,
+        moneda: d.datos.moneda,
+      });
+      return NextResponse.json(successResponse({ id }));
+    }
+
+    // Solo marcar pagado / pendiente.
     if (typeof b.pagado !== "boolean") return NextResponse.json(errorResponse("Nada que cambiar."), { status: 400 });
     const { error } = await r.ctx.supabase
       .from("comex_gastos")
