@@ -49,6 +49,8 @@ export default function GastosPanel({
   // Texto visible del autocompletar de cuenta contable ("código · nombre").
   const [cuentaTexto, setCuentaTexto] = useState("");
   const [abierto, setAbierto] = useState(false);
+  // Si está editando un gasto ya cargado, guarda su id (si no, es alta nueva).
+  const [editId, setEditId] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quitar, setQuitar] = useState<GastoComex | null>(null);
@@ -83,7 +85,45 @@ export default function GastosPanel({
   }, [lista]);
   const usd = (gsVal: number) => (tcUSD > 0 ? `USD ${(gsVal / tcUSD).toLocaleString("es-PY", { maximumFractionDigits: 2 })}` : null);
 
-  async function agregar() {
+  /** Abre el formulario en blanco para cargar un gasto nuevo. */
+  function abrirNuevo() {
+    setEditId(null);
+    setF(vacio);
+    setCuentaTexto("");
+    setError(null);
+    setAbierto(true);
+  }
+
+  /** Abre el formulario precargado con los datos del gasto, para modificarlo. */
+  function editar(g: GastoComex) {
+    setEditId(g.id);
+    setF({
+      fecha: (g.fecha ?? "").slice(0, 10) || hoyPY(),
+      tipo: g.tipo,
+      descripcion: g.descripcion ?? "",
+      proveedor_nombre: g.proveedor_nombre ?? "",
+      comprobante: g.comprobante ?? "",
+      monto: String(g.monto ?? ""),
+      moneda: g.moneda || "PYG",
+      tipo_cambio: g.tipo_cambio ? String(g.tipo_cambio) : "",
+      cuenta_codigo: g.cuenta_codigo ?? "",
+      pagado: !!g.pagado,
+      lleva_iva: !!g.lleva_iva,
+    });
+    const nombre = g.cuenta_codigo ? cuentaNombre.get(g.cuenta_codigo) : "";
+    setCuentaTexto(g.cuenta_codigo ? (nombre ? `${g.cuenta_codigo} · ${nombre}` : g.cuenta_codigo) : "");
+    setError(null);
+    setAbierto(true);
+  }
+
+  function cerrarForm() {
+    setAbierto(false);
+    setEditId(null);
+    setF(vacio);
+    setCuentaTexto("");
+  }
+
+  async function guardar() {
     if (f.tipo === "OTRO" && !f.descripcion.trim()) {
       setError('Cuando el concepto es "OTRO", poné el detalle del gasto.');
       return;
@@ -91,19 +131,18 @@ export default function GastosPanel({
     setGuardando(true);
     setError(null);
     try {
-      await api(
-        "/api/comex/gastos",
-        jsonInit("POST", {
-          origen_tipo: origenTipo,
-          origen_id: origenId,
-          ...f,
-          monto: Number(f.monto),
-          tipo_cambio: f.moneda === "PYG" ? 1 : Number(f.tipo_cambio),
-        })
-      );
-      setF({ ...vacio, fecha: f.fecha, moneda: f.moneda, tipo_cambio: f.tipo_cambio });
-      setCuentaTexto("");
-      setAbierto(false);
+      const campos = {
+        ...f,
+        monto: Number(f.monto),
+        tipo_cambio: f.moneda === "PYG" ? 1 : Number(f.tipo_cambio),
+      };
+      if (editId) {
+        // Edición de un gasto ya cargado (incluye los cargados por Excel).
+        await api(`/api/comex/gastos/${editId}`, jsonInit("PATCH", campos));
+      } else {
+        await api("/api/comex/gastos", jsonInit("POST", { origen_tipo: origenTipo, origen_id: origenId, ...campos }));
+      }
+      cerrarForm();
       await cargar();
       onCambio?.();
     } catch (e) {
@@ -192,7 +231,7 @@ export default function GastosPanel({
 
       {!bloqueado && !abierto && (
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setAbierto(true)} className={btnPrimario}>
+          <button type="button" onClick={abrirNuevo} className={btnPrimario}>
             <Plus className="h-3.5 w-3.5" /> Cargar gasto
           </button>
           {origenTipo === "IMPORTACION" && (
@@ -321,19 +360,11 @@ export default function GastosPanel({
               </label>
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setAbierto(false);
-                  setF(vacio);
-                  setCuentaTexto("");
-                }}
-                className={btnSecundario}
-              >
+              <button type="button" onClick={cerrarForm} className={btnSecundario}>
                 Cancelar
               </button>
-              <button type="button" onClick={() => void agregar()} disabled={guardando} className={btnPrimario}>
-                {guardando ? "Guardando…" : "Guardar gasto"}
+              <button type="button" onClick={() => void guardar()} disabled={guardando} className={btnPrimario}>
+                {guardando ? "Guardando…" : editId ? "Guardar cambios" : "Guardar gasto"}
               </button>
             </div>
           </div>
@@ -416,9 +447,14 @@ export default function GastosPanel({
                 </td>
                 <td className="px-4 py-2 text-right">
                   {!bloqueado && (
-                    <button type="button" onClick={() => setQuitar(g)} className="text-xs font-medium text-rose-600 hover:underline">
-                      Quitar
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      <button type="button" onClick={() => editar(g)} className="text-xs font-medium text-[#3F8E91] hover:underline">
+                        Editar
+                      </button>
+                      <button type="button" onClick={() => setQuitar(g)} className="text-xs font-medium text-rose-600 hover:underline">
+                        Quitar
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
