@@ -36,11 +36,13 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
 
   const monto = `Gs. ${(Number(g.monto) || 0).toLocaleString("es-PY")}`;
   const cuerpo = `
-  ${cabeceraDoc({ titulo: "RECIBO DE GASTO", numero: fechaDoc(g.fecha) })}
+  ${cabeceraDoc({ titulo: "RECIBO DE GASTO", numero: String(g.recibo_numero ?? fechaDoc(g.fecha)) })}
   <div class="box pad dos">
     <div>
       <div class="fila"><span class="l">FECHA:</span><span>${fechaDoc(g.fecha)}</span></div>
       <div class="fila"><span class="l">CATEGORÍA:</span><span>${esc(g.categoria ?? "—")}</span></div>
+      ${g.proveedor_nombre ? `<div class="fila"><span class="l">PROVEEDOR / PERSONA:</span><span>${esc(g.proveedor_nombre)}</span></div>` : ""}
+      ${g.proveedor_documento ? `<div class="fila"><span class="l">RUC / CI:</span><span>${esc(g.proveedor_documento)}</span></div>` : ""}
       ${g.recurrente ? `<div class="fila"><span class="l">RECURRENTE:</span><span>Sí${g.frecuencia ? ` (${esc(g.frecuencia)})` : ""}</span></div>` : ""}
     </div>
     <div>

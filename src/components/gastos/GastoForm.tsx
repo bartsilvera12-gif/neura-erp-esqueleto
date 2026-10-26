@@ -10,6 +10,7 @@ import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session"
 import { ClipboardList } from "lucide-react";
 import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import SelectFromList from "@/components/inventario/SelectFromList";
+import { GASTOS_RUTA, SECCION_DEFECTO, type Seccion } from "@/lib/secciones";
 
 type OrigenCuenta = { id: string; nombre: string };
 type CuentaPlan = { id: string; cuenta: string; denominacion: string; asentable?: boolean | null; activo?: boolean | null };
@@ -21,12 +22,16 @@ const fInput =
 type Props = {
   gasto?: Gasto | null;
   onSuccess?: () => void;
+  /** Sección del gasto nuevo (Showroom por defecto). En edición se mantiene la del gasto. */
+  seccion?: Seccion;
 };
 
-export default function GastoForm({ gasto, onSuccess }: Props) {
+export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO }: Props) {
   const router = useRouter();
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A qué listado volver al guardar/cancelar (según la sección).
+  const rutaVolver = GASTOS_RUTA[gasto?.seccion ?? seccion];
 
   const usaLR = esInstanciaLR();
   const [form, setForm] = useState<GastoInput>({
@@ -111,10 +116,10 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
       if (gasto) {
         await updateGasto(gasto.id, form);
       } else {
-        await createGasto(form);
+        await createGasto({ ...form, seccion });
       }
       onSuccess?.();
-      router.push("/gastos");
+      router.push(rutaVolver);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al guardar");
     } finally {
@@ -334,7 +339,7 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
         </button>
         <button
           type="button"
-          onClick={() => router.push("/gastos")}
+          onClick={() => router.push(rutaVolver)}
           className="border border-slate-200 text-sm px-6 py-2.5 rounded-lg hover:bg-slate-50 transition-colors"
         >
           Cancelar

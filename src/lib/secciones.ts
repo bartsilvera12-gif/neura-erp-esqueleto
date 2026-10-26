@@ -22,6 +22,20 @@ export const RECIBO_PREFIJO: Record<Seccion, string> = {
   COMERCIO_EXTERIOR: "CELR",
 };
 
+/** Ruta del listado de gastos de cada sección. */
+export const GASTOS_RUTA: Record<Seccion, string> = {
+  SHOWROOM: "/gastos",
+  PRODUCCION: "/produccion/gastos",
+  COMERCIO_EXTERIOR: "/comex/gastos",
+};
+
+/** Ruta del libro de compras de cada sección. */
+export const LIBRO_COMPRAS_RUTA: Record<Seccion, string> = {
+  SHOWROOM: "/libro-compras",
+  PRODUCCION: "/produccion/libro-compras",
+  COMERCIO_EXTERIOR: "/comex/libro-compras",
+};
+
 export function esSeccion(v: unknown): v is Seccion {
   return typeof v === "string" && (SECCIONES as readonly string[]).includes(v);
 }

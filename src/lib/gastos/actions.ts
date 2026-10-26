@@ -2,6 +2,7 @@ import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session"
 import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import { ymdInicioFinMesLocal } from "@/lib/fechas/calendario";
 import { getBrowserSupabaseForEmpresaData } from "@/lib/supabase/browser-data-client";
+import { esSeccion, type Seccion } from "@/lib/secciones";
 
 export type Gasto = {
   id: string;
@@ -22,6 +23,10 @@ export type Gasto = {
   /** Living Room: a quién se le pagó (proveedor o persona) y su RUC/CI. */
   proveedor_nombre?: string | null;
   proveedor_documento?: string | null;
+  /** Sección del gasto: Showroom / Producción / Comercio Exterior. */
+  seccion?: Seccion;
+  /** Número de recibo (sin factura): SHLR/PRLR/CELR-000001. */
+  recibo_numero?: string | null;
 };
 
 export type GastoInput = {
@@ -43,6 +48,8 @@ export type GastoInput = {
   /** Living Room: de dónde salió el dinero. */
   origen_medio?: "BANCO" | "CAJA_CHICA" | null;
   origen_cuenta_id?: string | null;
+  /** Sección del gasto: Showroom / Producción / Comercio Exterior. */
+  seccion?: Seccion;
 };
 
 function mapRow(r: Record<string, unknown>): Gasto {
@@ -64,13 +71,16 @@ function mapRow(r: Record<string, unknown>): Gasto {
     caja_chica_id: (r.caja_chica_id as string | null) ?? null,
     proveedor_nombre: (r.proveedor_nombre as string | null) ?? null,
     proveedor_documento: (r.proveedor_documento as string | null) ?? null,
+    seccion: esSeccion(r.seccion) ? r.seccion : "SHOWROOM",
+    recibo_numero: (r.recibo_numero as string | null) ?? null,
   };
 }
 
-/** Obtiene todos los gastos de la empresa, ordenados por fecha desc. */
-export async function getGastos(): Promise<Gasto[]> {
+/** Obtiene los gastos de la empresa (opcionalmente de una sección), por fecha desc. */
+export async function getGastos(seccion?: Seccion): Promise<Gasto[]> {
   if (typeof window !== "undefined") {
-    const res = await fetchWithSupabaseSession("/api/gastos", { cache: "no-store" });
+    const qs = esSeccion(seccion) ? `?seccion=${seccion}` : "";
+    const res = await fetchWithSupabaseSession(`/api/gastos${qs}`, { cache: "no-store" });
     if (!res.ok) {
       const t = await res.text().catch(() => "");
       throw new Error(t || `Error ${res.status}`);
@@ -81,10 +91,9 @@ export async function getGastos(): Promise<Gasto[]> {
   }
 
   const supabase = await getBrowserSupabaseForEmpresaData();
-  const { data, error } = await supabase
-    .from("gastos")
-    .select("*")
-    .order("fecha", { ascending: false });
+  let q = supabase.from("gastos").select("*").order("fecha", { ascending: false });
+  if (esSeccion(seccion)) q = q.eq("seccion", seccion);
+  const { data, error } = await q;
 
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapRow);
@@ -109,10 +118,11 @@ export type FacturaGasto = {
  * listarlas en Gastos operativos. Solo Living Room: en otras instancias no hay
  * libro de compras y se devuelve vacío. Nunca lanza: si falla, devuelve [].
  */
-export async function getFacturasGasto(): Promise<FacturaGasto[]> {
+export async function getFacturasGasto(seccion?: Seccion): Promise<FacturaGasto[]> {
   if (typeof window === "undefined" || !esInstanciaLR()) return [];
   try {
-    const res = await fetchWithSupabaseSession("/api/libro-compras?estado=registrada", { cache: "no-store" });
+    const qs = esSeccion(seccion) ? `&seccion=${seccion}` : "";
+    const res = await fetchWithSupabaseSession(`/api/libro-compras?estado=registrada${qs}`, { cache: "no-store" });
     if (!res.ok) return [];
     const json = (await res.json()) as { success?: boolean; data?: { compras?: Record<string, unknown>[] } };
     const compras = json?.data?.compras;
@@ -169,6 +179,7 @@ export async function createGasto(input: GastoInput): Promise<Gasto> {
       cuenta_contable_id: input.cuenta_contable_id ?? null,
       proveedor_nombre: input.proveedor_nombre ?? null,
       proveedor_documento: input.proveedor_documento ?? null,
+      seccion: input.seccion ?? undefined,
       origen_medio: input.origen_medio ?? null,
       origen_cuenta_id: input.origen_cuenta_id ?? null,
     }),

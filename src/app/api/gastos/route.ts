@@ -5,6 +5,7 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import { validarMovimiento, ErrorTesoreria } from "@/lib/tesoreria/server";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
+import { aSeccion, esSeccion, RECIBO_PREFIJO } from "@/lib/secciones";
 
 /**
  * GET /api/gastos
@@ -17,11 +18,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     }
     const { supabase, auth } = ctx;
-    const { data, error } = await supabase
+    const seccion = new URL(request.url).searchParams.get("seccion");
+    let query = supabase
       .from("gastos")
       .select("*")
       .eq("empresa_id", auth.empresa_id)
       .order("fecha", { ascending: false });
+    if (esSeccion(seccion)) query = query.eq("seccion", seccion);
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json(errorResponse(error.message), { status: 400 });
@@ -69,8 +73,10 @@ export async function POST(request: NextRequest) {
     const origenId = origenMedio ? String(b.origen_cuenta_id ?? "") : "";
     const moneda = "PYG";
 
+    const seccion = aSeccion(b.seccion);
     if (lr) {
       row.facturado = b.facturado !== false; // por defecto facturado
+      row.seccion = seccion;
       row.cuenta_contable_id = b.cuenta_contable_id ? String(b.cuenta_contable_id) : null;
       row.proveedor_nombre = String(b.proveedor_nombre ?? "").trim() || null;
       row.proveedor_documento = String(b.proveedor_documento ?? "").trim() || null;
@@ -87,9 +93,34 @@ export async function POST(request: NextRequest) {
       await validarMovimiento(supabase as unknown as AppSupabaseClient, emp, origenMedio as "BANCO" | "CAJA_CHICA", origenId, moneda, monto);
     }
 
-    const ins = await supabase.from("gastos").insert(row).select().single();
-    if (ins.error) throw new Error(ins.error.message);
-    const gasto = ins.data as { id: string };
+    // Número de recibo por sección (SHLR/PRLR/CELR) para gastos sin factura.
+    const esSinFactura = lr && row.facturado === false;
+    let insData: unknown = null;
+    let gasto: { id: string } | null = null;
+    for (let intento = 0; intento < 6 && !gasto; intento++) {
+      if (esSinFactura) {
+        const prefijo = RECIBO_PREFIJO[seccion];
+        const { data: ult } = await supabase
+          .from("gastos")
+          .select("recibo_numero")
+          .eq("empresa_id", emp)
+          .like("recibo_numero", `${prefijo}-%`)
+          .order("recibo_numero", { ascending: false })
+          .limit(1);
+        const ultimo = String((ult as { recibo_numero?: string }[] | null)?.[0]?.recibo_numero ?? "");
+        const m = ultimo.match(/(\d+)$/);
+        row.recibo_numero = `${prefijo}-${String((m ? Number(m[1]) : 0) + 1 + intento).padStart(6, "0")}`;
+      }
+      const ins = await supabase.from("gastos").insert(row).select().single();
+      if (ins.error) {
+        // Si dos recibos chocaron el número, reintentar con el siguiente.
+        if (esSinFactura && ins.error.code === "23505" && /recibo/.test(ins.error.message)) continue;
+        throw new Error(ins.error.message);
+      }
+      insData = ins.data;
+      gasto = ins.data as { id: string };
+    }
+    if (!gasto) throw new Error("No se pudo asignar el número de recibo. Probá de nuevo.");
 
     // Registrar el egreso que baja el saldo del banco / caja chica.
     if (origenMedio) {
@@ -105,7 +136,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(successResponse(ins.data), { status: 201 });
+    return NextResponse.json(successResponse(insData), { status: 201 });
   } catch (err) {
     if (err instanceof ErrorTesoreria) return NextResponse.json(errorResponse(err.message), { status: 400 });
     const msg = err instanceof Error ? err.message : "Error";
