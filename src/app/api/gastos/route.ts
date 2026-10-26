@@ -72,8 +72,13 @@ export async function POST(request: NextRequest) {
     if (lr) {
       row.facturado = b.facturado !== false; // por defecto facturado
       row.cuenta_contable_id = b.cuenta_contable_id ? String(b.cuenta_contable_id) : null;
+      row.proveedor_nombre = String(b.proveedor_nombre ?? "").trim() || null;
+      row.proveedor_documento = String(b.proveedor_documento ?? "").trim() || null;
       row.entidad_bancaria_id = origenMedio === "BANCO" ? origenId : null;
       row.caja_chica_id = origenMedio === "CAJA_CHICA" ? origenId : null;
+      // El cliente pide que "de dónde salió" sea obligatorio: todo gasto baja de
+      // un banco o una caja chica.
+      if (!origenMedio) return NextResponse.json(errorResponse("Elegí de dónde salió el gasto: un banco o una caja chica."), { status: 400 });
     }
 
     // Si sale de banco/caja, validar ANTES de crear nada (tope/saldo/moneda).
