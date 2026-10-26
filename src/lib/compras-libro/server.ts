@@ -6,10 +6,11 @@ import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import type { UsuarioConEmpresaYRol } from "@/lib/middleware/auth";
 import { diferencias, esUuid, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import { leerCdc, totales, type LineaCalc } from "./calculo";
+import { aSeccion } from "@/lib/secciones";
 import { anularPago, ErrorTesoreria, pagosVigentes, registrarPago, validarMovimiento } from "@/lib/tesoreria/server";
 
 export const COMPRA_COLS =
-  "id, numero_control, fecha, tipo_id, tipo_codigo, tipo_nombre, condicion, nro_comprobante, proveedor_id, proveedor_nombre, proveedor_ruc, " +
+  "id, numero_control, fecha, seccion, tipo_id, tipo_codigo, tipo_nombre, condicion, nro_comprobante, proveedor_id, proveedor_nombre, proveedor_ruc, " +
   "timbrado, es_electronica, cdc, moneda, cotizacion, cuotas, explicacion, impacta, retencion_iva, retencion_renta, total_exentas, nota_credito_de_id, " +
   "total_gravado10, total_gravado5, iva10, iva5, total, estado, anulada_motivo, created_by_nombre, updated_by_nombre, created_at, updated_at";
 
@@ -238,7 +239,8 @@ export async function guardarCompra(
       const nc = `LC-${String((m ? Number(m[1]) : 0) + 1 + intento).padStart(6, "0")}`;
       const { data, error } = await sb
         .from("libro_compras")
-        .insert({ ...datos, empresa_id: emp, numero_control: nc, created_by_nombre: nombreUsuario(auth) })
+        // La sección (Showroom/Producción/C.Exterior) se fija al crear; no cambia al editar.
+        .insert({ ...datos, empresa_id: emp, numero_control: nc, seccion: aSeccion(body.seccion), created_by_nombre: nombreUsuario(auth) })
         .select("id, numero_control")
         .single();
       if (error) {

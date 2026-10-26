@@ -4,6 +4,7 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { esUuid, getComexCtx, textoBusqueda, traerTodo } from "@/lib/comex/server";
 import { buildXlsxBuffer, nowStamp, xlsxResponseHeaders } from "@/lib/excel/export";
 import { COMPRA_COLS } from "@/lib/compras-libro/server";
+import { esSeccion } from "@/lib/secciones";
 
 export const runtime = "nodejs";
 
@@ -29,6 +30,8 @@ export async function GET(request: NextRequest) {
     if (esUuid(tipo)) q = q.eq("tipo_id", tipo);
     const estado = sp.get("estado");
     if (estado === "registrada" || estado === "anulada") q = q.eq("estado", estado);
+    const seccion = sp.get("seccion");
+    if (esSeccion(seccion)) q = q.eq("seccion", seccion);
     const busca = textoBusqueda(sp.get("q"));
     if (busca) q = q.or(`proveedor_nombre.ilike.%${busca}%,nro_comprobante.ilike.%${busca}%,numero_control.ilike.%${busca}%,proveedor_ruc.ilike.%${busca}%`);
     const filas = await traerTodo<Fila>((a, z) => q.range(a, z));

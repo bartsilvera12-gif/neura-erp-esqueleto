@@ -77,6 +77,8 @@ export default function FormCompra({ id }: { id?: string }) {
   const router = useRouter();
   const params = useSearchParams();
   const cajaParam = id ? null : params.get("caja");
+  // Sección del comprobante nuevo (Showroom por defecto). En edición no se cambia.
+  const seccionParam = id ? null : (params.get("seccion") || "SHOWROOM");
   const { isAdmin } = useIsAdmin();
   const [tipos, setTipos] = useState<TipoComprobante[]>([]);
   const [config, setConfig] = useState<ConfigCompras | null>(null);
@@ -318,6 +320,7 @@ export default function FormCompra({ id }: { id?: string }) {
   function payload() {
     return {
       tipo_id: tipoId,
+      seccion: seccionParam ?? undefined,
       fecha,
       nro_comprobante: nro,
       timbrado,
