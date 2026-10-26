@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getGastos, getFacturasGasto, deleteGasto } from "@/lib/gastos/actions";
+import { getGastos, getFacturasGasto, deleteGasto, anularFacturaGasto } from "@/lib/gastos/actions";
 import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import type { Gasto, FacturaGasto } from "@/lib/gastos/actions";
 import { ClipboardList } from "lucide-react";
@@ -47,6 +47,7 @@ export default function GastosVista({ seccion }: { seccion: Seccion }) {
   const [facturas, setFacturas] = useState<FacturaGasto[]>([]);
   const [cargando, setCargando] = useState(true);
   const [eliminando, setEliminando] = useState<string | null>(null);
+  const [anularFila, setAnularFila] = useState<FilaFactura | null>(null);
 
   const libroRuta = LIBRO_COMPRAS_RUTA[seccion];
 
@@ -80,6 +81,11 @@ export default function GastosVista({ seccion }: { seccion: Seccion }) {
     } finally {
       setEliminando(null);
     }
+  }
+
+  function handleFacturaAnulada(id: string) {
+    setFacturas((prev) => prev.filter((f) => f.id !== id));
+    setAnularFila(null);
   }
 
   return (
@@ -170,9 +176,18 @@ export default function GastosVista({ seccion }: { seccion: Seccion }) {
                       {formatMonto(fila.total, fila.moneda)}
                     </td>
                     <td className="px-5 py-3.5">
-                      <Link href={`/libro-compras/${fila.id}`} className="text-xs text-[#3F8E91] hover:text-[#2F6E71] underline">
-                        Ver / Editar
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link href={`/libro-compras/${fila.id}`} className="text-xs text-[#3F8E91] hover:text-[#2F6E71] underline">
+                          Ver / Editar
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setAnularFila(fila)}
+                          className="text-xs text-red-500 hover:text-red-700 underline"
+                        >
+                          Anular
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -240,6 +255,92 @@ export default function GastosVista({ seccion }: { seccion: Seccion }) {
           Las facturas con IVA se cargan y se ven en el <Link href={libroRuta} className="underline hover:text-slate-600">Libro de compras de {SECCION_LABEL[seccion]}</Link>.
         </p>
       )}
+
+      {anularFila && (
+        <ModalAnularFactura
+          fila={anularFila}
+          onClose={() => setAnularFila(null)}
+          onDone={() => handleFacturaAnulada(anularFila.id)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Anula una factura cargada por error en el Libro de Compras. No se borra:
+ * queda registrada como anulada y se revierten sus pagos (requiere admin).
+ */
+function ModalAnularFactura({
+  fila,
+  onClose,
+  onDone,
+}: {
+  fila: FilaFactura;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [motivo, setMotivo] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function confirmar() {
+    const m = motivo.trim();
+    if (!m) {
+      setError("Escribí el motivo de la anulación.");
+      return;
+    }
+    setGuardando(true);
+    setError(null);
+    try {
+      await anularFacturaGasto(fila.id, m);
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo anular la factura.");
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-base font-semibold text-slate-900">Anular factura</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {fila.proveedor || "Factura"}
+          {fila.nro_comprobante ? ` · N° ${fila.nro_comprobante}` : ""} por {formatMonto(fila.total, fila.moneda)}.
+        </p>
+        <p className="mt-2 text-xs text-slate-400">
+          La factura no se borra: queda registrada como anulada y se revierten sus pagos. Solo un administrador puede anular.
+        </p>
+        <label className="mt-4 block text-xs font-medium text-slate-500">Motivo de la anulación</label>
+        <textarea
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          rows={3}
+          autoFocus
+          placeholder="Ej.: factura cargada por error"
+          className="zx-surface mt-1 w-full px-3 py-2 text-sm"
+        />
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={guardando}
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={confirmar}
+            disabled={guardando}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {guardando ? "Anulando…" : "Anular factura"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

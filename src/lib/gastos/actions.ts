@@ -141,6 +141,27 @@ export async function getFacturasGasto(seccion?: Seccion): Promise<FacturaGasto[
   }
 }
 
+/**
+ * Anula una factura del Libro de Compras cargada por error (queda registrada,
+ * no se borra; revierte los pagos). Solo administrador. Lanza con el mensaje
+ * del servidor si no se pudo.
+ */
+export async function anularFacturaGasto(id: string, motivo: string): Promise<void> {
+  const res = await fetchWithSupabaseSession(`/api/libro-compras/${id}/anular`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ motivo }),
+  });
+  const json = (await res.json().catch(() => null)) as { success?: boolean; error?: unknown } | null;
+  if (!res.ok || !json?.success) {
+    const msg =
+      typeof json?.error === "string"
+        ? json.error
+        : (json?.error as { message?: string } | undefined)?.message;
+    throw new Error(msg || "No se pudo anular la factura.");
+  }
+}
+
 /** Obtiene los gastos del mes actual (para Dashboard). RLS filtra por empresa. */
 export async function getGastosMesActual(): Promise<Gasto[]> {
   const supabase = await getBrowserSupabaseForEmpresaData();
