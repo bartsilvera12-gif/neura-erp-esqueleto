@@ -19,6 +19,9 @@ export type Gasto = {
   cuenta_contable_id?: string | null;
   entidad_bancaria_id?: string | null;
   caja_chica_id?: string | null;
+  /** Living Room: a quién se le pagó (proveedor o persona) y su RUC/CI. */
+  proveedor_nombre?: string | null;
+  proveedor_documento?: string | null;
 };
 
 export type GastoInput = {
@@ -34,6 +37,9 @@ export type GastoInput = {
   facturado?: boolean;
   /** Living Room: cuenta contable del gasto. */
   cuenta_contable_id?: string | null;
+  /** Living Room: a quién se le pagó (proveedor o persona) y su RUC/CI. */
+  proveedor_nombre?: string | null;
+  proveedor_documento?: string | null;
   /** Living Room: de dónde salió el dinero. */
   origen_medio?: "BANCO" | "CAJA_CHICA" | null;
   origen_cuenta_id?: string | null;
@@ -56,6 +62,8 @@ function mapRow(r: Record<string, unknown>): Gasto {
     cuenta_contable_id: (r.cuenta_contable_id as string | null) ?? null,
     entidad_bancaria_id: (r.entidad_bancaria_id as string | null) ?? null,
     caja_chica_id: (r.caja_chica_id as string | null) ?? null,
+    proveedor_nombre: (r.proveedor_nombre as string | null) ?? null,
+    proveedor_documento: (r.proveedor_documento as string | null) ?? null,
   };
 }
 
@@ -159,6 +167,8 @@ export async function createGasto(input: GastoInput): Promise<Gasto> {
       proyecto_id: input.proyecto_id ?? null,
       facturado: input.facturado,
       cuenta_contable_id: input.cuenta_contable_id ?? null,
+      proveedor_nombre: input.proveedor_nombre ?? null,
+      proveedor_documento: input.proveedor_documento ?? null,
       origen_medio: input.origen_medio ?? null,
       origen_cuenta_id: input.origen_cuenta_id ?? null,
     }),
@@ -186,6 +196,8 @@ export async function updateGasto(id: string, input: Partial<GastoInput>): Promi
   if (esInstanciaLR()) {
     if (input.facturado !== undefined) update.facturado = input.facturado;
     if (input.cuenta_contable_id !== undefined) update.cuenta_contable_id = input.cuenta_contable_id ?? null;
+    if (input.proveedor_nombre !== undefined) update.proveedor_nombre = input.proveedor_nombre?.trim() || null;
+    if (input.proveedor_documento !== undefined) update.proveedor_documento = input.proveedor_documento?.trim() || null;
   }
 
   const { data, error } = await supabase

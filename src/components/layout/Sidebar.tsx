@@ -172,12 +172,12 @@ const MENU_STRUCTURE: MenuItem[] = [
   {
     key: "compras",
     slug: "compras",
-    label: "Compras",
+    label: "Compras Productos",
     href: "/compras",
     icon: ShoppingCart,
     children: [
-      { label: "Compras", href: "/compras", exactMatch: true },
-      { label: "Libro de compras", href: "/libro-compras", exactMatch: true },
+      { label: "Compras Productos", href: "/compras", exactMatch: true },
+      { label: "Libro de compras showroom", href: "/libro-compras", exactMatch: true },
       { label: "Cuentas por pagar", href: "/libro-compras/por-pagar" },
       { label: "Órdenes de compra", href: "/compras/ordenes" },
       { label: "Proveedores", href: "/proveedores" },
@@ -194,7 +194,7 @@ const MENU_STRUCTURE: MenuItem[] = [
   ]},
   { key: "recibos", slug: "recibos", label: "Recibos de dinero", href: "/recibos", icon: Receipt },
   { key: "gastos", slug: "gastos", label: "Gastos", href: "/gastos", icon: TrendingDown },
-  { key: "cobros", slug: "cobros", label: "Cobros / Pagos", href: "/pagos", icon: CreditCard, children: [
+  { key: "cobros", slug: "cobros", label: "Cobros y pagos", href: "/pagos", icon: CreditCard, children: [
     { label: "Cobros y pagos", href: "/pagos", exactMatch: true },
     { label: "Bancos y cajas chicas", href: "/tesoreria" },
     { label: "Tipos de cambio", href: "/tipos-cambio" },
@@ -252,9 +252,10 @@ const MENU_STRUCTURE: MenuItem[] = [
  */
 const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "inicio", titulo: "Inicio", keys: ["dashboard"] },
-  { id: "finanzas", titulo: "Finanzas", keys: ["recibos", "gastos", "cobros"] },
-  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "compras", "remision"] },
-  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "facturas_exportacion", "importaciones"] },
+  { id: "finanzas", titulo: "Finanzas Showroom", keys: ["recibos", "gastos", "compras", "cobros"] },
+  { id: "operaciones", titulo: "Operaciones", keys: ["inventario", "remision"] },
+  { id: "comercial", titulo: "Comercial", keys: ["clientes", "presupuestos", "facturas_exportacion"] },
+  { id: "comercio_exterior", titulo: "Comercio Exterior", keys: ["importaciones"] },
   { id: "crm", titulo: "CRM", keys: ["crm", "gestion-clientes"] },
   { id: "proyectos", titulo: "Proyectos", keys: ["proyectos"] },
   { id: "produccion", titulo: "Producción", keys: ["produccion"] },

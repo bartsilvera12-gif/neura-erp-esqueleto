@@ -40,6 +40,8 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
     proyecto_id: gasto?.proyecto_id ?? null,
     facturado: gasto?.facturado ?? false,
     cuenta_contable_id: gasto?.cuenta_contable_id ?? null,
+    proveedor_nombre: gasto?.proveedor_nombre ?? "",
+    proveedor_documento: gasto?.proveedor_documento ?? "",
     origen_medio: gasto?.entidad_bancaria_id ? "BANCO" : gasto?.caja_chica_id ? "CAJA_CHICA" : null,
     origen_cuenta_id: gasto?.entidad_bancaria_id ?? gasto?.caja_chica_id ?? null,
   });
@@ -85,7 +87,7 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
     if (type === "checkbox") {
       setForm((prev) => ({ ...prev, recurrente: (e.target as HTMLInputElement).checked }));
     } else if (name !== "monto") {
-      const normalized = ["categoria", "descripcion", "frecuencia"].includes(name) ? value.toUpperCase() : value;
+      const normalized = ["categoria", "descripcion", "frecuencia", "proveedor_nombre"].includes(name) ? value.toUpperCase() : value;
       setForm((prev) => ({ ...prev, [name]: normalized }));
     }
   }
@@ -96,6 +98,11 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
 
     if (form.monto <= 0) {
       return setError("El monto debe ser mayor a 0.");
+    }
+
+    // Living Room: al crear, "de dónde salió" es obligatorio (banco o caja chica).
+    if (usaLR && !gasto && (!form.origen_medio || !form.origen_cuenta_id)) {
+      return setError("Elegí de dónde salió el gasto: un banco o una caja chica.");
     }
 
     setGuardando(true);
@@ -186,6 +193,32 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
                 </p>
               </div>
 
+              {/* Proveedor o persona + RUC/CI */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={fLabel}>Proveedor o persona</label>
+                  <input
+                    type="text"
+                    name="proveedor_nombre"
+                    value={form.proveedor_nombre ?? ""}
+                    onChange={handleChange}
+                    placeholder="A quién se le pagó"
+                    className={fInput}
+                  />
+                </div>
+                <div>
+                  <label className={fLabel}>RUC o CI</label>
+                  <input
+                    type="text"
+                    name="proveedor_documento"
+                    value={form.proveedor_documento ?? ""}
+                    onChange={handleChange}
+                    placeholder="N° de RUC o cédula"
+                    className={fInput}
+                  />
+                </div>
+              </div>
+
               {/* Cuenta contable */}
               <div>
                 <label className={fLabel}>Cuenta contable</label>
@@ -199,9 +232,9 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
                 />
               </div>
 
-              {/* Origen del dinero: banco o caja chica (baja el saldo) */}
+              {/* Origen del dinero: banco o caja chica (baja el saldo). Obligatorio. */}
               <div>
-                <label className={fLabel}>¿De dónde salió? (opcional)</label>
+                <label className={fLabel}>¿De dónde salió? *</label>
                 <Select
                   value={form.origen_medio ?? ""}
                   onChange={(e) => {
@@ -210,7 +243,7 @@ export default function GastoForm({ gasto, onSuccess }: Props) {
                   }}
                   className={fInput}
                 >
-                  <option value="">— No descontar de banco/caja —</option>
+                  <option value="">— Elegí banco o caja chica —</option>
                   <option value="BANCO">Banco</option>
                   <option value="CAJA_CHICA">Caja chica</option>
                 </Select>
