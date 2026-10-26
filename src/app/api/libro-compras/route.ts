@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esUuid, getComexCtx, textoBusqueda } from "@/lib/comex/server";
 import { COMPRA_COLS, ErrorValidacion, guardarCompra } from "@/lib/compras-libro/server";
+import { esSeccion } from "@/lib/secciones";
 
 /** GET ?desde=&hasta=&tipo=&estado=&q= — comprobantes del libro de compras. */
 export async function GET(request: NextRequest) {
@@ -25,6 +26,9 @@ export async function GET(request: NextRequest) {
     if (esUuid(tipo)) q = q.eq("tipo_id", tipo);
     const estado = sp.get("estado");
     if (estado === "registrada" || estado === "anulada") q = q.eq("estado", estado);
+    // Sección: Showroom / Producción / Comercio Exterior. Sin filtro = general (todas).
+    const seccion = sp.get("seccion");
+    if (esSeccion(seccion)) q = q.eq("seccion", seccion);
     // Para elegir qué comprobante corrige una nota de crédito: solo compras vigentes del proveedor.
     const proveedor = sp.get("proveedor");
     if (proveedor) q = q.eq("proveedor_nombre", proveedor).eq("estado", "registrada");
