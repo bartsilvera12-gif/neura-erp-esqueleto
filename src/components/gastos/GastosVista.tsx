@@ -25,12 +25,12 @@ type FilaFactura = { kind: "factura"; fechaOrden: string } & FacturaGasto;
 type Fila = FilaRecibo | FilaFactura;
 
 function formatFecha(fecha: string) {
-  try {
-    const d = new Date(fecha);
-    return d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
-  } catch {
-    return fecha;
-  }
+  // Parseamos el texto directamente (dd/mm/aaaa) en vez de usar new Date(),
+  // que interpreta "2026-10-01" como UTC y al pasarlo a hora de Paraguay
+  // retrocede un día. Así la fecha sale igual que en el comprobante.
+  if (!fecha) return "";
+  const [y, m, d] = fecha.slice(0, 10).split("-");
+  return d && m && y ? `${d}/${m}/${y}` : fecha;
 }
 
 const tipoBadge: Record<string, string> = {
