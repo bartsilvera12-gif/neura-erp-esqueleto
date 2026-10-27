@@ -41,7 +41,7 @@ import type { ModuloEmpresa } from "@/lib/empresas/actions";
 import { getFavoritos, toggleFavorito } from "@/lib/favorites";
 import { canAccessSidebarSlug } from "@/lib/modulos/route-slug-map";
 import { useBoot } from "@/components/BootContext";
-import { getModuleAccessCached, peekModuleAccessCache } from "@/lib/modulos/module-access-cache";
+import { getModuleAccessCached, peekModuleAccessCache, clearModuleAccessCache } from "@/lib/modulos/module-access-cache";
 
 type MenuItem = {
   key: string;
@@ -533,6 +533,7 @@ export default function Sidebar() {
 
         const { ok, data: body } = await getModuleAccessCached({
           forceRefresh: opts?.forceRefresh,
+          userId: session.user.id,
         });
         if (cancelled) return;
 
@@ -608,6 +609,9 @@ export default function Sidebar() {
       //    cada vez que el usuario vuelve a la tab del ERP.
       // Eventos que SI re-cargan: SIGNED_IN, SIGNED_OUT, USER_UPDATED.
       if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
+      // Al cerrar sesión, limpiar el cache para no dejar el menú del usuario
+      // anterior guardado en esta PC (el próximo login arranca de cero).
+      if (event === "SIGNED_OUT") clearModuleAccessCache();
       // SIGNED_IN puede significar usuario nuevo (sesión cambió) — forzamos
       // refresh del cache para no servir módulos del usuario anterior.
       // USER_UPDATED: cambió el JWT del mismo user (raro), también refrescamos.
