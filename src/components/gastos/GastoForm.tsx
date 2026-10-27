@@ -66,7 +66,8 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
         setCajas(((j?.data?.cajas ?? []) as OrigenCuenta[]).map((k) => ({ id: k.id, nombre: k.nombre })));
       })
       .catch(() => {});
-    fetchWithSupabaseSession("/api/configuracion/plan-cuentas", { cache: "no-store" })
+    // Endpoint de solo lectura (cualquier usuario de la empresa), no el admin-only de Configuración.
+    fetchWithSupabaseSession("/api/gastos/plan-cuentas", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((j) => setCuentas(((j?.data?.cuentas ?? []) as CuentaPlan[]).filter((c) => c.activo !== false && c.asentable !== false)))
       .catch(() => {});
