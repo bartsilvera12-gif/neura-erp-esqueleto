@@ -90,12 +90,29 @@ export async function GET(request: Request) {
       }
     }
 
+    // Sub-secciones permitidas por módulo (control fino). Solo para no-super_admin.
+    // { slug: [hrefs...] } presente = ese módulo está limitado a esas sub-secciones.
+    const secciones: Record<string, string[]> = {};
+    if (!superAdmin && usuario.id) {
+      const { data: secRows } = await supabase
+        .from("usuario_secciones")
+        .select("seccion, modulos!inner(slug)")
+        .eq("usuario_id", usuario.id);
+      for (const r of (secRows ?? []) as { seccion?: unknown; modulos?: { slug?: unknown } | { slug?: unknown }[] }[]) {
+        const mod = Array.isArray(r.modulos) ? r.modulos[0] : r.modulos;
+        const slug = typeof mod?.slug === "string" ? mod.slug : "";
+        const sec = typeof r.seccion === "string" ? r.seccion : "";
+        if (slug && sec) (secciones[slug] ??= []).push(sec);
+      }
+    }
+
     return NextResponse.json({
       superAdmin,
       slugs: modulos.map((m) => m.slug).filter(Boolean),
       inactiveSlugs,
       strictAllowlist,
       modulos: modulos.map((m) => ({ id: m.id, nombre: m.nombre, slug: m.slug })),
+      secciones,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Error";

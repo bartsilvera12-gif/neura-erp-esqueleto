@@ -290,6 +290,7 @@ function NavItem({
   expanded,
   onToggleExpand,
   destino,
+  allowedChildHrefs,
 }: {
   item: MenuItem;
   itemId: string;
@@ -303,6 +304,8 @@ function NavItem({
   /** A dónde lleva el ítem: la última pantalla que el usuario tenía abierta en
    *  ese módulo, o el listado si no estuvo nunca o si ya está adentro. */
   destino: string;
+  /** Sub-secciones permitidas (hrefs). null/[] = sin restricción fina (ve todo). */
+  allowedChildHrefs?: string[] | null;
 }) {
   const Icon = item.icon;
   const p = usePathname() ?? "";
@@ -310,9 +313,21 @@ function NavItem({
 
   if (!hasAccess) return null;
 
-  const childActive = item.children?.some((c) => menuChildPathActive(p, c.href, c.exactMatch));
+  // Restricción fina por sub-sección: si hay hrefs permitidos, solo esos hijos.
+  const restringido = !!(allowedChildHrefs && allowedChildHrefs.length > 0);
+  const children = restringido && item.children
+    ? item.children.filter((c) => allowedChildHrefs!.includes(c.href))
+    : item.children;
+  // Si está restringido y no queda ninguna sub-sección permitida, ocultar el módulo.
+  if (restringido && (!children || children.length === 0)) return null;
+  // El link del módulo debe llevar a una sub-sección permitida.
+  const destinoFinal = restringido && children && !children.some((c) => c.href === destino)
+    ? children[0].href
+    : destino;
 
-  if (item.children) {
+  const childActive = children?.some((c) => menuChildPathActive(p, c.href, c.exactMatch));
+
+  if (children) {
     const rowTone =
       isActive || childActive
         ? "bg-[color:var(--zentra-sidebar-active)] text-white shadow-[inset_3px_0_0_var(--zentra-sidebar-accent)]"
@@ -321,9 +336,9 @@ function NavItem({
       <div className="space-y-0.5">
         <div className={`flex items-center gap-0.5 rounded-lg text-sm font-medium transition-colors ${rowTone}`}>
           <Link
-            href={destino}
+            href={destinoFinal}
             prefetch={false}
-            onMouseEnter={() => router.prefetch(destino)}
+            onMouseEnter={() => router.prefetch(destinoFinal)}
             className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5"
             title={item.label}
           >
@@ -360,7 +375,7 @@ function NavItem({
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden pl-4 space-y-0.5"
             >
-              {item.children.map((c) => (
+              {children.map((c) => (
                 <Link
                   key={c.href}
                   href={c.href}
@@ -436,6 +451,10 @@ export default function Sidebar() {
   );
   const [strictAllowlist, setStrictAllowlist] = useState<boolean>(
     !!cachedAccess?.strictAllowlist,
+  );
+  // Sub-secciones permitidas por módulo (slug → hrefs). Vacío = sin restricción fina.
+  const [seccionesPermitidas, setSeccionesPermitidas] = useState<Record<string, string[]>>(
+    () => (cachedAccess?.secciones && typeof cachedAccess.secciones === "object" ? cachedAccess.secciones : {}),
   );
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState(false);
@@ -543,11 +562,13 @@ export default function Sidebar() {
 
         let inactiveList: string[] = [];
         let strict = false;
+        let secciones: Record<string, string[]> = {};
         if (ok) {
           superA = !!body.superAdmin || bootstrapSuper;
           modList = Array.isArray(body.modulos) ? body.modulos : [];
           inactiveList = Array.isArray(body.inactiveSlugs) ? body.inactiveSlugs : [];
           strict = !!body.strictAllowlist;
+          secciones = body.secciones && typeof body.secciones === "object" ? body.secciones : {};
         } else {
           superA = bootstrapSuper;
         }
@@ -583,12 +604,14 @@ export default function Sidebar() {
         setModulos(modList);
         setInactiveSlugsList(inactiveList);
         setStrictAllowlist(strict);
+        setSeccionesPermitidas(superA ? {} : secciones);
       } catch {
         if (!cancelled) {
           setModulos([]);
           setEsSuperAdmin(false);
           setInactiveSlugsList([]);
           setStrictAllowlist(false);
+          setSeccionesPermitidas({});
         }
       } finally {
         if (!cancelled) setCargando(false);
@@ -915,6 +938,7 @@ export default function Sidebar() {
                   expanded={expandedItems[item.key] ?? false}
                   onToggleExpand={() => toggleExpand(item.key)}
                   destino={destinoDe(item)}
+                allowedChildHrefs={seccionesPermitidas[item.slug] ?? null}
                 />
               ))}
             </div>
@@ -940,6 +964,7 @@ export default function Sidebar() {
                 expanded={expandedItems[item.key] ?? false}
                 onToggleExpand={() => toggleExpand(item.key)}
                 destino={destinoDe(item)}
+                allowedChildHrefs={seccionesPermitidas[item.slug] ?? null}
               />
             ))}
           </div>
@@ -971,6 +996,7 @@ export default function Sidebar() {
                         expanded={expandedItems[item.key] ?? false}
                         onToggleExpand={() => toggleExpand(item.key)}
                         destino={destinoDe(item)}
+                allowedChildHrefs={seccionesPermitidas[item.slug] ?? null}
                       />
                     ))}
                   </div>

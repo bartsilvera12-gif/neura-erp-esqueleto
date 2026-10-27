@@ -17,6 +17,7 @@ import {
 } from "@/components/usuarios/UsuarioForm";
 import type { AreaUsuario, TipoContrato } from "@/lib/usuarios/types";
 import { Select } from "@/components/ui/Select";
+import { SECCIONES_POR_MODULO } from "@/lib/modulos/secciones";
 import { User, Briefcase, ShieldCheck, MessageCircle, BarChart3, Package, KeyRound } from "lucide-react";
 
 type ModuloOpt = { id: string; nombre: string; slug: string };
@@ -37,6 +38,7 @@ type Usuario = {
   estado: string | null;
   created_at: string;
   modulo_ids?: string[];
+  secciones?: Record<string, string[]>;
   modulos_empresa?: ModuloOpt[];
   dashboard_views_empresa?: { id: string; nombre: string; slug: string; orden: number }[];
   dashboard_view_ids?: string[];
@@ -145,6 +147,8 @@ function UsuarioDetailContent() {
   const [successMessage, setSuccessMessage] = useAutoClearFlag<string>(5000);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  // Sub-secciones permitidas por módulo (slug → hrefs). Vacío para un módulo = todas.
+  const [secciones, setSecciones] = useState<Record<string, string[]>>({});
 
   const [pwdNew, setPwdNew] = useState("");
   const [pwdNew2, setPwdNew2] = useState("");
@@ -172,6 +176,7 @@ function UsuarioDetailContent() {
         setOmnicanalWarning(null);
         setUsuario(u);
         setForm(usuarioToForm(u));
+        setSecciones((u.secciones as Record<string, string[]> | undefined) ?? {});
         if (u.omnicanal) {
           setOmniAgent(Boolean(u.omnicanal.agent_enabled));
           setOmniScheduleId(u.omnicanal.work_schedule_id ?? "");
@@ -194,6 +199,11 @@ function UsuarioDetailContent() {
         ...prev,
         modulo_ids: checked ? [...prev.modulo_ids, mid] : prev.modulo_ids.filter((m) => m !== mid),
       }));
+      // Si se destilda el módulo, limpiar sus sub-secciones.
+      if (!checked) {
+        const slug = (usuario?.modulos_empresa ?? []).find((mm) => mm.id === mid)?.slug;
+        if (slug) setSecciones((prev) => { const c = { ...prev }; delete c[slug]; return c; });
+      }
       return;
     }
     if (type === "checkbox") {
@@ -204,6 +214,21 @@ function UsuarioDetailContent() {
     if (name === "email" || type === "email") normalized = value.toLowerCase();
     else if (name === "nombre") normalized = value.toUpperCase();
     setForm((prev) => ({ ...prev, [name]: normalized } as UsuarioFormValues));
+  }
+
+  /** Marca/desmarca una sub-sección de un módulo. Todas marcadas = sin restricción (no se guarda). */
+  function toggleSeccion(slug: string, href: string) {
+    const total = (SECCIONES_POR_MODULO[slug] ?? []).map((s) => s.href);
+    setSecciones((prev) => {
+      const cur = prev[slug] ?? total; // sin entrada = todas permitidas
+      const has = cur.includes(href);
+      const next = has ? cur.filter((h) => h !== href) : [...cur, href];
+      if (next.length === 0) return prev; // no permitir dejar ninguna (mejor destildar el módulo)
+      const copy = { ...prev };
+      if (next.length >= total.length) delete copy[slug]; // todas = sin restricción fina
+      else copy[slug] = next;
+      return copy;
+    });
   }
 
   async function handleGuardar(e: React.FormEvent) {
@@ -248,6 +273,7 @@ function UsuarioDetailContent() {
       }
       if (usuario.puede_editar_modulos && !usuario.es_admin_empresa) {
         body.modulo_ids = form.modulo_ids;
+        body.secciones = secciones;
       }
 
       if (
@@ -743,24 +769,51 @@ function UsuarioDetailContent() {
                       Solo aplica a supervisores y usuarios. Marcá los módulos que esta persona puede usar (lo habilitado
                       para tu empresa).
                     </p>
+                    <p className="text-xs text-gray-400 mb-3">
+                      Tip: en los módulos con <b>sub-secciones</b>, desplegá y destildá las pantallas que no querés que vea
+                      (lo que dejás tildado es lo que ve). Si están todas tildadas, ve el módulo completo.
+                    </p>
                     <div className="space-y-2">
-                      {(usuario.modulos_empresa ?? []).map((m) => (
-                        <label
-                          key={m.id}
-                          className="flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
-                        >
-                          <input
-                            type="checkbox"
-                            name={`modulo_${m.id}`}
-                            value={m.id}
-                            checked={form.modulo_ids.includes(m.id)}
-                            onChange={handleChange}
-                            className="rounded border-gray-300 text-gray-900 focus:ring-gray-900/20"
-                          />
-                          <span className="text-sm font-medium text-gray-800">{m.nombre}</span>
-                          <span className="text-xs text-gray-400 ml-auto font-mono">{m.slug}</span>
-                        </label>
-                      ))}
+                      {(usuario.modulos_empresa ?? []).map((m) => {
+                        const checked = form.modulo_ids.includes(m.id);
+                        const subs = SECCIONES_POR_MODULO[m.slug] ?? [];
+                        const allowed = secciones[m.slug];
+                        const subChecked = (href: string) => !allowed || allowed.includes(href);
+                        return (
+                          <div key={m.id} className="rounded-lg border border-gray-100">
+                            <label className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
+                              <input
+                                type="checkbox"
+                                name={`modulo_${m.id}`}
+                                value={m.id}
+                                checked={checked}
+                                onChange={handleChange}
+                                className="rounded border-gray-300 text-gray-900 focus:ring-gray-900/20"
+                              />
+                              <span className="text-sm font-medium text-gray-800">{m.nombre}</span>
+                              <span className="text-xs text-gray-400 ml-auto font-mono">{m.slug}</span>
+                            </label>
+                            {checked && subs.length > 0 && (
+                              <div className="border-t border-gray-100 bg-gray-50/60 px-3 py-2">
+                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Sub-secciones</p>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                  {subs.map((s) => (
+                                    <label key={s.href} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={subChecked(s.href)}
+                                        onChange={() => toggleSeccion(m.slug, s.href)}
+                                        className="rounded border-gray-300 text-gray-900 focus:ring-gray-900/20"
+                                      />
+                                      {s.label}
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </SectionCard>
                 ) : null}

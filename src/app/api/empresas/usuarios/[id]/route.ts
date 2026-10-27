@@ -212,6 +212,21 @@ export async function GET(
       }
     }
 
+    // Sub-secciones permitidas por módulo (slug → hrefs). Vacío = sin restricción fina.
+    const secciones: Record<string, string[]> = {};
+    {
+      const { data: secData } = await supabase
+        .from("usuario_secciones")
+        .select("seccion, modulos!inner(slug)")
+        .eq("usuario_id", id);
+      for (const r of (secData ?? []) as { seccion?: unknown; modulos?: { slug?: unknown } | { slug?: unknown }[] }[]) {
+        const mod = Array.isArray(r.modulos) ? r.modulos[0] : r.modulos;
+        const slug = typeof mod?.slug === "string" ? mod.slug : "";
+        const sec = typeof r.seccion === "string" ? r.seccion : "";
+        if (slug && sec) (secciones[slug] ??= []).push(sec);
+      }
+    }
+
     let dashboard_views_empresa: { id: string; nombre: string; slug: string; orden: number }[] = [];
     let dashboard_view_ids: string[] = [];
     let default_dashboard_view_id: string | null = null;
@@ -272,6 +287,7 @@ export async function GET(
     return NextResponse.json({
       ...rest,
       modulo_ids,
+      secciones,
       modulos_empresa,
       dashboard_views_empresa,
       dashboard_view_ids,
@@ -330,10 +346,12 @@ export async function PATCH(
       area,
       estado,
       modulo_ids,
+      secciones,
       dashboard_view_ids,
       default_dashboard_view_id,
       rol: rolBody,
     } = body;
+    const seccionesProvided = Object.prototype.hasOwnProperty.call(body, "secciones");
 
     const { data: usuario, error: errGet } = await supabase
       .from("usuarios")
@@ -482,6 +500,30 @@ export async function PATCH(
         const { error: errIns } = await supabase.from("usuario_modulos").insert(rows);
         if (errIns) {
           return NextResponse.json({ error: errIns.message }, { status: 400 });
+        }
+      }
+    }
+
+    // Sub-secciones permitidas por módulo (control fino). secciones = { slug: [hrefs] }.
+    // Solo se guardan los módulos limitados (subconjunto); el resto = todas las sub-secciones.
+    if (seccionesProvided && usuario.empresa_id && !esRolAdminEmpresa(finalRol)) {
+      const { error: errDelSec } = await supabase.from("usuario_secciones").delete().eq("usuario_id", id);
+      if (errDelSec) return NextResponse.json({ error: errDelSec.message }, { status: 400 });
+      const map = (secciones && typeof secciones === "object" ? secciones : {}) as Record<string, string[]>;
+      const slugs = Object.keys(map).filter((s) => Array.isArray(map[s]) && map[s].length > 0);
+      if (slugs.length > 0) {
+        const { data: modRows } = await supabase.from("modulos").select("id, slug").in("slug", slugs);
+        const idBySlug: Record<string, string> = {};
+        for (const m of (modRows ?? []) as { id: string; slug: string }[]) idBySlug[m.slug] = m.id;
+        const rows: { usuario_id: string; modulo_id: string; seccion: string }[] = [];
+        for (const slug of slugs) {
+          const mid = idBySlug[slug];
+          if (!mid) continue;
+          for (const href of map[slug]) if (typeof href === "string" && href) rows.push({ usuario_id: id, modulo_id: mid, seccion: href });
+        }
+        if (rows.length > 0) {
+          const { error: errInsSec } = await supabase.from("usuario_secciones").insert(rows);
+          if (errInsSec) return NextResponse.json({ error: errInsSec.message }, { status: 400 });
         }
       }
     }
