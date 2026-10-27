@@ -29,6 +29,8 @@ export type ModuleAccessResponse = {
   inactiveSlugs?: string[];
   strictAllowlist?: boolean;
   modulos?: Array<{ id: string; nombre: string; slug: string }>;
+  /** Sub-secciones permitidas por módulo (slug → hrefs). Presente = módulo limitado a esas. */
+  secciones?: Record<string, string[]>;
 };
 
 type CachedEntry = {
