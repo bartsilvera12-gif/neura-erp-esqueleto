@@ -248,6 +248,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Nómina", href: "/rrhh/nomina" },
   ]},
   { key: "configuracion", slug: "configuracion", label: "Configuración", href: "/configuracion", icon: Settings },
+  { key: "usuarios", slug: "usuarios", label: "Usuarios", href: "/usuarios", icon: Users },
 ];
 
 /**
@@ -267,7 +268,7 @@ const MENU_FAMILIES: { id: string; titulo: string; keys: string[] }[] = [
   { id: "contabilidad", titulo: "Contabilidad", keys: ["contabilidad"] },
   { id: "rrhh", titulo: "Recursos Humanos", keys: ["rrhh"] },
   { id: "analisis", titulo: "Análisis", keys: ["reportes"] },
-  { id: "admin", titulo: "Administración", keys: ["configuracion"] },
+  { id: "admin", titulo: "Administración", keys: ["usuarios", "configuracion"] },
 ];
 
 function modulosSyntheticFromMenu(): ModuloEmpresa[] {
