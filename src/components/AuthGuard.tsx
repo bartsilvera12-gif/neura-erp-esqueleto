@@ -68,7 +68,7 @@ function AuthGuardInner({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { ok, data } = await getModuleAccessCached();
+      const { ok, data } = await getModuleAccessCached({ userId: session.user.id });
       if (cancelled) return;
 
       let superAdmin = false;

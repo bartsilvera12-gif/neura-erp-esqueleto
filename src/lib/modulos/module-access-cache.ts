@@ -34,9 +34,14 @@ export type ModuleAccessResponse = {
 type CachedEntry = {
   data: ModuleAccessResponse;
   expiresAt: number;
+  userId?: string; // dueño del cache: evita servir módulos de otro usuario en la misma PC
 };
 
-function readCache(): ModuleAccessResponse | null {
+/**
+ * Lee el cache. Si se pasa `expectedUserId` y el cache pertenece a otro usuario,
+ * lo invalida y devuelve null (así un usuario nunca ve el menú del anterior).
+ */
+function readCache(expectedUserId?: string | null): ModuleAccessResponse | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(CACHE_KEY);
@@ -47,16 +52,20 @@ function readCache(): ModuleAccessResponse | null {
       window.localStorage.removeItem(CACHE_KEY);
       return null;
     }
+    if (expectedUserId && parsed.userId && parsed.userId !== expectedUserId) {
+      window.localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
     return parsed.data;
   } catch {
     return null;
   }
 }
 
-function writeCache(data: ModuleAccessResponse): void {
+function writeCache(data: ModuleAccessResponse, userId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    const entry: CachedEntry = { data, expiresAt: Date.now() + TTL_MS };
+    const entry: CachedEntry = { data, expiresAt: Date.now() + TTL_MS, userId: userId ?? undefined };
     window.localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
   } catch {
     /* localStorage lleno o deshabilitado; degradar silenciosamente */
@@ -81,19 +90,22 @@ export function clearModuleAccessCache(): void {
  *
  * Devuelve null si no hay cache, está expirado, o estamos en SSR.
  */
-export function peekModuleAccessCache(): ModuleAccessResponse | null {
-  return readCache();
+export function peekModuleAccessCache(expectedUserId?: string | null): ModuleAccessResponse | null {
+  return readCache(expectedUserId);
 }
 
 /**
  * Devuelve module-access cacheado o lo fetcha del server.
- * Si `forceRefresh` es true, ignora el cache y vuelve al server.
+ * - `forceRefresh`: ignora el cache y vuelve al server.
+ * - `userId`: dueño esperado del cache; si el cache es de otro usuario se ignora
+ *   y se refetchea (evita servir el menú del usuario anterior en la misma PC).
  */
 export async function getModuleAccessCached(opts?: {
   forceRefresh?: boolean;
+  userId?: string | null;
 }): Promise<{ ok: boolean; data: ModuleAccessResponse }> {
   if (!opts?.forceRefresh) {
-    const cached = readCache();
+    const cached = readCache(opts?.userId);
     if (cached) return { ok: true, data: cached };
   }
 
@@ -105,7 +117,7 @@ export async function getModuleAccessCached(opts?: {
       return { ok: false, data: {} };
     }
     const data = (await res.json()) as ModuleAccessResponse;
-    writeCache(data);
+    writeCache(data, opts?.userId);
     return { ok: true, data };
   } catch {
     return { ok: false, data: {} };
