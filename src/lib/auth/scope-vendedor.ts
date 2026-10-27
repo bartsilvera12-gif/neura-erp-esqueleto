@@ -1,5 +1,6 @@
 import { getAuthWithRol } from "@/lib/middleware/auth";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 
 /**
  * Alcance de "sus documentos" para vendedores (PDF §1).
@@ -18,6 +19,11 @@ export type VendedorScope =
 export async function resolveVendedorScope(request?: Request | null): Promise<VendedorScope> {
   const auth = await getAuthWithRol(request);
   if (!auth) return { esAdmin: false, userId: null };
+  // Living Room: visibilidad compartida — quien tiene el módulo ve TODOS los
+  // documentos de la empresa (presupuestos, ventas), no solo los que creó él.
+  if (esInstanciaLR()) {
+    return { esAdmin: true, userId: null };
+  }
   if (esRolAdminEmpresaOGlobal(auth.rol)) {
     return { esAdmin: true, userId: null };
   }
