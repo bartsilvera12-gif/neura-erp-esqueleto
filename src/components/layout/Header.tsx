@@ -1,6 +1,7 @@
 "use client";
 
 import CampanaAlertas from "./CampanaAlertas";
+import GestionSelector from "./GestionSelector";
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -102,6 +103,9 @@ export default function Header() {
       <div className="hidden md:block md:flex-1" />
 
       <div className="flex items-center gap-2">
+        {/* Selector de gestión (año) */}
+        <GestionSelector />
+
         {/* Notificaciones */}
         <CampanaAlertas />
 
