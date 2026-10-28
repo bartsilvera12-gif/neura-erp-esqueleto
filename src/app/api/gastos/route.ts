@@ -6,6 +6,7 @@ import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import { validarMovimiento, ErrorTesoreria } from "@/lib/tesoreria/server";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { aSeccion, esSeccion, RECIBO_PREFIJO } from "@/lib/secciones";
+import { anioGestionActiva, rangoGestion, gestionCerrada, anioDeFecha } from "@/lib/gestion/gestion-activa";
 
 /**
  * GET /api/gastos
@@ -19,10 +20,14 @@ export async function GET(request: NextRequest) {
     }
     const { supabase, auth } = ctx;
     const seccion = new URL(request.url).searchParams.get("seccion");
+    // Gestión (año) activa: mostrar solo los gastos de ese año.
+    const { desde, hasta } = rangoGestion(anioGestionActiva(request));
     let query = supabase
       .from("gastos")
       .select("*")
       .eq("empresa_id", auth.empresa_id)
+      .gte("fecha", desde)
+      .lte("fecha", hasta)
       .order("fecha", { ascending: false });
     if (esSeccion(seccion)) query = query.eq("seccion", seccion);
     const { data, error } = await query;
@@ -54,6 +59,12 @@ export async function POST(request: NextRequest) {
     const monto = Number(b.monto);
     if (!(monto > 0)) return NextResponse.json(errorResponse("El monto debe ser mayor a 0."), { status: 400 });
     const fecha = String(b.fecha ?? "").trim() || new Date().toISOString().slice(0, 10);
+
+    // Si la gestión (año) del gasto está cerrada, no se puede cargar (solo lectura).
+    const anioGasto = anioDeFecha(fecha) ?? anioGestionActiva(request);
+    if (await gestionCerrada(supabase as unknown as AppSupabaseClient, emp, anioGasto)) {
+      return NextResponse.json(errorResponse(`La gestión ${anioGasto} está cerrada: no se pueden cargar gastos de ese año.`), { status: 400 });
+    }
 
     const row: Record<string, unknown> = {
       empresa_id: emp,

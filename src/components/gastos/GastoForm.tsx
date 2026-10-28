@@ -15,6 +15,19 @@ import { GASTOS_RUTA, SECCION_DEFECTO, type Seccion } from "@/lib/secciones";
 type OrigenCuenta = { id: string; nombre: string };
 type CuentaPlan = { id: string; cuenta: string; denominacion: string; asentable?: boolean | null; activo?: boolean | null };
 
+/** Fecha por defecto: hoy, pero con el AÑO de la gestión activa (cookie), así el gasto cae en esa gestión. */
+function fechaPorDefectoGestion(): string {
+  const hoy = new Date();
+  let anio = hoy.getFullYear();
+  try {
+    const m = (typeof document !== "undefined" ? document.cookie : "").match(/(?:^|;\s*)neura_gestion=(\d{4})(?:;|$)/);
+    if (m) { const n = parseInt(m[1], 10); if (n >= 2000 && n <= 2100) anio = n; }
+  } catch { /* nop */ }
+  const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dd = String(hoy.getDate()).padStart(2, "0");
+  return `${anio}-${mm}-${dd}`;
+}
+
 const fLabel = "block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1";
 const fInput =
   "w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] bg-white";
@@ -41,7 +54,7 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
     tipo: gasto?.tipo ?? "variable",
     recurrente: gasto?.recurrente ?? false,
     frecuencia: gasto?.frecuencia ?? "",
-    fecha: gasto?.fecha ?? new Date().toISOString().slice(0, 10),
+    fecha: gasto?.fecha ?? fechaPorDefectoGestion(),
     proyecto_id: gasto?.proyecto_id ?? null,
     facturado: gasto?.facturado ?? false,
     cuenta_contable_id: gasto?.cuenta_contable_id ?? null,
