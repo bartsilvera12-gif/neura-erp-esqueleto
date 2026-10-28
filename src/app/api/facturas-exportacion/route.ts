@@ -3,6 +3,8 @@ import { getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
+import { anioGestionActiva, rangoGestion, gestionCerrada } from "@/lib/gestion/gestion-activa";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { esUuid } from "@/lib/comex/server";
 import type { TipoFactura } from "@/lib/facturas-exportacion/config";
 import type { IvaTipo } from "@/lib/facturas-exportacion/types";
@@ -40,10 +42,14 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get("q");
     const modo = searchParams.get("modo");
 
+    // Gestión (año) activa: filtrar siempre al año elegido.
+    const rg = rangoGestion(anioGestionActiva(request));
     let query = ctx.supabase
       .from("facturas_exportacion")
       .select(COLS)
       .eq("empresa_id", ctx.auth.empresa_id)
+      .gte("fecha", rg.desde)
+      .lte("fecha", rg.hasta)
       .order("fecha", { ascending: false })
       .order("numero", { ascending: false });
 
@@ -79,6 +85,12 @@ export async function POST(request: NextRequest) {
     const ctx = await getTenantSupabaseFromAuthWithRol(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const { auth, supabase } = ctx;
+
+    // Gestión cerrada → no se pueden crear/emitir facturas de ese año.
+    const anioGF = anioGestionActiva(request);
+    if (await gestionCerrada(supabase as unknown as AppSupabaseClient, auth.empresa_id, anioGF)) {
+      return NextResponse.json(errorResponse(`La gestión ${anioGF} está cerrada: no se pueden crear facturas.`), { status: 400 });
+    }
 
     let body: Record<string, unknown>;
     try {

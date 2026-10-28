@@ -3,6 +3,8 @@ import { getTenantSupabaseFromAuth, getTenantSupabaseFromAuthWithRol } from "@/l
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { resolveVendedorScope } from "@/lib/auth/scope-vendedor";
+import { anioGestionActiva, rangoGestion, gestionCerrada } from "@/lib/gestion/gestion-activa";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { crearPresupuesto, type PresupuestoItemInput } from "@/lib/presupuestos/server/presupuestos-pg";
 import { faltanteDeStock } from "@/lib/presupuestos/server/stock";
 import { esInstanciaLR } from "@/lib/inventario/campos-lr";
@@ -49,10 +51,13 @@ export async function GET(request: NextRequest) {
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const estado = new URL(request.url).searchParams.get("estado");
     const scope = await resolveVendedorScope(request);
+    const { desde, hasta } = rangoGestion(anioGestionActiva(request));
     let q = ctx.supabase
       .from("presupuestos")
       .select(PRESU_COLS)
       .eq("empresa_id", ctx.auth.empresa_id)
+      .gte("fecha", desde)
+      .lte("fecha", hasta)
       .order("fecha", { ascending: false })
       .limit(500);
     if (estado) q = q.eq("estado", estado);
@@ -75,6 +80,12 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getTenantSupabaseFromAuthWithRol(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+
+    // Si la gestión activa está cerrada, no se pueden crear presupuestos de ese año.
+    const anioG = anioGestionActiva(request);
+    if (await gestionCerrada(ctx.supabase as unknown as AppSupabaseClient, ctx.auth.empresa_id, anioG)) {
+      return NextResponse.json(errorResponse(`La gestión ${anioG} está cerrada: no se pueden crear presupuestos.`), { status: 400 });
+    }
 
     let body: Record<string, unknown>;
     try {

@@ -4,6 +4,8 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { esUuid, getComexCtx, textoBusqueda } from "@/lib/comex/server";
 import { COMPRA_COLS, ErrorValidacion, guardarCompra } from "@/lib/compras-libro/server";
 import { esSeccion } from "@/lib/secciones";
+import { anioGestionActiva, rangoGestion, gestionCerrada } from "@/lib/gestion/gestion-activa";
+import type { AppSupabaseClient } from "@/lib/supabase/schema";
 
 /** GET ?desde=&hasta=&tipo=&estado=&q= — comprobantes del libro de compras. */
 export async function GET(request: NextRequest) {
@@ -11,10 +13,13 @@ export async function GET(request: NextRequest) {
     const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const sp = new URL(request.url).searchParams;
+    const rg = rangoGestion(anioGestionActiva(request));
     let q = ctx.supabase
       .from("libro_compras")
       .select(COMPRA_COLS)
       .eq("empresa_id", ctx.auth.empresa_id)
+      .gte("fecha", rg.desde)
+      .lte("fecha", rg.hasta)
       .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(1000);
@@ -47,6 +52,10 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getComexCtx(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    const anioLC = anioGestionActiva(request);
+    if (await gestionCerrada(ctx.supabase as unknown as AppSupabaseClient, ctx.auth.empresa_id, anioLC)) {
+      return NextResponse.json(errorResponse(`La gestión ${anioLC} está cerrada: no se pueden cargar compras.`), { status: 400 });
+    }
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const r = await guardarCompra(ctx.supabase, ctx.auth, body);
     return NextResponse.json(successResponse(r));
