@@ -115,7 +115,10 @@ export default function GastosPanel({
   }, [cargar]);
 
   useEffect(() => {
-    api<{ cuentas: CuentaPlan[] }>("/api/configuracion/plan-cuentas")
+    // Solo-lectura: cualquier usuario de la empresa puede elegir una cuenta.
+    // (El endpoint de configuración es admin-only y da 403 a los demás, dejando
+    // el gasto con IVA sin poder asignar cuenta contable.)
+    api<{ cuentas: CuentaPlan[] }>("/api/gastos/plan-cuentas")
       .then((d) => setCuentas((d.cuentas ?? []).filter((c) => c.activo !== false && c.asentable !== false)))
       .catch(() => setCuentas([]));
     api<{ config: { cuenta_iva_credito: string; cuenta_proveedores: string } }>("/api/libro-compras/config")
