@@ -4,6 +4,7 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { getComexCtx, operacionCerrada, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import { parseUploadFile } from "@/lib/excel/import";
 import { parseGastosRows, buildPreviewGastos } from "@/lib/importaciones/gastos-import";
+import { crearFacturaDeGasto } from "@/lib/comex/gasto-factura";
 import type { CommitResponse } from "@/lib/excel/import-types";
 
 /** POST (multipart file) → crea todos los gastos válidos de la importación. */
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
       errors: [],
     };
 
+    let facturasCreadas = 0;
     for (let i = 0; i < parsed.length; i++) {
       const g = parsed[i];
       if (prev.rows[i].action === "ERROR") {
@@ -48,34 +50,71 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
         out.errors.push(`Fila ${g.row_number}: ${g.errors.join("; ")}`);
         continue;
       }
+      const fecha = g.fecha ?? hoy;
       try {
-        const ins = await sb.from("comex_gastos").insert({
-          empresa_id: emp,
-          origen_tipo: "IMPORTACION",
-          origen_id: id,
-          usuario_nombre: nombreUsuario(ctx.auth),
-          fecha: g.fecha ?? hoy,
-          tipo: g.tipo,
-          descripcion: g.descripcion,
-          proveedor_nombre: g.proveedor_nombre,
-          comprobante: g.comprobante,
-          cuenta_codigo: g.cuenta_codigo,
-          monto: g.monto,
-          moneda: g.moneda,
-          tipo_cambio: g.tipo_cambio,
-          pagado: g.pagado,
-          lleva_iva: g.lleva_iva,
-        });
+        // 1) Se carga el gasto de la operación.
+        const ins = await sb
+          .from("comex_gastos")
+          .insert({
+            empresa_id: emp,
+            origen_tipo: "IMPORTACION",
+            origen_id: id,
+            usuario_nombre: nombreUsuario(ctx.auth),
+            fecha,
+            tipo: g.tipo,
+            descripcion: g.descripcion,
+            proveedor_nombre: g.proveedor_nombre,
+            proveedor_ruc: g.proveedor_ruc,
+            comprobante: g.comprobante,
+            timbrado: g.timbrado,
+            cuenta_codigo: g.cuenta_codigo,
+            monto: g.monto,
+            moneda: g.moneda,
+            tipo_cambio: g.tipo_cambio,
+            pagado: g.pagado,
+            lleva_iva: g.lleva_iva,
+            iva_porcentaje: g.iva_porcentaje,
+          })
+          .select("id")
+          .single();
         if (ins.error) throw new Error(ins.error.message);
+        const gastoId = (ins.data as { id: string }).id;
+
+        // 2) Si lleva IVA, se genera la factura en el Libro de Compras y se enlaza.
+        //    Si falla, se revierte el gasto para no dejarlo sin su factura.
+        if (g.lleva_iva) {
+          try {
+            const { compraId } = await crearFacturaDeGasto(sb, ctx.auth, {
+              fecha,
+              tipo: g.tipo,
+              descripcion: g.descripcion,
+              proveedor_nombre: g.proveedor_nombre,
+              proveedor_ruc: g.proveedor_ruc,
+              comprobante: g.comprobante,
+              timbrado: g.timbrado,
+              cuenta_codigo: g.cuenta_codigo,
+              monto: g.monto,
+              moneda: g.moneda,
+              tipo_cambio: g.tipo_cambio,
+              iva_porcentaje: g.iva_porcentaje,
+            });
+            await sb.from("comex_gastos").update({ libro_compra_id: compraId }).eq("empresa_id", emp).eq("id", gastoId);
+            facturasCreadas++;
+          } catch (e) {
+            await sb.from("comex_gastos").delete().eq("empresa_id", emp).eq("id", gastoId);
+            throw e;
+          }
+        }
         out.summary.inserted++;
       } catch (e) {
         out.summary.errors++;
-        out.errors.push(`Fila ${g.row_number}: ${(e as Error).message.slice(0, 160)}`);
+        out.errors.push(`Fila ${g.row_number}: ${(e as Error).message.slice(0, 200)}`);
       }
     }
 
     await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", id, "IMPORTAR_GASTOS_EXCEL", {
       gastos_creados: out.summary.inserted,
+      facturas_libro_compras: facturasCreadas,
       errores: out.summary.errors,
     });
 
