@@ -29,12 +29,15 @@ export interface GastoParsed {
   conceptoRaw: string;
   descripcion: string | null;
   proveedor_nombre: string | null;
+  proveedor_ruc: string | null;
   comprobante: string | null;
+  timbrado: string | null;
   cuenta_codigo: string | null;
   monto: number;
   moneda: string;
   tipo_cambio: number;
   lleva_iva: boolean;
+  iva_porcentaje: number | null;
   pagado: boolean;
   errors: string[];
 }
@@ -60,7 +63,9 @@ export function parseGastosRows(rows: Record<string, string>[], monedaImp: strin
     const tipo = conceptoRaw ? (TIPOS_POR_NORM.get(normConcepto(conceptoRaw)) ?? null) : null;
     const descripcion = normalizeUpperText(pick(r, "DESCRIPCION", "DETALLE")) || null;
     const proveedor_nombre = normalizeUpperText(pick(r, "PROVEEDOR", "PROVEEDOR_NOMBRE")) || null;
+    const proveedor_ruc = normalizeUpperText(pick(r, "RUC", "PROVEEDOR_RUC")) || null;
     const comprobante = normalizeUpperText(pick(r, "COMPROBANTE", "NRO_COMPROBANTE", "FACTURA")) || null;
+    const timbrado = normalizeUpperText(pick(r, "TIMBRADO")) || null;
     const cuenta_codigo = normalizeUpperText(pick(r, "CUENTA", "CUENTA_CODIGO", "CUENTA_CONTABLE")) || null;
     const monto = pickNumber(r, "MONTO", "IMPORTE", "TOTAL");
     const monedaRaw = normalizeUpperText(pick(r, "MONEDA")) || monedaImp;
@@ -68,6 +73,8 @@ export function parseGastosRows(rows: Record<string, string>[], monedaImp: strin
     const tcRaw = pickNumber(r, "TIPO_CAMBIO", "TC", "COTIZACION");
     const tipo_cambio = moneda === "PYG" ? 1 : tcRaw;
     const lleva_iva = pickBool(r, "LLEVA_IVA", "IVA");
+    const ivaPctRaw = pickNumber(r, "IVA_PORCENTAJE", "IVA_PCT", "IVA_%", "PORCENTAJE_IVA");
+    const iva_porcentaje = lleva_iva ? (ivaPctRaw === 5 ? 5 : 10) : null;
     const pagado = pickBool(r, "PAGADO");
     const fecha = fechaIso(pick(r, "FECHA"));
 
@@ -76,6 +83,14 @@ export function parseGastosRows(rows: Record<string, string>[], monedaImp: strin
     if (!(monto > 0)) errors.push("MONTO debe ser mayor a 0.");
     if (moneda !== "PYG" && !(tipo_cambio > 0)) errors.push("Falta TIPO_CAMBIO para moneda extranjera.");
     if (tipo === "OTRO" && !descripcion) errors.push('Cuando el CONCEPTO es "OTRO", poné la DESCRIPCIÓN.');
+    // Con IVA el gasto va al Libro de Compras: necesita los datos de la factura.
+    if (lleva_iva) {
+      if (!proveedor_nombre) errors.push("LLEVA_IVA = SI: falta el PROVEEDOR (va al Libro de Compras).");
+      if (!proveedor_ruc) errors.push("LLEVA_IVA = SI: falta el RUC del proveedor.");
+      if (!comprobante) errors.push("LLEVA_IVA = SI: falta el N° de COMPROBANTE de la factura.");
+      if (!timbrado) errors.push("LLEVA_IVA = SI: falta el TIMBRADO de la factura.");
+      if (!cuenta_codigo) errors.push("LLEVA_IVA = SI: falta la CUENTA contable.");
+    }
 
     return {
       row_number: idx + 2,
@@ -84,12 +99,15 @@ export function parseGastosRows(rows: Record<string, string>[], monedaImp: strin
       conceptoRaw,
       descripcion,
       proveedor_nombre,
+      proveedor_ruc,
       comprobante,
+      timbrado,
       cuenta_codigo,
       monto,
       moneda,
       tipo_cambio,
       lleva_iva,
+      iva_porcentaje,
       pagado,
       errors,
     };
@@ -112,19 +130,21 @@ export function buildPreviewGastos(parsed: GastoParsed[]): PreviewResponse {
       data: {
         CONCEPTO: p.tipo ?? p.conceptoRaw,
         PROVEEDOR: p.proveedor_nombre ?? "",
+        RUC: p.proveedor_ruc ?? "",
         COMPROBANTE: p.comprobante ?? "",
+        TIMBRADO: p.timbrado ?? "",
         CUENTA: p.cuenta_codigo ?? "",
         MONTO: p.monto,
         MONEDA: p.moneda,
-        IVA: p.lleva_iva ? "Sí" : "No",
-        PAGADO: p.pagado ? "Sí" : "No",
+        IVA: p.lleva_iva ? `Sí (${p.iva_porcentaje}%)` : "No",
+        "LIBRO COMPRAS": p.lleva_iva ? "Sí" : "No",
       },
     };
   });
   return {
     summary: { total: parsed.length, insertar, actualizar: 0, omitir: 0, errores, warnings: 0 },
     rows,
-    headers: ["CONCEPTO", "FECHA", "PROVEEDOR", "COMPROBANTE", "CUENTA", "MONTO", "MONEDA", "TIPO_CAMBIO", "LLEVA_IVA", "PAGADO", "DESCRIPCION"],
+    headers: ["CONCEPTO", "FECHA", "PROVEEDOR", "RUC", "COMPROBANTE", "TIMBRADO", "CUENTA", "MONTO", "MONEDA", "TIPO_CAMBIO", "LLEVA_IVA", "IVA_PORCENTAJE", "PAGADO", "DESCRIPCION"],
   };
 }
 
@@ -132,12 +152,15 @@ export const GASTOS_TEMPLATE_ROW = {
   CONCEPTO: "DESPACHANTE",
   FECHA: "2026-10-20",
   PROVEEDOR: "AGENCIA MELGAREJO",
+  RUC: "80012345-6",
   COMPROBANTE: "001-001-0000790",
+  TIMBRADO: "12345678",
   CUENTA: "1.01.04.11.000",
   MONTO: 3537412,
   MONEDA: "PYG",
   TIPO_CAMBIO: 1,
   LLEVA_IVA: "SI",
+  IVA_PORCENTAJE: 10,
   PAGADO: "NO",
   DESCRIPCION: "",
 };
