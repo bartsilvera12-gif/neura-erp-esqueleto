@@ -4,11 +4,13 @@ import { getAuthUserForApiRoute } from "@/lib/auth/get-auth-user-for-api-route";
 import { resolveUsuarioErpFromAuthUser } from "@/lib/auth/resolve-usuario-erp";
 import { isBootstrapSuperAdminEmail } from "@/lib/auth/super-admin-bootstrap-email";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
+import { resolveEffectiveModules } from "@/lib/modulos/resolve-effective-modules";
 
 /**
- * Acceso a la API de Plan de Cuentas (catálogo contable, sub-página de Configuración).
- * Config es admin-only: lectura y escritura requieren rol admin/super_admin de la empresa
- * (o email bootstrap). Devuelve la empresa e info de permiso para el resto del handler.
+ * Acceso a la API de Plan de Cuentas (catálogo contable).
+ * Permitido para: admin/super_admin de la empresa (o email bootstrap), o cualquier
+ * usuario con el módulo `contabilidad` (el Plan de Cuentas es una sub-sección de
+ * Contabilidad, no una configuración global). Devuelve la empresa e info de permiso.
  */
 export type PlanCuentasApiAuth =
   | { ok: true; empresaId: string; usuarioCatalogId: string; usuarioEmail: string | null; rol: string | null; canEdit: boolean }
@@ -37,7 +39,23 @@ export async function requirePlanCuentasApiAccess(request: Request): Promise<Pla
     esRolAdminEmpresaOGlobal(rol);
 
   if (!esAdmin) {
-    return { ok: false, status: 403, message: "Solo administradores pueden acceder al Plan de Cuentas" };
+    // No es admin: permitir si tiene el módulo `contabilidad` (el Plan de Cuentas es
+    // parte de Contabilidad, no una configuración global). Pedido Living Room.
+    const modulos = await resolveEffectiveModules(catalog, {
+      id: usuario.id,
+      empresa_id: usuario.empresa_id,
+      rol: usuario.rol,
+    });
+    const tieneContabilidad = modulos.some(
+      (m) => (m.slug ?? "").trim().toLowerCase() === "contabilidad"
+    );
+    if (!tieneContabilidad) {
+      return {
+        ok: false,
+        status: 403,
+        message: "Solo administradores o Contabilidad pueden acceder al Plan de Cuentas",
+      };
+    }
   }
 
   return {
