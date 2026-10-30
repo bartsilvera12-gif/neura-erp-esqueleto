@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { BookOpen, Download, Plus, Settings, Pencil } from "lucide-react";
+import { BookOpen, Download, Plus, Settings, Pencil, FileText } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { Aviso, api, fechaES, inputClass, labelClass } from "@/components/comex/ui";
 import { SECCION_LABEL, type Seccion } from "@/lib/secciones";
@@ -237,18 +237,28 @@ export default function LibroComprasVista({
                   <td className="px-3 py-2.5 text-right">{n(f.iva5)}</td>
                   <td className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">{anulada ? <s>{money(f.total, f.moneda)}</s> : money(f.total, f.moneda)}</td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                    {anulada ? (
-                      <span className="text-xs text-slate-300">—</span>
-                    ) : (
-                      <Link
-                        href={`/libro-compras/${f.id}`}
-                        title="Editar comprobante"
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-emerald-300 hover:text-emerald-700"
+                    <div className="inline-flex items-center gap-1.5">
+                      <a
+                        href={`/api/libro-compras/${f.id}/asiento-pdf`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Imprimir el asiento contable (para firmar)"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-[#4FAEB2] hover:text-[#0F6F73]"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Editar
-                      </Link>
-                    )}
+                        <FileText className="h-3.5 w-3.5" />
+                        Asiento
+                      </a>
+                      {!anulada && (
+                        <Link
+                          href={`/libro-compras/${f.id}`}
+                          title="Editar comprobante"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-emerald-300 hover:text-emerald-700"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Editar
+                        </Link>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
