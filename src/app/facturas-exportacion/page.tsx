@@ -532,6 +532,17 @@ export default function FacturasExportacionPage() {
                       </a>
                       )}
                       {f.estado === "EMITIDA" && (
+                        <a
+                          href={`/api/facturas-exportacion/${f.id}/asiento-pdf`}
+                          target="_blank"
+                          rel="noopener"
+                          className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:border-[#4FAEB2] hover:text-[#0F6F73]"
+                          title="Imprimir el asiento contable (para firmar)"
+                        >
+                          Asiento
+                        </a>
+                      )}
+                      {f.estado === "EMITIDA" && (
                         <Link
                           href={`/notas-remision/nueva?factura=${f.id}`}
                           className="rounded border border-sky-300 px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-50"
