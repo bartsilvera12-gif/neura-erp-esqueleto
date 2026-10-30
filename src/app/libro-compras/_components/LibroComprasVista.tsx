@@ -6,6 +6,8 @@ import { BookOpen, Download, Plus, Settings, Pencil, FileText } from "lucide-rea
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { Aviso, api, fechaES, inputClass, labelClass } from "@/components/comex/ui";
 import { SECCION_LABEL, type Seccion } from "@/lib/secciones";
+import { esInstanciaLR } from "@/lib/inventario/campos-lr";
+import { getGastos } from "@/lib/gastos/actions";
 import type { TipoComprobante } from "./FormCompra";
 
 type Compra = {
@@ -27,6 +29,8 @@ type Compra = {
   total: number;
   es_electronica: boolean;
   estado: "registrada" | "anulada";
+  /** Living Room: la fila es un recibo de gasto (tabla gastos), no una compra del libro. */
+  recibo_gasto?: boolean;
 };
 
 const primerDiaMes = () => {
@@ -68,13 +72,67 @@ export default function LibroComprasVista({
     setError(null);
     try {
       const d = await api<{ compras: Compra[] }>(`/api/libro-compras?${qs}`);
-      setFilas(d.compras);
+      let todas = d.compras;
+
+      // Living Room: sumar los recibos de gasto (sin factura) para que se vean
+      // junto a las facturas y se pueda imprimir su asiento. No se piden cuando se
+      // filtra por un tipo de comprobante del libro o por el estado "anulada"
+      // (los recibos no tienen ni tipo ni anulación).
+      const incluirRecibos = esInstanciaLR() && !filtros.tipo && filtros.estado !== "anulada";
+      if (incluirRecibos) {
+        try {
+          const gastos = await getGastos(seccion ?? undefined);
+          const q = filtros.q.trim().toLowerCase();
+          const recibos: Compra[] = gastos
+            .filter((g) => g.facturado === false)
+            .filter((g) => {
+              const f = (g.fecha || "").slice(0, 10);
+              if (filtros.desde && f < filtros.desde) return false;
+              if (filtros.hasta && f > filtros.hasta) return false;
+              if (q) {
+                const hit =
+                  (g.proveedor_nombre ?? "").toLowerCase().includes(q) ||
+                  (g.categoria ?? "").toLowerCase().includes(q) ||
+                  (g.descripcion ?? "").toLowerCase().includes(q) ||
+                  (g.recibo_numero ?? "").toLowerCase().includes(q);
+                if (!hit) return false;
+              }
+              return true;
+            })
+            .map((g) => ({
+              id: g.id,
+              numero_control: g.recibo_numero ?? "",
+              fecha: g.fecha,
+              seccion: g.seccion ?? "SHOWROOM",
+              tipo_nombre: "RECIBO",
+              condicion: "CONTADO",
+              nro_comprobante: g.recibo_numero ?? "—",
+              proveedor_nombre: g.proveedor_nombre || g.categoria || "—",
+              proveedor_ruc: g.proveedor_documento ?? null,
+              moneda: "PYG",
+              total_exentas: Number(g.monto) || 0,
+              total_gravado10: 0,
+              total_gravado5: 0,
+              iva10: 0,
+              iva5: 0,
+              total: Number(g.monto) || 0,
+              es_electronica: false,
+              estado: "registrada" as const,
+              recibo_gasto: true,
+            }));
+          todas = [...todas, ...recibos].sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0));
+        } catch {
+          /* si fallan los gastos, igual mostramos las compras del libro */
+        }
+      }
+
+      setFilas(todas);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setCargando(false);
     }
-  }, [qs]);
+  }, [qs, seccion, filtros.tipo, filtros.estado, filtros.q, filtros.desde, filtros.hasta]);
   useEffect(() => {
     const t = setTimeout(() => void cargar(), 250);
     return () => clearTimeout(t);
@@ -214,17 +272,27 @@ export default function LibroComprasVista({
                     </td>
                   )}
                   <td className="px-3 py-2.5 text-xs">
-                    {f.tipo_nombre}
+                    {f.recibo_gasto ? (
+                      <span className="rounded-full bg-[#4FAEB2]/15 px-2 py-0.5 text-[10px] font-semibold text-[#2F6E71]">RECIBO</span>
+                    ) : (
+                      f.tipo_nombre
+                    )}
                     {anulada && <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">ANULADO</span>}
                   </td>
                   <td className="px-3 py-2.5">
-                    <Link href={`/libro-compras/${f.id}`} className="font-mono text-emerald-700 hover:underline">
-                      {f.nro_comprobante}
-                    </Link>
-                    <div className="text-[11px] text-slate-400">
-                      {f.numero_control}
-                      {f.es_electronica && " · electrónica"}
-                    </div>
+                    {f.recibo_gasto ? (
+                      <span className="font-mono text-slate-600">{f.nro_comprobante}</span>
+                    ) : (
+                      <>
+                        <Link href={`/libro-compras/${f.id}`} className="font-mono text-emerald-700 hover:underline">
+                          {f.nro_comprobante}
+                        </Link>
+                        <div className="text-[11px] text-slate-400">
+                          {f.numero_control}
+                          {f.es_electronica && " · electrónica"}
+                        </div>
+                      </>
+                    )}
                   </td>
                   <td className="px-3 py-2.5">
                     {f.proveedor_nombre}
@@ -239,7 +307,7 @@ export default function LibroComprasVista({
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-1.5">
                       <a
-                        href={`/api/libro-compras/${f.id}/asiento-pdf`}
+                        href={f.recibo_gasto ? `/api/gastos/${f.id}/asiento-pdf` : `/api/libro-compras/${f.id}/asiento-pdf`}
                         target="_blank"
                         rel="noreferrer"
                         title="Imprimir el asiento contable (para firmar)"
@@ -248,15 +316,26 @@ export default function LibroComprasVista({
                         <FileText className="h-3.5 w-3.5" />
                         Asiento
                       </a>
-                      {!anulada && (
+                      {f.recibo_gasto ? (
                         <Link
-                          href={`/libro-compras/${f.id}`}
-                          title="Editar comprobante"
+                          href={`/gastos/${f.id}/editar`}
+                          title="Editar el gasto"
                           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-emerald-300 hover:text-emerald-700"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           Editar
                         </Link>
+                      ) : (
+                        !anulada && (
+                          <Link
+                            href={`/libro-compras/${f.id}`}
+                            title="Editar comprobante"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-emerald-300 hover:text-emerald-700"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Editar
+                          </Link>
+                        )
                       )}
                     </div>
                   </td>
