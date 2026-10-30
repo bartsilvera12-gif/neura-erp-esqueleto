@@ -4,6 +4,8 @@ import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
 import { getComexCtx, registrarHistorial } from "@/lib/comex/server";
 import { anularPago, pagosVigentes } from "@/lib/tesoreria/server";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { revertirAsientoCompra } from "@/lib/contabilidad/compras-asientos-pg";
 
 /** POST { motivo } — anula el comprobante (queda registrado, no se borra). Solo admin. */
 export async function POST(request: NextRequest, p: { params: Promise<{ id: string }> }) {
@@ -29,6 +31,11 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
     if (error) throw new Error(error.message);
     if (!(data ?? []).length) return NextResponse.json(errorResponse("El comprobante ya está anulado o no existe."), { status: 400 });
     await registrarHistorial(ctx.supabase, ctx.auth, "COMPRA", id, "ANULAR", { motivo });
+    // Revierte el asiento contable de la compra anulada. Best-effort.
+    try {
+      const schema = await fetchDataSchemaForEmpresaId(ctx.auth.empresa_id);
+      await revertirAsientoCompra(schema, ctx.auth.empresa_id, id, ctx.auth.usuarioCatalogId ?? null);
+    } catch (e) { console.error("[revertirAsientoCompra anular]", e instanceof Error ? e.message : e); }
     return NextResponse.json(successResponse({ id }));
   } catch (err) {
     console.error("[/api/libro-compras/:id/anular]", err);

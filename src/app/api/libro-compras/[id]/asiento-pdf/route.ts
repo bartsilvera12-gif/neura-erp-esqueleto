@@ -3,6 +3,8 @@ import { getComexCtx } from "@/lib/comex/server";
 import { COMPRA_COLS } from "@/lib/compras-libro/server";
 import { preAsiento, type LineaCalc } from "@/lib/compras-libro/calculo";
 import { comprobanteAsientoHtml, type ComprobanteLinea } from "@/lib/contabilidad/comprobante-asiento-html";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { getAsientoPdfPorOrigen } from "@/lib/contabilidad/asientos-pg";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,25 @@ export async function GET(request: NextRequest, p: Params) {
     if (!ctx) return new NextResponse("No autorizado", { status: 401 });
     const emp = ctx.auth.empresa_id;
     const sb = ctx.supabase;
+    const origin = new URL(request.url).origin;
+
+    // Si ya está registrado en Contabilidad, se imprime el asiento real.
+    const schema = await fetchDataSchemaForEmpresaId(emp);
+    const reg = await getAsientoPdfPorOrigen(schema, emp, "compra", id).catch(() => null);
+    if (reg) {
+      const htmlReg = comprobanteAsientoHtml({
+        titulo: "COMPROBANTE DE COMPRA",
+        numero: reg.numero,
+        fecha: reg.fecha,
+        glosa: reg.glosa ?? "",
+        estado: "registrado",
+        moneda: reg.moneda,
+        tipo_cambio: reg.tipo_cambio,
+        lineas: reg.lineas,
+        origin,
+      });
+      return new NextResponse(htmlReg, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
 
     const [cQ, lQ, cfgQ, pcQ] = await Promise.all([
       sb.from("libro_compras").select(COMPRA_COLS).eq("empresa_id", emp).eq("id", id).maybeSingle(),
@@ -93,7 +114,6 @@ export async function GET(request: NextRequest, p: Params) {
       haber: l.haber,
     }));
 
-    const origin = new URL(request.url).origin;
     const html = comprobanteAsientoHtml({
       titulo: "COMPROBANTE DE COMPRA",
       numero: nro || String(c.numero_control ?? ""),
