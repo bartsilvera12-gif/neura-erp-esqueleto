@@ -3,6 +3,8 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { getComexCtx } from "@/lib/comex/server";
 import { COMPRA_COLS, ErrorValidacion, guardarCompra } from "@/lib/compras-libro/server";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { recontabilizarCompra } from "@/lib/contabilidad/compras-asientos-pg";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -41,6 +43,11 @@ export async function PUT(request: NextRequest, p: Params) {
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const r = await guardarCompra(ctx.supabase, ctx.auth, body, id);
+    // Resincroniza el asiento con los nuevos datos (revierte el anterior y crea el nuevo). Best-effort.
+    try {
+      const schema = await fetchDataSchemaForEmpresaId(ctx.auth.empresa_id);
+      await recontabilizarCompra(schema, ctx.auth.empresa_id, id, ctx.auth.usuarioCatalogId ?? null);
+    } catch (e) { console.error("[recontabilizarCompra edicion]", e instanceof Error ? e.message : e); }
     return NextResponse.json(successResponse(r));
   } catch (err) {
     if (err instanceof ErrorValidacion) return NextResponse.json(errorResponse(err.message), { status: 400 });

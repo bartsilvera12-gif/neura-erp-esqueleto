@@ -221,6 +221,49 @@ export function construirLineasDocumento(opts: {
   return lineas;
 }
 
+export interface AsientoPdfData {
+  numero: string;
+  fecha: string;
+  glosa: string | null;
+  moneda: string;
+  tipo_cambio: number;
+  lineas: { cuenta_codigo: string; cuenta_nombre: string | null; detalle: string | null; debe: number; haber: number }[];
+}
+
+/**
+ * Carga un asiento YA REGISTRADO (contabilizado) por su origen, con los códigos
+ * y nombres de cuenta, para imprimir su comprobante. null si no existe. Usa el
+ * pool directo (no necesita una tx abierta).
+ */
+export async function getAsientoPdfPorOrigen(schemaRaw: string, empresaId: string, origenTipo: OrigenTipo, origenId: string): Promise<AsientoPdfData | null> {
+  const schema = assertAllowedChatDataSchema(schemaRaw);
+  const tA = quoteSchemaTable(schema, "asientos_contables");
+  const tD = quoteSchemaTable(schema, "asientos_contables_detalles");
+  const tPC = quoteSchemaTable(schema, "plan_cuentas");
+  const { rows: cab } = await pool().query<{ id: string; numero: string; fecha: string; glosa: string | null; moneda: string; tipo_cambio: string }>(
+    `SELECT id, numero_asiento AS numero, to_char(fecha_contable,'YYYY-MM-DD') AS fecha, glosa, moneda, tipo_cambio
+       FROM ${tA} WHERE empresa_id=$1::uuid AND origen_tipo=$2 AND origen_id=$3::uuid AND estado='contabilizado'
+      ORDER BY created_at DESC LIMIT 1`,
+    [empresaId, origenTipo, origenId]
+  );
+  if (!cab[0]) return null;
+  const { rows: det } = await pool().query<{ cuenta_codigo: string; cuenta_nombre: string | null; detalle: string | null; debe: string; haber: string }>(
+    `SELECT pc.cuenta AS cuenta_codigo, pc.denominacion AS cuenta_nombre, d.descripcion AS detalle, d.debe, d.haber
+       FROM ${tD} d JOIN ${tPC} pc ON pc.id=d.cuenta_contable_id
+      WHERE d.asiento_id=$1::uuid AND d.empresa_id=$2::uuid
+      ORDER BY (CASE WHEN d.debe > 0 THEN 0 ELSE 1 END), d.debe DESC, d.haber DESC`,
+    [cab[0].id, empresaId]
+  );
+  return {
+    numero: cab[0].numero,
+    fecha: cab[0].fecha,
+    glosa: cab[0].glosa,
+    moneda: cab[0].moneda,
+    tipo_cambio: Number(cab[0].tipo_cambio) || 1,
+    lineas: det.map((d) => ({ cuenta_codigo: d.cuenta_codigo, cuenta_nombre: d.cuenta_nombre, detalle: d.detalle, debe: Number(d.debe) || 0, haber: Number(d.haber) || 0 })),
+  };
+}
+
 /** Carga cabecera + detalles de un asiento (para construir su reversión). */
 export async function getAsientoConDetalles(client: Client, schema: string, empresaId: string, asientoId: string): Promise<{
   cabecera: { id: string; fecha_contable: string; glosa: string | null; moneda: string; tipo_cambio: number };
