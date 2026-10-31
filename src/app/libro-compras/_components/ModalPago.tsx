@@ -139,3 +139,99 @@ export function ModalPagoCuota({
     </ModalShell>
   );
 }
+
+export type CuotaLote = { compra_id: string; cuota_nro: number; proveedor: string; comprobante: string; saldo: number };
+
+/** Pagar en bloque el saldo de varias cuotas (todas de la misma moneda) con un solo pago. */
+export function ModalPagoLote({
+  items,
+  moneda,
+  onClose,
+  onDone,
+}: {
+  items: CuotaLote[];
+  moneda: string;
+  onClose: () => void;
+  onDone: (resumen: { pagados: number; total: number; avisos: string[] }) => void;
+}) {
+  const total = items.reduce((s, x) => s + x.saldo, 0);
+  const [fecha, setFecha] = useState(hoyPY);
+  const [medio, setMedio] = useState("");
+  const [cuenta, setCuenta] = useState("");
+  const [ref, setRef] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <ModalShell title={`Pagar ${items.length} cuota${items.length === 1 ? "" : "s"} en bloque`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Proveedor</th>
+                <th className="px-3 py-2">Comprobante</th>
+                <th className="px-3 py-2 text-right">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((x) => (
+                <tr key={`${x.compra_id}-${x.cuota_nro}`} className="border-t border-slate-100">
+                  <td className="px-3 py-1.5">{x.proveedor}</td>
+                  <td className="px-3 py-1.5 font-mono text-xs">{x.comprobante} · cuota {x.cuota_nro}</td>
+                  <td className="px-3 py-1.5 text-right">{plata(x.saldo, moneda)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-sm text-slate-700">
+          Total a pagar: <strong>{plata(total, moneda)}</strong>. Se paga el saldo completo de cada cuota con un solo egreso.
+        </p>
+        <div>
+          <label className={labelClass}>Sale de *</label>
+          <OrigenDinero moneda={moneda} medio={medio} cuentaId={cuenta} onChange={(m, c) => { setMedio(m); setCuenta(c); }} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Fecha</label>
+            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Referencia</label>
+            <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="N° de cheque o transferencia" className={inputClass} />
+          </div>
+        </div>
+        {error && <Aviso>{error}</Aviso>}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className={btnSecundario}>Cancelar</button>
+          <button
+            disabled={saving || !cuenta || items.length === 0}
+            onClick={async () => {
+              setSaving(true);
+              setError(null);
+              try {
+                const r = await api<{ pagados: number; total: number; avisos: string[] }>(
+                  "/api/libro-compras/por-pagar/pagar-lote",
+                  jsonInit("POST", {
+                    items: items.map((x) => ({ compra_id: x.compra_id, cuota_nro: x.cuota_nro })),
+                    medio,
+                    cuenta_id: cuenta,
+                    fecha,
+                    referencia: ref,
+                  })
+                );
+                onDone(r);
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "Error");
+                setSaving(false);
+              }
+            }}
+            className={btnPrimario}
+          >
+            {saving ? "Guardando…" : `Pagar ${plata(total, moneda)}`}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
