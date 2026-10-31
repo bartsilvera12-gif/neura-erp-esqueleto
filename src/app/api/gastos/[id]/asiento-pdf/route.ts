@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { comprobanteAsientoHtml, type ComprobanteLinea } from "@/lib/contabilidad/comprobante-asiento-html";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { getAsientoPdfPorOrigen } from "@/lib/contabilidad/asientos-pg";
+import { contabilizarGasto } from "@/lib/contabilidad/gastos-asientos-pg";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +26,30 @@ export async function GET(request: NextRequest, p: { params: Promise<{ id: strin
     const gq = await supabase.from("gastos").select("*").eq("empresa_id", emp).eq("id", id).maybeSingle();
     if (gq.error || !gq.data) return new NextResponse("Gasto no encontrado", { status: 404 });
     const g = gq.data as Record<string, unknown>;
+
+    // Si el recibo ya está contabilizado, se imprime el asiento real (cartel verde).
+    // Si todavía no lo está (recibos cargados antes de esta función), se intenta
+    // contabilizar en el momento de abrirlo: idempotente y best-effort.
+    const schema = await fetchDataSchemaForEmpresaId(emp);
+    let reg = await getAsientoPdfPorOrigen(schema, emp, "gasto_servicio", id).catch(() => null);
+    if (!reg) {
+      await contabilizarGasto(schema, emp, id, auth.usuarioCatalogId ?? null).catch(() => null);
+      reg = await getAsientoPdfPorOrigen(schema, emp, "gasto_servicio", id).catch(() => null);
+    }
+    if (reg) {
+      const htmlReg = comprobanteAsientoHtml({
+        titulo: "COMPROBANTE DE RECIBO",
+        numero: String(g.recibo_numero ?? "") || reg.numero,
+        fecha: reg.fecha,
+        glosa: reg.glosa ?? "",
+        estado: "registrado",
+        moneda: reg.moneda,
+        tipo_cambio: reg.tipo_cambio,
+        lineas: reg.lineas,
+        origin,
+      });
+      return new NextResponse(htmlReg, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
 
     const moneda = "PYG";
     const monto = Number(g.monto) || 0;
