@@ -7,6 +7,8 @@ import { validarMovimiento, ErrorTesoreria } from "@/lib/tesoreria/server";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
 import { aSeccion, esSeccion, RECIBO_PREFIJO } from "@/lib/secciones";
 import { anioGestionActiva, rangoGestion, gestionCerrada, anioDeFecha } from "@/lib/gestion/gestion-activa";
+import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
+import { contabilizarGasto } from "@/lib/contabilidad/gastos-asientos-pg";
 
 /**
  * GET /api/gastos
@@ -145,6 +147,14 @@ export async function POST(request: NextRequest) {
         await supabase.from("gastos").delete().eq("empresa_id", emp).eq("id", gasto.id);
         throw new Error(mov.error.message);
       }
+    }
+
+    // Contabilización automática del recibo sin factura (best-effort: si falla, el gasto igual quedó guardado).
+    if (esSinFactura) {
+      try {
+        const schema = await fetchDataSchemaForEmpresaId(emp);
+        await contabilizarGasto(schema, emp, gasto.id, auth.usuarioCatalogId ?? null);
+      } catch (e) { console.error("[contabilizarGasto alta]", e instanceof Error ? e.message : e); }
     }
 
     return NextResponse.json(successResponse(insData), { status: 201 });
