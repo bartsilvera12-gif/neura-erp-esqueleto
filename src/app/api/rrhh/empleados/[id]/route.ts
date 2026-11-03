@@ -65,6 +65,8 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
       "direccion","email","telefono","cargo","tipo_empleado","tipo_periodo","sucursal_id",
       "chofer_habilitacion","chofer_observacion","comision_politica_id","comision_observacion",
       "departamento","seccion","supervisor","banco","numero_cuenta",
+      // Datos IPS Paraguay (nullable: trabajador sin IPS deja afiliacion_ips vacío).
+      "afiliacion_ips","categoria_ips",
     ].forEach(setStr);
     ["fecha_nacimiento","fecha_ingreso","fecha_baja","chofer_fecha_venc"].forEach(setDate);
     ["salario_base","salario_complementario","costo_hora"].forEach(setNum);

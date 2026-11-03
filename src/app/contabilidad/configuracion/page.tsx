@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { GlobalConfigSubpageShell } from "@/components/config/GlobalConfigSubpageShell";
 import { ConfigFormCard, ConfigSectionTitle, F_LABEL } from "@/components/config/global-config-primitives";
 import { apiFetch } from "@/lib/api/fetch-with-supabase-session";
 import { getCuentasContablesOpciones, type CuentaContableOpcion } from "@/lib/compras/storage";
 import CuentaCombobox from "@/components/contabilidad/CuentaCombobox";
+import { api } from "@/components/comex/ui";
 
 interface Config {
   cuenta_iva_credito_5_id: string | null;
@@ -60,6 +61,21 @@ export default function ConfiguracionContablePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Cuentas de retenciones (viven en libro_compras_config como código, no id).
+  // Las guardamos acá en formato id para usar el combobox; al guardar convertimos a código.
+  const [retIvaId, setRetIvaId] = useState<string | null>(null);
+  const [retRentaId, setRetRentaId] = useState<string | null>(null);
+  const [savingRet, setSavingRet] = useState(false);
+  const idPorCuenta = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of cuentas) m.set(c.cuenta, c.id);
+    return m;
+  }, [cuentas]);
+  const cuentaPorId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of cuentas) m.set(c.id, c.cuenta);
+    return m;
+  }, [cuentas]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,7 +89,34 @@ export default function ConfiguracionContablePage() {
     } finally { setLoading(false); }
   }, []);
 
+  // Carga aparte de las cuentas de retenciones (libro_compras_config).
+  const loadRetenciones = useCallback(async () => {
+    try {
+      const d = await api<{ config: { cuenta_retencion_iva: string | null; cuenta_retencion_renta: string | null } }>("/api/libro-compras/config");
+      setRetIvaId(d.config.cuenta_retencion_iva ? idPorCuenta.get(d.config.cuenta_retencion_iva) ?? null : null);
+      setRetRentaId(d.config.cuenta_retencion_renta ? idPorCuenta.get(d.config.cuenta_retencion_renta) ?? null : null);
+    } catch {
+      /* si falla, el formulario arranca vacío */
+    }
+  }, [idPorCuenta]);
+
   useEffect(() => { load(); getCuentasContablesOpciones().then(setCuentas).catch(() => {}); }, [load]);
+  // Cuando ya tenemos las cuentas, cargamos las retenciones (necesita el mapa código→id).
+  useEffect(() => { if (cuentas.length > 0) void loadRetenciones(); }, [cuentas.length, loadRetenciones]);
+
+  async function guardarRetenciones() {
+    setSavingRet(true); setMsg(null);
+    try {
+      const body = {
+        cuenta_retencion_iva: retIvaId ? cuentaPorId.get(retIvaId) ?? null : null,
+        cuenta_retencion_renta: retRentaId ? cuentaPorId.get(retRentaId) ?? null : null,
+      };
+      const r = await apiFetch("/api/libro-compras/config", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.success) { setMsg({ ok: false, text: j?.error ?? `Error ${r.status}` }); return; }
+      setMsg({ ok: true, text: "Cuentas de retenciones guardadas." });
+    } finally { setSavingRet(false); }
+  }
 
   async function guardar() {
     setSaving(true); setMsg(null);
@@ -145,6 +188,30 @@ export default function ConfiguracionContablePage() {
 
         <div className="mt-4 flex justify-end">
           <button onClick={guardar} disabled={saving || loading} className="rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:opacity-50">{saving ? "Guardando…" : "Guardar configuración"}</button>
+        </div>
+      </ConfigFormCard>
+
+      <ConfigFormCard>
+        <ConfigSectionTitle>Cuentas de Retenciones</ConfigSectionTitle>
+        <p className="mb-4 text-xs text-slate-400">
+          Se usan en el asiento cuando una compra tiene retención: si acá no hay
+          cuenta cargada y la factura trae un monto de retención, el preasiento
+          sale sin esa línea y el saldo con el proveedor queda sobrecargado.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className={F_LABEL}>Cuenta de Retenciones de IVA</label>
+            <CuentaCombobox cuentas={cuentas} value={retIvaId}
+              onChange={setRetIvaId} placeholder="(Sin configurar)" />
+          </div>
+          <div>
+            <label className={F_LABEL}>Cuenta de Retenciones de Renta</label>
+            <CuentaCombobox cuentas={cuentas} value={retRentaId}
+              onChange={setRetRentaId} placeholder="(Sin configurar)" />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button onClick={guardarRetenciones} disabled={savingRet || loading} className="rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:opacity-50">{savingRet ? "Guardando…" : "Guardar retenciones"}</button>
         </div>
       </ConfigFormCard>
 

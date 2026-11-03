@@ -40,6 +40,9 @@ async function construirAsientoCompra(client: Client, schema: string, empresaId:
   const tT = quoteSchemaTable(schema, "compra_tipos_comprobante");
   const tCfg = quoteSchemaTable(schema, "libro_compras_config");
   const tPC = quoteSchemaTable(schema, "plan_cuentas");
+  const tP = quoteSchemaTable(schema, "libro_compras_pagos");
+  const tB = quoteSchemaTable(schema, "entidades_bancarias");
+  const tCC = quoteSchemaTable(schema, "cajas_chicas");
 
   const { rows: cr } = await client.query<{
     fecha: string; moneda: string; cotizacion: string; impacta: string | null;
@@ -87,12 +90,42 @@ async function construirAsientoCompra(client: Client, schema: string, empresaId:
   const detalle = (String(c.explicacion ?? "").trim()) || [tipo?.nombre, c.proveedor_nombre, nro].filter(Boolean).join(" ");
   const moneda = String(c.moneda ?? "PYG");
 
+  // En CONTADO, la contrapartida es la cuenta del banco o caja chica que paga
+  // (mismo criterio que gastos). Si no hay pago registrado (edge case), cae a
+  // la cuenta por defecto del tipo de comprobante.
+  let cuentaContado: string | null = tipo?.cuenta_codigo ?? null;
+  if (tipo?.condicion !== "CREDITO") {
+    const { rows: pr } = await client.query<{ entidad_bancaria_id: string | null; caja_chica_id: string | null }>(
+      `SELECT entidad_bancaria_id, caja_chica_id
+         FROM ${tP}
+        WHERE compra_id=$1::uuid AND empresa_id=$2::uuid
+          AND cuota_nro IS NULL AND COALESCE(estado,'vigente')='vigente'
+        ORDER BY created_at ASC
+        LIMIT 1`,
+      [compraId, empresaId]
+    );
+    const pago = pr[0];
+    if (pago?.entidad_bancaria_id) {
+      const { rows: br } = await client.query<{ cuenta_contable_codigo: string | null }>(
+        `SELECT cuenta_contable_codigo FROM ${tB} WHERE id=$1::uuid AND empresa_id=$2::uuid`,
+        [pago.entidad_bancaria_id, empresaId]
+      );
+      if (br[0]?.cuenta_contable_codigo) cuentaContado = br[0].cuenta_contable_codigo;
+    } else if (pago?.caja_chica_id) {
+      const { rows: cr2 } = await client.query<{ cuenta_contable_codigo: string | null }>(
+        `SELECT cuenta_contable_codigo FROM ${tCC} WHERE id=$1::uuid AND empresa_id=$2::uuid`,
+        [pago.caja_chica_id, empresaId]
+      );
+      if (cr2[0]?.cuenta_contable_codigo) cuentaContado = cr2[0].cuenta_contable_codigo;
+    }
+  }
+
   const { lineas: asiento } = preAsiento({
     lineas: lineasCalc,
     moneda,
     condicion: tipo?.condicion === "CREDITO" ? "CREDITO" : "CONTADO",
     esNotaCredito: tipo?.es_nota_credito === true,
-    cuentaTipo: tipo?.cuenta_codigo ?? null,
+    cuentaTipo: cuentaContado,
     cuentaIva: cfg.cuenta_iva_credito || IVA_DEFAULT,
     cuentaProveedores: cfg.cuenta_proveedores || PROV_DEFAULT,
     cuentaRetIva: cfg.cuenta_retencion_iva,

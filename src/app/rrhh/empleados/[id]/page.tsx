@@ -65,6 +65,9 @@ export default function EmpleadoDetallePage() {
           // Bancario
           banco: e.banco ?? "",
           numero_cuenta: e.numero_cuenta ?? "",
+          // IPS (Paraguay). Dejar en blanco = trabajador sin IPS.
+          afiliacion_ips: e.afiliacion_ips ?? "",
+          categoria_ips: e.categoria_ips ?? "",
           // Otros
           observaciones: e.observaciones ?? "",
         });
@@ -223,6 +226,21 @@ export default function EmpleadoDetallePage() {
             <TextField label="Banco" value={F("banco")} onChange={(v) => setF("banco", v)} />
             <TextField label="Número de cuenta" value={F("numero_cuenta")} onChange={(v) => setF("numero_cuenta", v)} />
           </Grid>
+        </Section>
+
+        {/* IPS (Paraguay) */}
+        <Section title="IPS (Paraguay)">
+          <Grid cols={3}>
+            <TextField label="Nº de afiliación IPS" placeholder="Dejar vacío si no aporta al IPS"
+              value={F("afiliacion_ips")} onChange={(v) => setF("afiliacion_ips", v)} />
+            <TextField label="Categoría IPS" placeholder="Ej: operario, administrativo"
+              value={F("categoria_ips")} onChange={(v) => setF("categoria_ips", v)} />
+          </Grid>
+          <p className="mt-2 text-xs text-slate-500">
+            Si el trabajador no aporta al IPS, dejá los dos campos vacíos y, al hacer el recibo
+            del mes, <strong>no agregues</strong> deducciones de tipo &quot;Aportación del trabajador&quot;
+            ni &quot;Aportaciones de la empresa&quot;.
+          </p>
         </Section>
 
         {/* Observaciones */}
