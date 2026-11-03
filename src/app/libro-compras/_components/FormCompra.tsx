@@ -10,6 +10,7 @@ import { preAsiento, totales, type LineaCalc } from "@/lib/compras-libro/calculo
 import AdjuntosPanel from "@/components/comex/AdjuntosPanel";
 import HistorialPanel from "@/components/comex/HistorialPanel";
 import { ModalPagoCuota, OrigenDinero } from "./ModalPago";
+import { useTesoreria } from "@/app/tesoreria/_components/comun";
 import {
   Aviso,
   ModalShell,
@@ -119,6 +120,9 @@ export default function FormCompra({ id }: { id?: string }) {
   const [pagoMedio, setPagoMedio] = useState(cajaParam ? "CAJA_CHICA" : "");
   const [pagoCuenta, setPagoCuenta] = useState(cajaParam ?? "");
   const [pagoRef, setPagoRef] = useState("");
+  // Cuentas de tesorería: para resolver el código contable del banco/caja
+  // elegido en CONTADO y mostrarlo en el pre-asiento en vez del default del tipo.
+  const { datos: tesoreriaData } = useTesoreria();
   type PagoReg = { id: string; cuota_nro: number | null; fecha: string; monto: number; medio: string; referencia: string | null; usuario_nombre: string | null };
   const [pagos, setPagos] = useState<PagoReg[]>([]);
   const [pagarCuota, setPagarCuota] = useState<{ nro: number; saldo: number } | null>(null);
@@ -244,6 +248,22 @@ export default function FormCompra({ id }: { id?: string }) {
   }));
   const t = totales(lineasCalc, moneda);
   const aPagar = t.total - (Number(retIva) || 0) - (Number(retRenta) || 0);
+  // En CONTADO el preasiento usa la cuenta del banco/caja chica elegido.
+  // Fallback a la cuenta por defecto del tipo si todavía no eligió origen.
+  const cuentaContadoResuelta = useMemo(() => {
+    if (!tipo || tipo.condicion !== "CONTADO") return tipo?.cuenta_codigo ?? null;
+    if (!pagoCuenta || !tesoreriaData) return tipo.cuenta_codigo ?? null;
+    if (pagoMedio === "BANCO") {
+      const b = tesoreriaData.bancos.find((x) => x.id === pagoCuenta);
+      return b?.cuenta_contable_codigo || tipo.cuenta_codigo || null;
+    }
+    if (pagoMedio === "CAJA_CHICA") {
+      const c = tesoreriaData.cajas.find((x) => x.id === pagoCuenta);
+      return c?.cuenta_contable_codigo || tipo.cuenta_codigo || null;
+    }
+    return tipo.cuenta_codigo ?? null;
+  }, [tipo, pagoMedio, pagoCuenta, tesoreriaData]);
+
   const asiento = useMemo(
     () =>
       config && tipo
@@ -252,7 +272,7 @@ export default function FormCompra({ id }: { id?: string }) {
             moneda,
             condicion: tipo.condicion,
             esNotaCredito: tipo.es_nota_credito,
-            cuentaTipo: tipo.cuenta_codigo,
+            cuentaTipo: cuentaContadoResuelta,
             cuentaIva: config.cuenta_iva_credito,
             cuentaProveedores: config.cuenta_proveedores,
             cuentaRetIva: config.cuenta_retencion_iva,
@@ -263,7 +283,7 @@ export default function FormCompra({ id }: { id?: string }) {
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(lineasCalc), moneda, tipo, config, retIva, retRenta, explicacionDefecto]
+    [JSON.stringify(lineasCalc), moneda, tipo, config, retIva, retRenta, explicacionDefecto, cuentaContadoResuelta]
   );
   const nombreCuenta = new Map(cuentas.map((c) => [c.cuenta, c.denominacion]));
 

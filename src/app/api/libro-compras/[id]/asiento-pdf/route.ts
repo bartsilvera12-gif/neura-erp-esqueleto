@@ -91,12 +91,36 @@ export async function GET(request: NextRequest, p: Params) {
     const proveedor = String(c.proveedor_nombre ?? "");
     const detalle = (String(c.explicacion ?? "").trim()) || [tipo?.nombre, proveedor, nro].filter(Boolean).join(" ");
 
+    // En CONTADO, la contrapartida es la cuenta del banco/caja chica que pagó
+    // (mismo criterio que la contabilización real). Fallback a la cuenta por
+    // defecto del tipo si no hay pago vigente registrado.
+    let cuentaContado: string | null = tipo?.cuenta_codigo ?? null;
+    if (tipo?.condicion !== "CREDITO") {
+      const { data: pagoRow } = await sb
+        .from("libro_compras_pagos")
+        .select("entidad_bancaria_id, caja_chica_id")
+        .eq("empresa_id", emp).eq("compra_id", id)
+        .is("cuota_nro", null).eq("estado", "vigente")
+        .order("created_at", { ascending: true })
+        .limit(1).maybeSingle();
+      const pago = pagoRow as { entidad_bancaria_id: string | null; caja_chica_id: string | null } | null;
+      if (pago?.entidad_bancaria_id) {
+        const { data: b } = await sb.from("entidades_bancarias").select("cuenta_contable_codigo").eq("empresa_id", emp).eq("id", pago.entidad_bancaria_id).maybeSingle();
+        const codigo = (b as { cuenta_contable_codigo: string | null } | null)?.cuenta_contable_codigo;
+        if (codigo) cuentaContado = codigo;
+      } else if (pago?.caja_chica_id) {
+        const { data: cc } = await sb.from("cajas_chicas").select("cuenta_contable_codigo").eq("empresa_id", emp).eq("id", pago.caja_chica_id).maybeSingle();
+        const codigo = (cc as { cuenta_contable_codigo: string | null } | null)?.cuenta_contable_codigo;
+        if (codigo) cuentaContado = codigo;
+      }
+    }
+
     const { lineas: asientoLineas } = preAsiento({
       lineas: lineasCalc,
       moneda,
       condicion: tipo?.condicion ?? "CONTADO",
       esNotaCredito: tipo?.es_nota_credito === true,
-      cuentaTipo: tipo?.cuenta_codigo ?? null,
+      cuentaTipo: cuentaContado,
       cuentaIva: cfg.cuenta_iva_credito,
       cuentaProveedores: cfg.cuenta_proveedores,
       cuentaRetIva: cfg.cuenta_retencion_iva,
