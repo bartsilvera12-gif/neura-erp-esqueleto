@@ -93,11 +93,50 @@ export function pick(row: Record<string, string>, ...keys: string[]): string {
   return "";
 }
 
+/**
+ * Parsea un número aceptando formatos con punto O coma como decimal.
+ *
+ * - "25.5"       → 25.5       (formato US / default de Excel al stringificar)
+ * - "25,5"       → 25.5       (formato PY)
+ * - "1.234,56"   → 1234.56    (PY: punto miles, coma decimal)
+ * - "1,234.56"   → 1234.56    (US: coma miles, punto decimal)
+ * - "1.234.567"  → 1234567    (PY miles sin decimales)
+ * - "1,234,567"  → 1234567    (US miles sin decimales)
+ * - "1234"       → 1234
+ *
+ * La regla es: si están los dos separadores, el que aparece ÚLTIMO es el decimal
+ * y el otro son miles. Si hay uno solo: si aparece una vez es decimal, si aparece
+ * varias veces son miles.
+ */
+function parseNumeroLocale(raw: string): number {
+  const s = String(raw).trim().replace(/\s/g, "");
+  if (!s) return 0;
+  const hasDot = s.includes(".");
+  const hasComma = s.includes(",");
+  let clean: string;
+  if (hasDot && hasComma) {
+    const lastDot = s.lastIndexOf(".");
+    const lastComma = s.lastIndexOf(",");
+    clean = lastComma > lastDot
+      ? s.replace(/\./g, "").replace(",", ".")   // PY: 1.234,56
+      : s.replace(/,/g, "");                      // US: 1,234.56
+  } else if (hasComma) {
+    const commas = (s.match(/,/g) ?? []).length;
+    clean = commas > 1 ? s.replace(/,/g, "") : s.replace(",", ".");
+  } else if (hasDot) {
+    const dots = (s.match(/\./g) ?? []).length;
+    clean = dots > 1 ? s.replace(/\./g, "") : s;
+  } else {
+    clean = s;
+  }
+  const n = Number(clean);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function pickNumber(row: Record<string, string>, ...keys: string[]): number {
   const raw = pick(row, ...keys);
   if (!raw) return 0;
-  const n = Number(String(raw).replace(/\./g, "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+  return parseNumeroLocale(raw);
 }
 
 export function pickBool(row: Record<string, string>, ...keys: string[]): boolean {

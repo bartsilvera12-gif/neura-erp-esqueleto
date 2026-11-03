@@ -421,6 +421,21 @@ export default function InventarioPage() {
             Reportes
           </Link>
           <ExportExcelButton url="/api/inventario/productos/export" />
+          {/* Añadir por Excel: crea productos nuevos con stock, en el almacén por defecto.
+              Mismo botón que vive en /inventario/nuevo pero accesible desde el listado,
+              que es donde la clienta esperaba encontrarlo. */}
+          <ImportExcelButton
+            entidad="Productos"
+            previewUrl="/api/inventario/productos/import/preview"
+            commitUrl="/api/inventario/productos/import/commit"
+            templateUrl="/api/inventario/productos/import/template"
+            modo="agregar"
+            label="Añadir por Excel"
+            titulo="Añadir productos desde Excel"
+            permiteCrearFaltantes
+            visible={isAdmin}
+            onCompleted={() => setRefreshKey((k) => k + 1)}
+          />
           {/* Actualizar Producto: el Excel solo actualiza datos (SKU bloqueado, no toca stock). */}
           <ImportExcelButton
             entidad="Productos"
