@@ -209,6 +209,22 @@ export default function HistorialNRPage() {
                         >
                           Imprimir
                         </Link>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm(`¿Eliminar la nota ${nr.numero}? Esta acción libera la factura asociada (si la hay) para emitir una nueva.`)) return;
+                              const r = await fetch(`/api/notas-remision/${nr.id}`, { method: "DELETE", credentials: "include" });
+                              const j = await r.json().catch(() => ({}));
+                              if (!r.ok || !j?.success) { alert(j?.error ?? `Error ${r.status}`); return; }
+                              await cargar();
+                            }}
+                            className="rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
+                            title="Solo administradores: libera la factura asociada"
+                          >
+                            Eliminar
+                          </button>
+                        )}
                         {/* Botón "Recibir" oculto junto con el módulo Recepción. */}
                       </div>
                     </td>

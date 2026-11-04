@@ -116,6 +116,25 @@ export async function POST(request: NextRequest) {
     const clienteId = String(body.cliente_id ?? "").trim();
     const motivo = ["traslado", "venta", "devolucion"].includes(String(body.motivo)) ? body.motivo! : "traslado";
     if (!origenId) return NextResponse.json(errorResponse("Depósito de origen obligatorio."), { status: 400 });
+
+    // Bloquear duplicados: si la factura ya tiene una nota de remisión, no permitir crear otra.
+    // Un administrador puede borrar la nota anterior (que limpia facturas_exportacion.nota_remision)
+    // y recién ahí volver a emitir.
+    if (body.factura_id) {
+      const { data: facExistente } = await supabase
+        .from("facturas_exportacion")
+        .select("nota_remision")
+        .eq("empresa_id", auth.empresa_id)
+        .eq("id", body.factura_id)
+        .maybeSingle();
+      const notaPrevia = (facExistente as { nota_remision: string | null } | null)?.nota_remision;
+      if (notaPrevia) {
+        return NextResponse.json(
+          errorResponse(`Esta factura ya tiene la nota de remisión ${notaPrevia}. Para emitir otra, un administrador debe eliminar la nota anterior.`),
+          { status: 409 }
+        );
+      }
+    }
     if (destinoTipo === "deposito") {
       if (!destinoId) return NextResponse.json(errorResponse("Depósito de destino obligatorio."), { status: 400 });
       if (origenId === destinoId) {

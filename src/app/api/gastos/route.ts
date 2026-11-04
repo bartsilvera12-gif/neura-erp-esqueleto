@@ -157,6 +157,28 @@ export async function POST(request: NextRequest) {
       } catch (e) { console.error("[contabilizarGasto alta]", e instanceof Error ? e.message : e); }
     }
 
+    // Auto-alta de proveedor: si el gasto trae RUC + nombre y ese RUC no existe,
+    // se crea el proveedor para que la próxima vez autocomplete al escribir el RUC.
+    // Best-effort — si falla, el gasto igual quedó guardado.
+    if (lr && row.proveedor_documento && row.proveedor_nombre) {
+      try {
+        const rucUpper = String(row.proveedor_documento).toUpperCase().trim();
+        const { data: existe } = await supabase
+          .from("proveedores").select("id")
+          .eq("empresa_id", emp).eq("ruc", rucUpper).limit(1).maybeSingle();
+        if (!existe) {
+          await supabase.from("proveedores").insert({
+            empresa_id: emp,
+            nombre: String(row.proveedor_nombre).toUpperCase().trim(),
+            ruc: rucUpper,
+            estado: "activo",
+          });
+        }
+      } catch (e) {
+        console.error("[gastos auto-alta proveedor]", e instanceof Error ? e.message : e);
+      }
+    }
+
     return NextResponse.json(successResponse(insData), { status: 201 });
   } catch (err) {
     if (err instanceof ErrorTesoreria) return NextResponse.json(errorResponse(err.message), { status: 400 });
