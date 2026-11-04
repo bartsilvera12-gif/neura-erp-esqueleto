@@ -173,7 +173,7 @@ export default function EditProspectoPage() {
       setProspecto(p);
       setForm((prev) => ({
         ...prev,
-        empresa:              p.empresa,
+        empresa:              p.empresa ?? "",
         contacto:             p.contacto,
         email:                p.email                 ?? "",
         telefono:             p.telefono              ?? "",
