@@ -334,7 +334,9 @@ export async function updateProspectoForEmpresaPg(
     n += 1;
   };
 
-  if (typeof patch.empresa === "string") push("empresa", patch.empresa.trim());
+  if (Object.prototype.hasOwnProperty.call(patch, "empresa")) {
+    push("empresa", typeof patch.empresa === "string" && patch.empresa.trim() ? patch.empresa.trim() : null);
+  }
   if (typeof patch.contacto === "string") push("contacto", patch.contacto.trim());
   if (Object.prototype.hasOwnProperty.call(patch, "email")) {
     push(
@@ -350,7 +352,9 @@ export async function updateProspectoForEmpresaPg(
       typeof patch.telefono === "string" && patch.telefono.trim() ? patch.telefono.trim() : null
     );
   }
-  if (typeof patch.servicio === "string") push("servicio", patch.servicio.trim());
+  if (Object.prototype.hasOwnProperty.call(patch, "servicio")) {
+    push("servicio", typeof patch.servicio === "string" && patch.servicio.trim() ? patch.servicio.trim() : null);
+  }
   if (Object.prototype.hasOwnProperty.call(patch, "valor_estimado")) {
     push(
       "valor_estimado",

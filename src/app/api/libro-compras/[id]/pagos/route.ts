@@ -47,7 +47,7 @@ export async function POST(request: NextRequest, p: Params) {
       cuotaNro: nro,
       fecha: String(b.fecha ?? "").slice(0, 10),
       monto,
-      medio: b.medio === "CAJA_CHICA" ? "CAJA_CHICA" : "BANCO",
+      medio: b.medio === "CAJA_CHICA" ? "CAJA_CHICA" : b.medio === "CUENTA_CONTABLE" ? "CUENTA_CONTABLE" : "BANCO",
       cuentaId: b.cuenta_id,
       referencia: b.referencia ? String(b.referencia).trim().slice(0, 60) : null,
     });

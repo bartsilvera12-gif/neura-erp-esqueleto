@@ -212,10 +212,10 @@ export default function FormCompra({ id }: { id?: string }) {
         setNcDe(s(c.nota_credito_de_id));
         // Hasta tener los pagos no se muestra el formulario: si no, guardar borraría el pago de contado.
         return cargarPagos().then((ps) => {
-          const contado = (ps as (PagoReg & { entidad_bancaria_id?: string | null; caja_chica_id?: string | null })[]).find((x) => x.cuota_nro === null);
+          const contado = (ps as (PagoReg & { entidad_bancaria_id?: string | null; caja_chica_id?: string | null; cuenta_contable_id?: string | null })[]).find((x) => x.cuota_nro === null);
           if (contado) {
             setPagoMedio(contado.medio);
-            setPagoCuenta((contado.entidad_bancaria_id ?? contado.caja_chica_id) || "");
+            setPagoCuenta((contado.entidad_bancaria_id ?? contado.caja_chica_id ?? contado.cuenta_contable_id) || "");
             setPagoRef(contado.referencia ?? "");
           }
         });
@@ -252,7 +252,14 @@ export default function FormCompra({ id }: { id?: string }) {
   // Fallback a la cuenta por defecto del tipo si todavía no eligió origen.
   const cuentaContadoResuelta = useMemo(() => {
     if (!tipo || tipo.condicion !== "CONTADO") return tipo?.cuenta_codigo ?? null;
-    if (!pagoCuenta || !tesoreriaData) return tipo.cuenta_codigo ?? null;
+    if (!pagoCuenta) return tipo.cuenta_codigo ?? null;
+    if (pagoMedio === "CUENTA_CONTABLE") {
+      // La clienta eligio pagar directamente desde una cuenta contable
+      // (inter-empresa / saldo acumulado). Usamos ese codigo directo.
+      const c = cuentas.find((x) => x.id === pagoCuenta);
+      return c?.cuenta || tipo.cuenta_codigo || null;
+    }
+    if (!tesoreriaData) return tipo.cuenta_codigo ?? null;
     if (pagoMedio === "BANCO") {
       const b = tesoreriaData.bancos.find((x) => x.id === pagoCuenta);
       return b?.cuenta_contable_codigo || tipo.cuenta_codigo || null;
@@ -262,7 +269,7 @@ export default function FormCompra({ id }: { id?: string }) {
       return c?.cuenta_contable_codigo || tipo.cuenta_codigo || null;
     }
     return tipo.cuenta_codigo ?? null;
-  }, [tipo, pagoMedio, pagoCuenta, tesoreriaData]);
+  }, [tipo, pagoMedio, pagoCuenta, tesoreriaData, cuentas]);
 
   const asiento = useMemo(
     () =>

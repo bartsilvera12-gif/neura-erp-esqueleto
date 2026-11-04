@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (!esUuid(b.cuenta_id)) return NextResponse.json(errorResponse("Elegí de dónde sale el dinero."), { status: 400 });
     const fecha = String(b.fecha ?? "").slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return NextResponse.json(errorResponse("Falta la fecha del pago."), { status: 400 });
-    const medio = b.medio === "CAJA_CHICA" ? "CAJA_CHICA" : "BANCO";
+    const medio = b.medio === "CAJA_CHICA" ? "CAJA_CHICA" : b.medio === "CUENTA_CONTABLE" ? "CUENTA_CONTABLE" : "BANCO";
     const referencia = b.referencia ? String(b.referencia).trim().slice(0, 60) : null;
 
     // Traigo el saldo real de cada cuota y la moneda de su compra.

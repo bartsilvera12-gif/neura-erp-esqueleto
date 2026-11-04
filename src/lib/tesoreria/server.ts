@@ -69,7 +69,8 @@ export interface PagoInput {
   cuotaNro: number | null;
   fecha: string;
   monto: number;
-  medio: "BANCO" | "CAJA_CHICA";
+  medio: "BANCO" | "CAJA_CHICA" | "CUENTA_CONTABLE";
+  /** ID de la entidad bancaria / caja chica / plan_cuentas segun `medio`. */
   cuentaId: string;
   referencia: string | null;
   /** Nota de crédito: la plata ENTRA a la cuenta (devolución del proveedor). */
@@ -142,11 +143,19 @@ export async function registrarPago(
   if (compra.estado === "anulada") throw new ErrorTesoreria("El comprobante está anulado.");
   const concepto = `${compra.tipo_nombre} ${compra.proveedor_nombre} ${compra.nro_comprobante}`.slice(0, 200);
 
-  const { aviso } = await validarMovimiento(sb, emp, p.medio, p.cuentaId, compra.moneda, p.monto, { ingreso: p.ingreso });
+  // CUENTA_CONTABLE no mueve banco ni caja (solo deja el asiento contra esa cuenta),
+  // por lo que se saltea la validacion de saldos.
+  let aviso: string | null = null;
+  if (p.medio !== "CUENTA_CONTABLE") {
+    const r = await validarMovimiento(sb, emp, p.medio, p.cuentaId, compra.moneda, p.monto, { ingreso: p.ingreso });
+    aviso = r.aviso;
+  }
   const quien = { created_by_user_id: auth.usuarioCatalogId ?? null, usuario_nombre: nombreUsuario(auth) };
   let bancoMovId: string | null = null;
   let cajaMovId: string | null = null;
-  if (p.medio === "BANCO") {
+  if (p.medio === "CUENTA_CONTABLE") {
+    // No se crea movimiento de banco ni de caja: el asiento contable registra el movimiento.
+  } else if (p.medio === "BANCO") {
     const { data, error } = await sb
       .from("banco_movimientos")
       .insert({
@@ -196,6 +205,7 @@ export async function registrarPago(
       medio: p.medio,
       entidad_bancaria_id: p.medio === "BANCO" ? p.cuentaId : null,
       caja_chica_id: p.medio === "CAJA_CHICA" ? p.cuentaId : null,
+      cuenta_contable_id: p.medio === "CUENTA_CONTABLE" ? p.cuentaId : null,
       referencia: p.referencia,
       banco_movimiento_id: bancoMovId,
       caja_chica_movimiento_id: cajaMovId,
@@ -267,11 +277,11 @@ export async function recalcularCuota(sb: AppSupabaseClient, emp: string, compra
 export async function pagosVigentes(sb: AppSupabaseClient, emp: string, compraId: string) {
   const { data, error } = await sb
     .from("libro_compras_pagos")
-    .select("id, cuota_nro, fecha, monto, medio, entidad_bancaria_id, caja_chica_id, referencia, usuario_nombre, created_at")
+    .select("id, cuota_nro, fecha, monto, medio, entidad_bancaria_id, caja_chica_id, cuenta_contable_id, referencia, usuario_nombre, created_at")
     .eq("empresa_id", emp)
     .eq("compra_id", compraId)
     .eq("estado", "vigente")
     .order("created_at");
   if (error) throw new Error(error.message);
-  return (data ?? []) as { id: string; cuota_nro: number | null; fecha: string; monto: number; medio: "BANCO" | "CAJA_CHICA"; entidad_bancaria_id: string | null; caja_chica_id: string | null; referencia: string | null; usuario_nombre: string | null; created_at: string }[];
+  return (data ?? []) as { id: string; cuota_nro: number | null; fecha: string; monto: number; medio: "BANCO" | "CAJA_CHICA" | "CUENTA_CONTABLE"; entidad_bancaria_id: string | null; caja_chica_id: string | null; cuenta_contable_id: string | null; referencia: string | null; usuario_nombre: string | null; created_at: string }[];
 }

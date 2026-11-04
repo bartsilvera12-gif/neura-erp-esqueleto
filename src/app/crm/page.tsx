@@ -54,7 +54,7 @@ function topProductosEnNegociacion(prospectos: Prospecto[]): { nombre: string; v
   const enNeg = prospectos.filter((p) => normalizeEtapaCodigo(p.etapa) === "NEGOCIACION");
   const map: Record<string, number> = {};
   for (const p of enNeg) {
-    const productos = p.servicio.split(",").map((s) => s.trim()).filter(Boolean);
+    const productos = (p.servicio ?? "").split(",").map((s) => s.trim()).filter(Boolean);
     const n = productos.length || 1;
     const valorPorUno = p.valor_estimado / n;
     for (const nom of productos) {
@@ -152,7 +152,7 @@ function ProspectoCard({
           </Link>
         </div>
       </div>
-      <p className="text-[10px] text-gray-500 line-clamp-1 mb-0.5">{prospecto.servicio}</p>
+      <p className="text-[10px] text-gray-500 line-clamp-1 mb-0.5">{prospecto.servicio ?? ""}</p>
       <p className="text-xs font-bold text-gray-900 tabular-nums mb-1">Gs. {prospecto.valor_estimado.toLocaleString("es-PY")}</p>
       <div className="mb-1 flex items-center gap-1 truncate text-[10px] text-gray-600">
               <User className="h-3 w-3 shrink-0" aria-hidden />

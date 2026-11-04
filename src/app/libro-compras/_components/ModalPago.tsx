@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { Aviso, ModalShell, api, btnPrimario, btnSecundario, hoyPY, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "@/components/comex/ui";
 import { plata, type Banco, type Caja } from "@/app/tesoreria/_components/comun";
 
-/** Selector "de dónde sale el dinero": cuentas bancarias y cajas chicas de la moneda. */
+type CuentaPC = { id: string; cuenta: string; denominacion: string };
+
+/** Selector "de dónde sale el dinero": bancos, cajas chicas, o una cuenta
+ *  contable arbitraria (para pagar contra saldo acumulado con otra empresa). */
 export function OrigenDinero({
   moneda,
   medio,
@@ -19,8 +22,15 @@ export function OrigenDinero({
   permitirNinguno?: boolean;
 }) {
   const [cuentas, setCuentas] = useState<{ bancos: Banco[]; cajas: Caja[] } | null>(null);
+  const [plan, setPlan] = useState<CuentaPC[]>([]);
   useEffect(() => {
     api<{ bancos: Banco[]; cajas: Caja[] }>("/api/tesoreria").then(setCuentas).catch(() => undefined);
+    api<{ data: { cuentas: CuentaPC[] } } | { cuentas: CuentaPC[] }>("/api/plan-cuentas/opciones")
+      .then((j) => {
+        const list = ((j as { data?: { cuentas?: CuentaPC[] } }).data?.cuentas ?? (j as { cuentas?: CuentaPC[] }).cuentas ?? []) as CuentaPC[];
+        setPlan(list);
+      })
+      .catch(() => setPlan([]));
   }, []);
   const bancos = cuentas?.bancos.filter((b) => b.activo && (b.moneda ?? "PYG") === moneda) ?? [];
   const cajas = cuentas?.cajas.filter((c) => c.activa && c.moneda === moneda) ?? [];
@@ -30,8 +40,12 @@ export function OrigenDinero({
       <select
         value={valor}
         onChange={(e) => {
-          const [m, id] = e.target.value.split(":");
-          onChange(m ?? "", id ?? "");
+          const raw = e.target.value;
+          if (!raw) return onChange("", "");
+          // medio puede traer ":" por el formato "CUENTA_CONTABLE:<uuid>", pero
+          // split(":") funciona bien porque medio es un token fijo.
+          const idx = raw.indexOf(":");
+          onChange(raw.slice(0, idx), raw.slice(idx + 1));
         }}
         className={inputClass}
       >
@@ -54,9 +68,18 @@ export function OrigenDinero({
             ))}
           </optgroup>
         )}
+        {plan.length > 0 && (
+          <optgroup label="Cuenta contable (inter-empresa, otros valores…)">
+            {plan.map((c) => (
+              <option key={c.id} value={`CUENTA_CONTABLE:${c.id}`}>
+                {c.cuenta} · {c.denominacion}
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
-      {cuentas && !bancos.length && !cajas.length && (
-        <p className="mt-1 text-xs text-amber-700">No hay cuentas bancarias ni cajas chicas en {moneda}. Se cargan en Finanzas → Bancos y cajas chicas.</p>
+      {cuentas && !bancos.length && !cajas.length && !plan.length && (
+        <p className="mt-1 text-xs text-amber-700">No hay cuentas bancarias, cajas chicas ni cuentas contables disponibles.</p>
       )}
     </div>
   );

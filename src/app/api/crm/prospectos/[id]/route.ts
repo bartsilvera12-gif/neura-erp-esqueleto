@@ -89,7 +89,8 @@ export async function PATCH(
       }
 
       const patch: Record<string, unknown> = {};
-      if (typeof body.empresa === "string") patch.empresa = body.empresa.trim();
+      // empresa y servicio aceptan null (clienta puede querer "desenlazar" ambos).
+      if (body.empresa !== undefined) patch.empresa = typeof body.empresa === "string" && body.empresa.trim() ? body.empresa.trim() : null;
       if (typeof body.contacto === "string") patch.contacto = body.contacto.trim();
       if (body.email !== undefined) {
         patch.email =
@@ -98,7 +99,7 @@ export async function PATCH(
       if (body.telefono !== undefined) {
         patch.telefono = typeof body.telefono === "string" && body.telefono.trim() ? body.telefono.trim() : null;
       }
-      if (typeof body.servicio === "string") patch.servicio = body.servicio.trim();
+      if (body.servicio !== undefined) patch.servicio = typeof body.servicio === "string" && body.servicio.trim() ? body.servicio.trim() : null;
       if (body.valor_estimado !== undefined) {
         patch.valor_estimado =
           typeof body.valor_estimado === "number" ? body.valor_estimado : Number(body.valor_estimado) || 0;
@@ -163,7 +164,7 @@ export async function PATCH(
     }
 
     const patch: Record<string, unknown> = {};
-    if (typeof body.empresa === "string") patch.empresa = body.empresa.trim();
+    if (body.empresa !== undefined) patch.empresa = typeof body.empresa === "string" && body.empresa.trim() ? body.empresa.trim() : null;
     if (typeof body.contacto === "string") patch.contacto = body.contacto.trim();
     if (body.email !== undefined) {
       patch.email =
@@ -172,7 +173,7 @@ export async function PATCH(
     if (body.telefono !== undefined) {
       patch.telefono = typeof body.telefono === "string" && body.telefono.trim() ? body.telefono.trim() : null;
     }
-    if (typeof body.servicio === "string") patch.servicio = body.servicio.trim();
+    if (body.servicio !== undefined) patch.servicio = typeof body.servicio === "string" && body.servicio.trim() ? body.servicio.trim() : null;
     if (body.valor_estimado !== undefined) {
       patch.valor_estimado =
         typeof body.valor_estimado === "number" ? body.valor_estimado : Number(body.valor_estimado) || 0;
