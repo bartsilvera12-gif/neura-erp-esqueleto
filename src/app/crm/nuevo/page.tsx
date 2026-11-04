@@ -126,9 +126,7 @@ export default function NuevoProspectoPage() {
     e.preventDefault();
     setError(null);
 
-    if (!form.empresa.trim())   return setError("La empresa es obligatoria.");
     if (!form.contacto.trim())  return setError("El contacto es obligatorio.");
-    if (form.planIds.length === 0) return setError("Seleccioná al menos un servicio/plan.");
     if (!form.etapa) return setError("Seleccioná una etapa.");
     if (form.telefono && !isValidTelefono(form.telefono)) {
       return setError("El número debe tener formato 0980000000 (10 dígitos, comenzando con 09).");
@@ -137,11 +135,11 @@ export default function NuevoProspectoPage() {
     const telefonoGuardar = form.telefono ? cleanTelefono(form.telefono) : undefined;
 
     const guardado = await saveProspecto({
-      empresa:              form.empresa.trim().toUpperCase(),
+      empresa:              form.empresa.trim().toUpperCase() || null,
       contacto:             form.contacto.trim().toUpperCase(),
       email:                form.email.trim()    || undefined,
       telefono:             telefonoGuardar,
-      servicio:             servicioTexto,
+      servicio:             servicioTexto || null,
       valor_estimado:       valorEstimado,
       etapa:                form.etapa,
       proxima_accion:       form.proxima_accion.trim()       || undefined,
@@ -151,6 +149,39 @@ export default function NuevoProspectoPage() {
     });
 
     if (guardado) router.push("/crm");
+  }
+
+  /** Guarda el prospecto y manda a crear presupuesto con sus datos pre-cargados. */
+  async function handleGuardarYPresupuesto() {
+    setError(null);
+    if (!form.contacto.trim()) return setError("El contacto es obligatorio.");
+    if (form.telefono && !isValidTelefono(form.telefono)) {
+      return setError("El número debe tener formato 0980000000 (10 dígitos).");
+    }
+    const telefonoGuardar = form.telefono ? cleanTelefono(form.telefono) : undefined;
+    const guardado = await saveProspecto({
+      empresa: form.empresa.trim().toUpperCase() || null,
+      contacto: form.contacto.trim().toUpperCase(),
+      email: form.email.trim() || undefined,
+      telefono: telefonoGuardar,
+      servicio: servicioTexto || null,
+      valor_estimado: valorEstimado,
+      etapa: form.etapa || "LEAD",
+      proxima_accion: form.proxima_accion.trim() || undefined,
+      fecha_proxima_accion: form.fecha_proxima_accion || undefined,
+      responsable: form.responsable.trim().toUpperCase() || undefined,
+      observaciones: form.observaciones.trim() || null,
+    });
+    if (!guardado) return;
+    // Mandar al nuevo presupuesto con los datos del prospecto y su id como origen.
+    const qs = new URLSearchParams({
+      prospecto_id: guardado.id,
+      cliente_nombre: (form.empresa || form.contacto).trim().toUpperCase(),
+      contacto: form.contacto.trim().toUpperCase(),
+    });
+    if (telefonoGuardar) qs.set("telefono", telefonoGuardar);
+    if (form.email.trim()) qs.set("email", form.email.trim());
+    router.push(`/presupuestos/nuevo?${qs.toString()}`);
   }
 
   return (
@@ -170,16 +201,15 @@ export default function NuevoProspectoPage() {
 
             <div>
               <label className={labelClass}>
-                Empresa <span className="text-red-500">*</span>
+                Empresa <span className="text-xs font-normal text-slate-400">(opcional)</span>
               </label>
               <input
                 type="text"
                 name="empresa"
                 value={form.empresa}
                 onChange={handleChange}
-                placeholder="Nombre de la empresa"
+                placeholder="Nombre de la empresa (si aplica)"
                 className={`${inputClass} uppercase`}
-                required
               />
             </div>
 
@@ -251,22 +281,14 @@ export default function NuevoProspectoPage() {
 
             <div>
               <label className={labelClass}>
-                Servicios / Productos de interés <span className="text-red-500">*</span>
+                Servicios / Productos de interés <span className="text-xs font-normal text-slate-400">(opcional)</span>
               </label>
               {cargandoPlanes ? (
                 <p className="text-sm text-gray-400 py-2">Cargando planes…</p>
               ) : planes.length === 0 ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  <p className="font-medium">No hay planes creados para esta empresa.</p>
-                  <p className="mt-1 text-amber-700">
-                    Creá un plan primero para poder seleccionarlo como servicio de interés.
-                  </p>
-                  <Link
-                    href="/planes/nuevo"
-                    className="mt-3 inline-flex items-center gap-1.5 text-[#0EA5E9] hover:text-[#0284C7] font-medium"
-                  >
-                    Ir a crear plan →
-                  </Link>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                  Si tu empresa no vende planes fijos, dejá esto en blanco y creá un
+                  <strong> presupuesto </strong>desde el botón al final del formulario para cargar los productos.
                 </div>
               ) : (
                 <PlanSelector
@@ -374,12 +396,20 @@ export default function NuevoProspectoPage() {
           )}
 
           {/* Acciones */}
-          <div className="flex gap-4 pt-2">
+          <div className="flex flex-wrap gap-3 pt-2">
             <button
               type="submit"
               className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors shadow-sm active:scale-95"
             >
               Guardar prospecto
+            </button>
+            <button
+              type="button"
+              onClick={handleGuardarYPresupuesto}
+              className="bg-[#4FAEB2] hover:bg-[#3F8E91] text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors shadow-sm active:scale-95"
+              title="Guarda el prospecto y abre el formulario de presupuesto con sus datos"
+            >
+              Guardar y crear presupuesto
             </button>
             <button
               type="button"

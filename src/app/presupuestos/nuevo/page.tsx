@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FileText, ArrowLeft, Plus, Trash2, Loader2 } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
@@ -64,14 +64,16 @@ const inputClass = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm";
 
 export default function NuevoPresupuestoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [productos, setProductos] = useState<ProductoLite[]>([]);
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
 
-  // Cliente
+  // Cliente — se puede pre-cargar desde ?cliente_nombre, ?contacto, ?telefono, ?email
+  // (ej.: desde CRM al hacer "Crear presupuesto" desde un prospecto).
   const [clienteId, setClienteId] = useState("");
-  const [clienteNombre, setClienteNombre] = useState("");
+  const [clienteNombre, setClienteNombre] = useState(() => searchParams?.get("cliente_nombre") ?? "");
   const [clienteRuc, setClienteRuc] = useState("");
-  const [clienteTel, setClienteTel] = useState("");
+  const [clienteTel, setClienteTel] = useState(() => searchParams?.get("telefono") ?? "");
   const [clienteDir, setClienteDir] = useState("");
 
   // Items

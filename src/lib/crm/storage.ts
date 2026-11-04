@@ -17,11 +17,11 @@ interface ProspectoRow {
   id: string;
   empresa_id: string;
   numero_control: string;
-  empresa: string;
+  empresa: string | null;
   contacto: string;
   email: string | null;
   telefono: string | null;
-  servicio: string;
+  servicio: string | null;
   valor_estimado: number;
   etapa: string;
   proxima_accion: string | null;

@@ -41,11 +41,11 @@ function rowToProspectoPg(row: ProspectoRowPg, notas: Nota[]): Prospecto {
   return {
     id: String(row.id ?? ""),
     numero_control: String(row.numero_control ?? ""),
-    empresa: String(row.empresa ?? ""),
+    empresa: row.empresa != null ? String(row.empresa) : null,
     contacto: String(row.contacto ?? ""),
     email: row.email != null ? String(row.email) : undefined,
     telefono: row.telefono != null ? String(row.telefono) : undefined,
-    servicio: String(row.servicio ?? ""),
+    servicio: row.servicio != null ? String(row.servicio) : null,
     valor_estimado: Number(row.valor_estimado ?? 0),
     etapa: normalizeEtapaCodigo(String(row.etapa ?? "")),
     proxima_accion: row.proxima_accion != null ? String(row.proxima_accion) : undefined,
@@ -251,11 +251,11 @@ export async function insertProspectoForEmpresaPg(
   tenantDataSchema: string,
   input: {
     empresa_id: string;
-    empresa: string;
+    empresa: string | null;
     contacto: string;
     email: string | null;
     telefono: string | null;
-    servicio: string;
+    servicio: string | null;
     valor_estimado: number;
     etapa: string;
     proxima_accion: string | null;

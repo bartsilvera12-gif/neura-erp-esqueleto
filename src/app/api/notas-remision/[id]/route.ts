@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
+import { getTenantSupabaseFromAuth, getTenantSupabaseFromAuthWithRol } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
@@ -102,9 +102,9 @@ export async function DELETE(
 ) {
   try {
     const { id } = await ctxParams.params;
-    const ctx = await getTenantSupabaseFromAuth(request);
+    const ctx = await getTenantSupabaseFromAuthWithRol(request);
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
-    if (!esRolAdminEmpresaOGlobal(ctx.auth.rol ?? null)) {
+    if (!esRolAdminEmpresaOGlobal(ctx.auth.rol)) {
       return NextResponse.json(errorResponse("Solo un administrador puede eliminar notas de remisión."), { status: 403 });
     }
     const { supabase, auth } = ctx;
