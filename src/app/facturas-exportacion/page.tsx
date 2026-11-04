@@ -6,6 +6,7 @@ import type { TipoFactura } from "@/lib/facturas-exportacion/config";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { FacturaExportacion, FacturaExportacionEstado } from "@/lib/facturas-exportacion/types";
+import { FacturaCobrosModal } from "./_components/FacturaCobrosModal";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,7 @@ export default function FacturasExportacionPage() {
   const [motivoError, setMotivoError] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
+  const [cobrosFactura, setCobrosFactura] = useState<FacturaExportacion | null>(null);
 
   const cambiarModo = (prueba: boolean) => setPendiente({ tipo: "modo", prueba });
   const borrarBorrador = (f: FacturaExportacion) => setPendiente({ tipo: "borrador", f });
@@ -543,6 +545,15 @@ export default function FacturasExportacionPage() {
                         </a>
                       )}
                       {f.estado === "EMITIDA" && (
+                        <button
+                          onClick={() => setCobrosFactura(f)}
+                          className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                          title="Ver / registrar cobros de esta factura"
+                        >
+                          Cobros
+                        </button>
+                      )}
+                      {f.estado === "EMITIDA" && (
                         <Link
                           href={`/notas-remision/nueva?factura=${f.id}`}
                           className="rounded border border-sky-300 px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-50"
@@ -583,6 +594,17 @@ export default function FacturasExportacionPage() {
           </table>
         </div>
       </div>
+      {cobrosFactura && (
+        <FacturaCobrosModal
+          factura={{
+            id: cobrosFactura.id,
+            numero: cobrosFactura.numero_formateado ?? String(cobrosFactura.numero ?? ""),
+            total: Number(cobrosFactura.total) || 0,
+            moneda: (cobrosFactura.moneda === "USD" ? "USD" : "PYG") as "PYG" | "USD",
+          }}
+          onClose={() => setCobrosFactura(null)}
+        />
+      )}
     </div>
   );
 }

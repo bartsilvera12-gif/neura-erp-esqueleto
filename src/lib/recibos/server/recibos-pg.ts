@@ -11,6 +11,9 @@ export interface CrearReciboInput {
   observaciones?: string | null;
   /** Compromiso de venta que se está cobrando (anticipo o pago total). */
   presupuesto_id?: string | null;
+  /** Factura electrónica (SIFEN) a la que se aplica el cobro.
+   *  Living Room: los pagos deben estar ligados a facturas, no a presupuestos. */
+  factura_exportacion_id?: string | null;
   /** Solo para `origen: "manual"`. */
   manual?: {
     cliente_id?: string | null;
@@ -34,7 +37,7 @@ export class ReciboError extends Error {
 
 const RECIBO_COLS =
   "id, numero_recibo, cliente_id, cliente_nombre, cliente_documento, origen, venta_id, " +
-  "cuenta_por_cobrar_id, cobro_cliente_id, presupuesto_id, fecha, moneda, monto, metodo_pago, referencia, concepto, observaciones, usuario_nombre, anulado";
+  "cuenta_por_cobrar_id, cobro_cliente_id, presupuesto_id, factura_exportacion_id, fecha, moneda, monto, metodo_pago, referencia, concepto, observaciones, usuario_nombre, anulado";
 
 /** Columnas del depósito a banco (solo Living Room / esqueletoerp). */
 const RECIBO_COLS_DEPOSITO =
@@ -205,6 +208,72 @@ export async function crearOReusarRecibo(
     });
   }
 
+  // ── Cobro aplicado a una factura electrónica ────────────────────────────
+  // Living Room: "los pagos son a las facturas y no a los presupuestos".
+  if (input.origen === "manual" && input.factura_exportacion_id) {
+    const m = input.manual;
+    const monto = Number(m?.monto);
+    if (!Number.isFinite(monto) || monto <= 0) throw new ReciboError("El monto debe ser mayor a 0.");
+
+    const fq = await sb
+      .from("facturas_exportacion")
+      .select("id, numero, numero_formateado, cliente_id, cliente_nombre, cliente_documento, moneda, total, estado")
+      .eq("empresa_id", empresaId)
+      .eq("id", input.factura_exportacion_id)
+      .maybeSingle();
+    if (fq.error) throw new ReciboError(fq.error.message, 500);
+    const fac = fq.data as unknown as {
+      id: string; numero: number | null; numero_formateado: string | null;
+      cliente_id: string | null; cliente_nombre: string | null; cliente_documento: string | null;
+      moneda: string | null; total: number | null; estado: string;
+    } | null;
+    if (!fac) throw new ReciboError("La factura no existe.", 404);
+    if (fac.estado === "ANULADA") throw new ReciboError("La factura está anulada.");
+
+    // Saldo = total - cobrado previo (recibos vigentes de esta factura).
+    const prev = await sb
+      .from("recibos_dinero")
+      .select("monto")
+      .eq("empresa_id", empresaId)
+      .eq("factura_exportacion_id", fac.id)
+      .eq("anulado", false);
+    if (prev.error) throw new ReciboError(prev.error.message, 500);
+    const cobrado = ((prev.data ?? []) as { monto: number | null }[]).reduce((a, r) => a + (Number(r.monto) || 0), 0);
+    const totalFactura = Number(fac.total) || 0;
+    const saldo = Math.max(0, totalFactura - cobrado);
+    if (saldo <= 0) throw new ReciboError("La factura ya está cobrada por completo.");
+    if (monto > saldo + 0.001)
+      throw new ReciboError(`El monto supera el saldo de la factura (${saldo.toLocaleString("es-PY")}).`);
+
+    const clienteId = fac.cliente_id ? String(fac.cliente_id) : null;
+    const { nombre, documento } = clienteId
+      ? await nombreYDoc(sb, empresaId, clienteId)
+      : { nombre: fac.cliente_nombre?.trim() || "Consumidor final", documento: fac.cliente_documento ?? null };
+    const esTotal = monto >= saldo - 0.001;
+    const numero = fac.numero_formateado ?? (fac.numero != null ? String(fac.numero) : "");
+
+    return await insertarRecibo(sb, empresaId, usuario, {
+      cliente_id: clienteId,
+      cliente_nombre: nombre,
+      cliente_documento: documento,
+      origen: "manual",
+      venta_id: null,
+      cuenta_por_cobrar_id: null,
+      cobro_cliente_id: null,
+      presupuesto_id: null,
+      factura_exportacion_id: fac.id,
+      moneda: fac.moneda === "USD" ? "USD" : "PYG",
+      monto,
+      metodo_pago: (m?.metodo_pago ?? "efectivo").trim() || "efectivo",
+      entidad_bancaria_id: null,
+      referencia: m?.referencia?.trim() || null,
+      concepto:
+        m?.concepto?.trim() ||
+        `${esTotal && cobrado === 0 ? "Pago total" : esTotal ? "Saldo" : "Anticipo"} de factura ${numero}`.trim(),
+      observaciones: input.observaciones ?? null,
+    });
+  }
+
   // ── Cobro de un compromiso de venta (anticipo o pago total) ─────────────
   if (input.origen === "manual" && input.presupuesto_id) {
     const m = input.manual;
@@ -351,6 +420,7 @@ export async function listarRecibos(
     buscar?: string | null;
     incluirAnulados?: boolean;
     presupuestoId?: string | null;
+    facturaExportacionId?: string | null;
   }
 ): Promise<Record<string, unknown>[]> {
   const cols = esInstanciaLR() ? RECIBO_COLS + RECIBO_COLS_DEPOSITO : RECIBO_COLS;
@@ -365,6 +435,7 @@ export async function listarRecibos(
   if (filtros.hasta) q = q.lte("fecha", filtros.hasta);
   if (filtros.origen) q = q.eq("origen", filtros.origen);
   if (filtros.presupuestoId) q = q.eq("presupuesto_id", filtros.presupuestoId);
+  if (filtros.facturaExportacionId) q = q.eq("factura_exportacion_id", filtros.facturaExportacionId);
   if (!filtros.incluirAnulados) q = q.eq("anulado", false);
   const b = filtros.buscar?.trim();
   if (b) q = q.or(`numero_recibo.ilike.%${b}%,cliente_nombre.ilike.%${b}%,concepto.ilike.%${b}%`);
@@ -383,6 +454,7 @@ type InsertData = {
   cuenta_por_cobrar_id: string | null;
   cobro_cliente_id: string | null;
   presupuesto_id?: string | null;
+  factura_exportacion_id?: string | null;
   moneda: string;
   monto: number;
   metodo_pago: string | null;
