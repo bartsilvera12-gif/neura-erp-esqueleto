@@ -80,11 +80,20 @@ export async function POST(request: NextRequest) {
       proyecto_id: b.proyecto_id ? String(b.proyecto_id) : null,
     };
 
-    // Origen del dinero (solo Living Room): banco o caja chica. El gasto en Gs.
+    // Origen del dinero (solo Living Room): banco o caja chica. El gasto puede
+    // ser en Gs. o USD/BOB (si la cuenta elegida es en moneda extranjera).
     const lr = esInstanciaLR();
     const origenMedio = lr ? (b.origen_medio === "BANCO" || b.origen_medio === "CAJA_CHICA" ? b.origen_medio : null) : null;
     const origenId = origenMedio ? String(b.origen_cuenta_id ?? "") : "";
-    const moneda = "PYG";
+    const monedaIn = String(b.moneda ?? "PYG").toUpperCase();
+    if (!["PYG", "USD", "BOB"].includes(monedaIn)) {
+      return NextResponse.json(errorResponse("Moneda inválida (PYG, USD o BOB)."), { status: 400 });
+    }
+    const moneda = monedaIn;
+    const tcIn = Number(b.tipo_cambio);
+    const tipoCambio = moneda === "PYG" ? 1 : (Number.isFinite(tcIn) && tcIn > 0 ? tcIn : 1);
+    row.moneda = moneda;
+    row.tipo_cambio = tipoCambio;
 
     const seccion = aSeccion(b.seccion);
     if (lr) {

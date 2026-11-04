@@ -12,7 +12,7 @@ import { esInstanciaLR } from "@/lib/inventario/campos-lr";
 import SelectFromList from "@/components/inventario/SelectFromList";
 import { GASTOS_RUTA, SECCION_DEFECTO, type Seccion } from "@/lib/secciones";
 
-type OrigenCuenta = { id: string; nombre: string };
+type OrigenCuenta = { id: string; nombre: string; moneda?: string | null };
 type CuentaPlan = { id: string; cuenta: string; denominacion: string; asentable?: boolean | null; activo?: boolean | null };
 
 /** Fecha por defecto: hoy, pero con el AÑO de la gestión activa (cookie), así el gasto cae en esa gestión. */
@@ -62,6 +62,8 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
     proveedor_documento: gasto?.proveedor_documento ?? "",
     origen_medio: gasto?.entidad_bancaria_id ? "BANCO" : gasto?.caja_chica_id ? "CAJA_CHICA" : null,
     origen_cuenta_id: gasto?.entidad_bancaria_id ?? gasto?.caja_chica_id ?? null,
+    moneda: gasto?.moneda ?? "PYG",
+    tipo_cambio: gasto?.tipo_cambio ?? 1,
   });
 
   const [proyectos, setProyectos] = useState<{ id: string; titulo: string }[]>([]);
@@ -75,8 +77,8 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
     fetchWithSupabaseSession("/api/tesoreria", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((j) => {
-        setBancos(((j?.data?.bancos ?? []) as OrigenCuenta[]).map((b) => ({ id: b.id, nombre: b.nombre })));
-        setCajas(((j?.data?.cajas ?? []) as OrigenCuenta[]).map((k) => ({ id: k.id, nombre: k.nombre })));
+        setBancos(((j?.data?.bancos ?? []) as OrigenCuenta[]).map((b) => ({ id: b.id, nombre: b.nombre, moneda: b.moneda ?? "PYG" })));
+        setCajas(((j?.data?.cajas ?? []) as OrigenCuenta[]).map((k) => ({ id: k.id, nombre: k.nombre, moneda: k.moneda ?? "PYG" })));
       })
       .catch(() => {});
     // Endpoint de solo lectura (cualquier usuario de la empresa), no el admin-only de Configuración.
@@ -122,6 +124,11 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
     // Living Room: al crear, "de dónde salió" es obligatorio (banco o caja chica).
     if (usaLR && !gasto && (!form.origen_medio || !form.origen_cuenta_id)) {
       return setError("Elegí de dónde salió el gasto: un banco o una caja chica.");
+    }
+
+    // Si el gasto está en moneda extranjera, el tipo de cambio es obligatorio.
+    if (usaLR && form.moneda && form.moneda !== "PYG" && !(Number(form.tipo_cambio) > 0)) {
+      return setError(`Indicá el tipo de cambio (${form.moneda} → PYG) para el asiento contable.`);
     }
 
     setGuardando(true);
@@ -180,7 +187,7 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
             />
           </div>
           <div>
-            <label className={fLabel}>Monto (Gs.) *</label>
+            <label className={fLabel}>Monto ({form.moneda ?? "PYG"}) *</label>
             <MontoInput
               value={form.monto}
               onChange={(n) => setForm((prev) => ({ ...prev, monto: n }))}
@@ -188,6 +195,21 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
               className={fInput}
               required
             />
+            {usaLR && form.moneda && form.moneda !== "PYG" && (
+              <div className="mt-2">
+                <label className={fLabel}>Tipo de cambio ({form.moneda} &rarr; PYG) *</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={form.tipo_cambio ?? ""}
+                  onChange={(e) => setForm((prev) => ({ ...prev, tipo_cambio: e.target.value ? Number(e.target.value) : undefined }))}
+                  placeholder="Ej: 7300"
+                  className={fInput}
+                />
+                <p className="mt-1 text-xs text-slate-500">Equivalente en guaraníes de 1 {form.moneda}. Se usa para el asiento contable.</p>
+              </div>
+            )}
           </div>
           <div>
             <label className={fLabel}>Tipo</label>
@@ -282,15 +304,29 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
                   <div className="mt-2">
                     <Select
                       value={form.origen_cuenta_id ?? ""}
-                      onChange={(e) => setForm((prev) => ({ ...prev, origen_cuenta_id: e.target.value || null }))}
+                      onChange={(e) => {
+                        const id = e.target.value || null;
+                        const lista = form.origen_medio === "BANCO" ? bancos : cajas;
+                        const cta = lista.find((o) => o.id === id);
+                        const monedaCta = (cta?.moneda ?? "PYG").toUpperCase();
+                        setForm((prev) => ({
+                          ...prev,
+                          origen_cuenta_id: id,
+                          moneda: monedaCta,
+                          tipo_cambio: monedaCta === "PYG" ? 1 : (prev.tipo_cambio && prev.tipo_cambio > 0 ? prev.tipo_cambio : undefined),
+                        }));
+                      }}
                       className={fInput}
                     >
                       <option value="">{form.origen_medio === "BANCO" ? "Elegí el banco…" : "Elegí la caja chica…"}</option>
                       {(form.origen_medio === "BANCO" ? bancos : cajas).map((o) => (
-                        <option key={o.id} value={o.id}>{o.nombre}</option>
+                        <option key={o.id} value={o.id}>{o.nombre}{o.moneda && o.moneda !== "PYG" ? ` (${o.moneda})` : ""}</option>
                       ))}
                     </Select>
-                    <p className="mt-1 text-xs text-slate-500">Se descuenta del saldo de ese {form.origen_medio === "BANCO" ? "banco" : "caja chica"}.</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Se descuenta del saldo de ese {form.origen_medio === "BANCO" ? "banco" : "caja chica"}.
+                      {form.moneda && form.moneda !== "PYG" && ` El gasto queda registrado en ${form.moneda}.`}
+                    </p>
                   </div>
                 )}
               </div>
