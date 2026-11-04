@@ -27,6 +27,10 @@ export type Gasto = {
   seccion?: Seccion;
   /** Número de recibo (sin factura): SHLR/PRLR/CELR-000001. */
   recibo_numero?: string | null;
+  /** Moneda del gasto (PYG/USD/BOB). */
+  moneda?: string;
+  /** Tipo de cambio a la moneda de la empresa (1 si moneda = PYG). */
+  tipo_cambio?: number;
 };
 
 export type GastoInput = {
@@ -48,6 +52,10 @@ export type GastoInput = {
   /** Living Room: de dónde salió el dinero. */
   origen_medio?: "BANCO" | "CAJA_CHICA" | null;
   origen_cuenta_id?: string | null;
+  /** Moneda del gasto (PYG/USD/BOB). Toma la moneda de la cuenta de origen. */
+  moneda?: string;
+  /** Tipo de cambio a la moneda de la empresa (requerido si moneda != PYG). */
+  tipo_cambio?: number;
   /** Sección del gasto: Showroom / Producción / Comercio Exterior. */
   seccion?: Seccion;
 };
@@ -73,6 +81,8 @@ function mapRow(r: Record<string, unknown>): Gasto {
     proveedor_documento: (r.proveedor_documento as string | null) ?? null,
     seccion: esSeccion(r.seccion) ? r.seccion : "SHOWROOM",
     recibo_numero: (r.recibo_numero as string | null) ?? null,
+    moneda: (r.moneda as string | undefined) ?? "PYG",
+    tipo_cambio: r.tipo_cambio === undefined || r.tipo_cambio === null ? 1 : Number(r.tipo_cambio),
   };
 }
 
@@ -203,6 +213,8 @@ export async function createGasto(input: GastoInput): Promise<Gasto> {
       seccion: input.seccion ?? undefined,
       origen_medio: input.origen_medio ?? null,
       origen_cuenta_id: input.origen_cuenta_id ?? null,
+      moneda: input.moneda ?? "PYG",
+      tipo_cambio: input.tipo_cambio ?? 1,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: Record<string, unknown>; error?: string };

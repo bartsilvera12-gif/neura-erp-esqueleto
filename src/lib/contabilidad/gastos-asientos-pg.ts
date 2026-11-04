@@ -41,6 +41,8 @@ interface GastoRow {
   categoria: string | null;
   descripcion: string | null;
   proveedor_nombre: string | null;
+  moneda: string | null;
+  tipo_cambio: string | null;
 }
 
 /** Resuelve un código de cuenta del plan a su id (activa + asentable). null si no existe. */
@@ -91,7 +93,8 @@ export async function contabilizarGasto(schemaRaw: string, empresaId: string, ga
     await client.query("BEGIN");
     const { rows } = await client.query<GastoRow>(
       `SELECT to_char(fecha,'YYYY-MM-DD') AS fecha, monto, facturado, cuenta_contable_id,
-              entidad_bancaria_id, caja_chica_id, categoria, descripcion, proveedor_nombre
+              entidad_bancaria_id, caja_chica_id, categoria, descripcion, proveedor_nombre,
+              moneda, tipo_cambio
          FROM ${tG} WHERE id=$1::uuid AND empresa_id=$2::uuid FOR UPDATE`,
       [gastoId, empresaId]
     );
@@ -116,14 +119,17 @@ export async function contabilizarGasto(schemaRaw: string, empresaId: string, ga
       { cuenta_contable_id: contraId, descripcion: "Pago del gasto", debe: 0, haber: monto, documento_tipo: "gasto", documento_id: gastoId },
     ];
 
+    const monedaG = (g.moneda ?? "PYG").toUpperCase();
+    const tcG = Number(g.tipo_cambio);
+    const tipoCambio = monedaG === "PYG" ? 1 : (Number.isFinite(tcG) && tcG > 0 ? tcG : 1);
     const asiento = await generarAsientoEnTx(client, schema, empresaId, {
       origen_tipo: "gasto_servicio",
       origen_id: gastoId,
       evento_origen: "alta",
       fecha_contable: g.fecha,
       glosa: `Gasto ${glosa}`.slice(0, 300),
-      moneda: "PYG",
-      tipo_cambio: 1,
+      moneda: monedaG,
+      tipo_cambio: tipoCambio,
       lineas,
       createdBy,
     });
