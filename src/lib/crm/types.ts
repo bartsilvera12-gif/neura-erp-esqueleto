@@ -15,11 +15,11 @@ export interface Nota {
 export interface Prospecto {
   id:                    string;
   numero_control:        string;       // CRM-000001, CRM-000002, …
-  empresa:               string;
+  empresa:               string | null;
   contacto:              string;
   email?:                string;
   telefono?:             string;
-  servicio:              string;       // producto / servicio de interés
+  servicio:              string | null; // producto / servicio de interés (opcional en empresas sin planes/catálogo cerrado)
   valor_estimado:        number;       // en GS
   etapa:                 string;       // codigo de crm_etapas (LEAD, GANADO, etc.)
   proxima_accion?:       string;       // descripción de la próxima acción

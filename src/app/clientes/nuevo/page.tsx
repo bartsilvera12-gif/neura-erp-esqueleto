@@ -187,11 +187,11 @@ function NuevoClienteForm() {
     let cancelled = false;
     getProspecto(fromCrmId).then((prospecto) => {
       if (cancelled || !prospecto) return;
-      setCrmBanner(`Prospecto ${prospecto.numero_control} — ${prospecto.empresa}`);
+      setCrmBanner(`Prospecto ${prospecto.numero_control} — ${prospecto.empresa || prospecto.contacto}`);
       setForm((prev) => ({
         ...prev,
         tipo_cliente:    "empresa",
-        empresa:         prospecto.empresa,
+        empresa:         prospecto.empresa ?? "",
         nombre_contacto: prospecto.contacto,
         telefono:        prospecto.telefono ?? "",
         email:           prospecto.email    ?? "",

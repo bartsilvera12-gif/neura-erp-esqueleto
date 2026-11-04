@@ -78,19 +78,15 @@ export async function POST(request: NextRequest) {
     const empresaId = ctx.auth.empresa_id;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
+    // empresa y servicio se vuelven opcionales: la clienta pide poder registrar
+    // un prospecto solo con nombre (contacto) y después ligarlo a un presupuesto.
     const empresa = typeof body.empresa === "string" ? body.empresa.trim() : "";
     const contacto = typeof body.contacto === "string" ? body.contacto.trim() : "";
     const servicio = typeof body.servicio === "string" ? body.servicio.trim() : "";
     const etapa = typeof body.etapa === "string" ? body.etapa.trim() : "LEAD";
 
-    if (!empresa) {
-      return NextResponse.json(errorResponse("empresa es obligatoria"), { status: 400 });
-    }
     if (!contacto) {
       return NextResponse.json(errorResponse("contacto es obligatorio"), { status: 400 });
-    }
-    if (!servicio) {
-      return NextResponse.json(errorResponse("servicio es obligatorio"), { status: 400 });
     }
 
     const sb = ctx.supabase;
@@ -103,11 +99,11 @@ export async function POST(request: NextRequest) {
 
     const insert = {
       empresa_id: empresaId,
-      empresa,
+      empresa: empresa || null,
       contacto,
       email: typeof body.email === "string" && body.email.trim() ? body.email.trim().toLowerCase() : null,
       telefono: typeof body.telefono === "string" && body.telefono.trim() ? body.telefono.trim() : null,
-      servicio,
+      servicio: servicio || null,
       valor_estimado: typeof body.valor_estimado === "number" ? body.valor_estimado : Number(body.valor_estimado) || 0,
       etapa,
       proxima_accion: typeof body.proxima_accion === "string" && body.proxima_accion.trim() ? body.proxima_accion.trim() : null,
