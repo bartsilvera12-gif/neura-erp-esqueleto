@@ -232,6 +232,18 @@ export default function GastoForm({ gasto, onSuccess, seccion = SECCION_DEFECTO 
                     name="proveedor_documento"
                     value={form.proveedor_documento ?? ""}
                     onChange={handleChange}
+                    onBlur={async (e) => {
+                      // Autocompletar nombre si el RUC ya es un proveedor cargado.
+                      const ruc = e.target.value.trim().toUpperCase();
+                      if (!ruc) return;
+                      if ((form.proveedor_nombre ?? "").trim().length > 0) return;
+                      try {
+                        const r = await fetchWithSupabaseSession(`/api/proveedores?ruc=${encodeURIComponent(ruc)}`, { cache: "no-store" });
+                        const j = (await r.json().catch(() => ({}))) as { success?: boolean; data?: { proveedor?: { nombre: string } | null } };
+                        const nombre = j?.data?.proveedor?.nombre;
+                        if (nombre) setForm((p) => ({ ...p, proveedor_nombre: nombre }));
+                      } catch { /* silencioso: lookup de conveniencia */ }
+                    }}
                     placeholder="N° de RUC o cédula"
                     className={fInput}
                   />

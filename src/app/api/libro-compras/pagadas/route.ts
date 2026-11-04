@@ -41,11 +41,18 @@ export async function GET(request: NextRequest) {
       pagoDe.set(`${p.compra_id}-${p.cuota_nro}`, { fecha: p.fecha, medio: p.medio }); // ordenado por fecha asc → queda la última
     }
 
+    // Filtros opcionales por fecha de pago (yyyy-mm-dd).
+    const url = new URL(request.url);
+    const desde = url.searchParams.get("desde");
+    const hasta = url.searchParams.get("hasta");
+
     const cuotas = saldadas
       .map(({ libro_compras, ...c }) => {
         const info = pagoDe.get(`${c.compra_id}-${c.nro}`) ?? null;
         return { ...c, saldo: 0, fecha_pago: info?.fecha ?? null, medio: info?.medio ?? null, compra: libro_compras };
       })
+      .filter((c) => !desde || (c.fecha_pago ?? "") >= desde)
+      .filter((c) => !hasta || (c.fecha_pago ?? "") <= hasta)
       .sort((x, y) => (y.fecha_pago ?? "").localeCompare(x.fecha_pago ?? ""));
     return NextResponse.json(successResponse({ cuotas }));
   } catch (err) {

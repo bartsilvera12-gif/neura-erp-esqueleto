@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
 
 const COLS =
   "id, empresa_id, numero, fecha, emisor, ubicacion_origen_id, ubicacion_destino_id, motivo, estado, motivo_rechazo, aprobada_at, aprobada_por, transportista, ruc_transportista, conductor, ci_conductor, chapa, fecha_inicio_traslado, fecha_fin_traslado, observaciones, created_at, updated_at, destino_tipo, cliente_id, destino_nombre, destino_direccion, destino_ciudad, timbrado, marca_vehiculo, documento_origen, prueba";
@@ -88,6 +89,53 @@ export async function GET(
         items: detalleItems,
       },
     }));
+  } catch (err) {
+    return NextResponse.json(errorResponse(err instanceof Error ? err.message : "Error"), { status: 500 });
+  }
+}
+
+/** DELETE /api/notas-remision/[id] — elimina la nota (solo admin). Libera la
+ *  factura asociada para que pueda emitirse una nueva remisión. */
+export async function DELETE(
+  request: NextRequest,
+  ctxParams: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await ctxParams.params;
+    const ctx = await getTenantSupabaseFromAuth(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    if (!esRolAdminEmpresaOGlobal(ctx.auth.rol ?? null)) {
+      return NextResponse.json(errorResponse("Solo un administrador puede eliminar notas de remisión."), { status: 403 });
+    }
+    const { supabase, auth } = ctx;
+
+    const { data: nr, error } = await supabase
+      .from("notas_remision")
+      .select("id, numero")
+      .eq("empresa_id", auth.empresa_id)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!nr) return NextResponse.json(errorResponse(API_ERRORS.NOT_FOUND), { status: 404 });
+    const numero = (nr as { numero: string }).numero;
+
+    // Liberar la factura (si tenía anotada esta nota) para que se pueda emitir otra.
+    await supabase
+      .from("facturas_exportacion")
+      .update({ nota_remision: null })
+      .eq("empresa_id", auth.empresa_id)
+      .eq("nota_remision", numero);
+
+    // Borrar items primero (FK a la nota).
+    await supabase.from("notas_remision_items").delete().eq("nota_remision_id", id);
+    const del = await supabase
+      .from("notas_remision")
+      .delete()
+      .eq("empresa_id", auth.empresa_id)
+      .eq("id", id);
+    if (del.error) throw new Error(del.error.message);
+
+    return NextResponse.json(successResponse({ eliminada: true }));
   } catch (err) {
     return NextResponse.json(errorResponse(err instanceof Error ? err.message : "Error"), { status: 500 });
   }

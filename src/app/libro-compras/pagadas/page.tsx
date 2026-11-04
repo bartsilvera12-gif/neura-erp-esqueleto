@@ -25,14 +25,20 @@ export default function PagadasPage() {
   const [cuotas, setCuotas] = useState<Cuota[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
 
   const cargar = useCallback(async () => {
     try {
-      setCuotas((await api<{ cuotas: Cuota[] }>("/api/libro-compras/pagadas")).cuotas);
+      const qs = new URLSearchParams();
+      if (desde) qs.set("desde", desde);
+      if (hasta) qs.set("hasta", hasta);
+      const url = `/api/libro-compras/pagadas${qs.toString() ? `?${qs}` : ""}`;
+      setCuotas((await api<{ cuotas: Cuota[] }>(url)).cuotas);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     }
-  }, []);
+  }, [desde, hasta]);
   useEffect(() => {
     void cargar();
   }, [cargar]);
@@ -55,12 +61,22 @@ export default function PagadasPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Facturas pagadas</h1>
           <p className="text-sm text-slate-600">Cuotas de compras a crédito que ya están saldadas por completo.</p>
         </div>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar proveedor o comprobante"
-          className="w-72 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-        />
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-xs text-slate-500">
+            <span className="block mb-1 font-semibold uppercase tracking-wide">Desde</span>
+            <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+          </label>
+          <label className="text-xs text-slate-500">
+            <span className="block mb-1 font-semibold uppercase tracking-wide">Hasta</span>
+            <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+          </label>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar proveedor o comprobante"
+            className="w-72 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+        </div>
       </header>
       {error && <Aviso>{error}</Aviso>}
       {[...totPorMoneda.entries()].map(([m, t]) => (
@@ -80,12 +96,13 @@ export default function PagadasPage() {
               <th className="px-4 py-3">Cuota</th>
               <th className="px-4 py-3">Medio</th>
               <th className="px-4 py-3 text-right">Monto</th>
+              <th className="px-4 py-3 text-right">Asiento</th>
             </tr>
           </thead>
           <tbody>
             {cuotas && lista.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">No hay facturas pagadas todavía.</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">No hay facturas pagadas todavía.</td>
               </tr>
             )}
             {lista.map((c) => (
@@ -102,6 +119,17 @@ export default function PagadasPage() {
                 <td className="px-4 py-2.5">{c.nro}</td>
                 <td className="px-4 py-2.5 text-slate-600">{medioLabel(c.medio)}</td>
                 <td className="px-4 py-2.5 text-right font-semibold">{plata(c.monto, c.compra.moneda)}</td>
+                <td className="px-4 py-2.5 text-right">
+                  <a
+                    href={`/api/libro-compras/${c.compra_id}/asiento-pdf`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs hover:bg-slate-50"
+                    title="Abrir el asiento contable de la factura"
+                  >
+                    📄 Asiento
+                  </a>
+                </td>
               </tr>
             ))}
           </tbody>

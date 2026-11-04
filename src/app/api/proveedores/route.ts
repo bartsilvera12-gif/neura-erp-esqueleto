@@ -47,6 +47,13 @@ export async function GET(request: NextRequest) {
     const schema = await fetchDataSchemaForEmpresaId(ctx.auth.empresa_id);
     const empresaId = ctx.auth.empresa_id;
 
+    // Lookup directo por RUC (para autocompletar desde gastos o facturas).
+    const rucParam = normalizeUpperNullable(new URL(request.url).searchParams.get("ruc"));
+    if (rucParam) {
+      const hit = await findProveedorByRuc(schema, empresaId, rucParam);
+      return NextResponse.json(successResponse({ proveedor: hit ?? null }));
+    }
+
     // Serializado para no agotar pool (session mode max 15 conexiones).
     const provs = await listProveedores(schema, empresaId);
     const proveedores: Proveedor[] = provs.map(mapProveedorRow);
