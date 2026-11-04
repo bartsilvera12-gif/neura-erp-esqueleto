@@ -108,7 +108,7 @@ export default function EditProspectoPage() {
 
   useEffect(() => {
     if (!prospecto || planes.length === 0) return;
-    const nombres = prospecto.servicio.split(",").map((s) => s.trim()).filter(Boolean);
+    const nombres = (prospecto.servicio ?? "").split(",").map((s) => s.trim()).filter(Boolean);
     const ids = nombres
       .map((n) => planes.find((p) => p.nombre === n)?.id)
       .filter((id): id is string => Boolean(id));
@@ -229,7 +229,6 @@ export default function EditProspectoPage() {
   async function handleGuardar(e: React.FormEvent) {
     e.preventDefault();
     setErrorForm(null);
-    if (!form.empresa.trim())  return setErrorForm("La empresa es obligatoria.");
     if (!form.contacto.trim()) return setErrorForm("El contacto es obligatorio.");
 
     const planesActivos = planes.filter((p) => p.estado === "activo");
@@ -243,11 +242,11 @@ export default function EditProspectoPage() {
     );
 
     const actualizado = await updateProspecto(id, {
-      empresa:              form.empresa.trim().toUpperCase(),
+      empresa:              form.empresa.trim().toUpperCase() || null,
       contacto:             form.contacto.trim().toUpperCase(),
       email:                form.email.trim()    || undefined,
       telefono:             form.telefono.trim() || undefined,
-      servicio:             servicioTexto,
+      servicio:             servicioTexto || null,
       valor_estimado:       valorEstimado,
       proxima_accion:       form.proxima_accion.trim()       || undefined,
       fecha_proxima_accion: form.fecha_proxima_accion        || undefined,

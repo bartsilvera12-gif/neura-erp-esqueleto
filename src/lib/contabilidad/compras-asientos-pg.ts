@@ -90,13 +90,13 @@ async function construirAsientoCompra(client: Client, schema: string, empresaId:
   const detalle = (String(c.explicacion ?? "").trim()) || [tipo?.nombre, c.proveedor_nombre, nro].filter(Boolean).join(" ");
   const moneda = String(c.moneda ?? "PYG");
 
-  // En CONTADO, la contrapartida es la cuenta del banco o caja chica que paga
-  // (mismo criterio que gastos). Si no hay pago registrado (edge case), cae a
-  // la cuenta por defecto del tipo de comprobante.
+  // En CONTADO, la contrapartida es la cuenta del banco, caja chica o cuenta
+  // contable arbitraria elegida en el pago (mismo criterio que gastos).
+  // Si no hay pago registrado (edge case), cae a la cuenta por defecto del tipo.
   let cuentaContado: string | null = tipo?.cuenta_codigo ?? null;
   if (tipo?.condicion !== "CREDITO") {
-    const { rows: pr } = await client.query<{ entidad_bancaria_id: string | null; caja_chica_id: string | null }>(
-      `SELECT entidad_bancaria_id, caja_chica_id
+    const { rows: pr } = await client.query<{ entidad_bancaria_id: string | null; caja_chica_id: string | null; cuenta_contable_id: string | null }>(
+      `SELECT entidad_bancaria_id, caja_chica_id, cuenta_contable_id
          FROM ${tP}
         WHERE compra_id=$1::uuid AND empresa_id=$2::uuid
           AND cuota_nro IS NULL AND COALESCE(estado,'vigente')='vigente'
@@ -105,7 +105,14 @@ async function construirAsientoCompra(client: Client, schema: string, empresaId:
       [compraId, empresaId]
     );
     const pago = pr[0];
-    if (pago?.entidad_bancaria_id) {
+    if (pago?.cuenta_contable_id) {
+      // Pago contra una cuenta contable arbitraria (p.ej. saldo inter-empresa).
+      const { rows: pcr } = await client.query<{ cuenta: string | null }>(
+        `SELECT cuenta FROM ${tPC} WHERE id=$1::uuid AND empresa_id=$2::uuid`,
+        [pago.cuenta_contable_id, empresaId]
+      );
+      if (pcr[0]?.cuenta) cuentaContado = pcr[0].cuenta;
+    } else if (pago?.entidad_bancaria_id) {
       const { rows: br } = await client.query<{ cuenta_contable_codigo: string | null }>(
         `SELECT cuenta_contable_codigo FROM ${tB} WHERE id=$1::uuid AND empresa_id=$2::uuid`,
         [pago.entidad_bancaria_id, empresaId]

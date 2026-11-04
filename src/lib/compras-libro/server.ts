@@ -123,11 +123,13 @@ export async function guardarCompra(
       throw new ErrorValidacion(`Las cuotas suman ${suma.toLocaleString("es-PY")} y deberían sumar ${esperado.toLocaleString("es-PY")}.`);
   }
 
-  // Pago al contado: de qué cuenta bancaria o caja chica sale (o vuelve, si es NC) el dinero.
+  // Pago al contado: de qué cuenta bancaria, caja chica o cuenta contable sale
+  // (o vuelve, si es NC) el dinero.
   const pagoRaw = (body.pago ?? null) as { medio?: string; cuenta_id?: string; referencia?: string } | null;
+  const medioValido = pagoRaw?.medio === "BANCO" || pagoRaw?.medio === "CAJA_CHICA" || pagoRaw?.medio === "CUENTA_CONTABLE";
   const pago =
-    tipo.condicion === "CONTADO" && pagoRaw && (pagoRaw.medio === "BANCO" || pagoRaw.medio === "CAJA_CHICA") && esUuid(pagoRaw.cuenta_id)
-      ? { medio: pagoRaw.medio as "BANCO" | "CAJA_CHICA", cuentaId: pagoRaw.cuenta_id, referencia: txt(pagoRaw.referencia, 60) }
+    tipo.condicion === "CONTADO" && pagoRaw && medioValido && esUuid(pagoRaw.cuenta_id)
+      ? { medio: pagoRaw.medio as "BANCO" | "CAJA_CHICA" | "CUENTA_CONTABLE", cuentaId: pagoRaw.cuenta_id, referencia: txt(pagoRaw.referencia, 60) }
       : null;
   const montoPago = t.total - retIva - retRenta;
 
@@ -150,18 +152,20 @@ export async function guardarCompra(
       if (c.monto < pagado) throw new ErrorValidacion(`La cuota ${nroCuota} ya tiene pagado ${pagado.toLocaleString("es-PY")}: no puede quedar en menos.`);
     }
   }
+  const prevCuentaId = (p: typeof previos[number]) => p.entidad_bancaria_id ?? p.caja_chica_id ?? p.cuenta_contable_id;
   const igual =
     pago &&
     previos.length === 1 &&
     previos[0].medio === pago.medio &&
-    (previos[0].entidad_bancaria_id ?? previos[0].caja_chica_id) === pago.cuentaId &&
+    prevCuentaId(previos[0]) === pago.cuentaId &&
     Number(previos[0].monto) === montoPago &&
     previos[0].fecha === fecha &&
     (previos[0].referencia ?? null) === pago.referencia;
-  if (pago && !igual && montoPago > 0) {
-    // Si reemplaza un pago anterior de la misma cuenta, esa plata vuelve antes de descontar.
+  if (pago && !igual && montoPago > 0 && pago.medio !== "CUENTA_CONTABLE") {
+    // CUENTA_CONTABLE no necesita validar saldo porque no mueve banco/caja.
+    // Para BANCO/CAJA_CHICA: si reemplaza un pago anterior de la misma cuenta, esa plata vuelve antes de descontar.
     const devuelve = previos
-      .filter((x) => (x.entidad_bancaria_id ?? x.caja_chica_id) === pago.cuentaId)
+      .filter((x) => prevCuentaId(x) === pago.cuentaId)
       .reduce((s2, x) => s2 + (esNC ? -1 : 1) * Number(x.monto), 0);
     try {
       await validarMovimiento(sb, emp, pago.medio, pago.cuentaId, moneda, montoPago, { ingreso: esNC, devuelve });
