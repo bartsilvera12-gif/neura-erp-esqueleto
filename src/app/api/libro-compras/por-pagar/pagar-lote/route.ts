@@ -71,7 +71,10 @@ export async function POST(request: NextRequest) {
     const moneda = [...monedas][0];
     const total = aPagar.reduce((s, x) => s + x.monto, 0);
     // Chequeo el total de una (la caja chica no puede quedar en negativo; el banco avisa).
-    await validarMovimiento(ctx.supabase, emp, medio, String(b.cuenta_id), moneda, total);
+    // CUENTA_CONTABLE no mueve banco/caja, no requiere validación de saldo.
+    if (medio !== "CUENTA_CONTABLE") {
+      await validarMovimiento(ctx.supabase, emp, medio, String(b.cuenta_id), moneda, total);
+    }
 
     const avisos: string[] = [];
     let pagados = 0;

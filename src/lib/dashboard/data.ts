@@ -247,10 +247,10 @@ async function fetchProspectos(): Promise<ProspectoRaw[]> {
   const prospectosFromCrm = await getProspectos();
   return prospectosFromCrm.map((p) => ({
     id: p.id,
-    empresa: p.empresa,
+    empresa: p.empresa ?? "",
     contacto: p.contacto,
     etapa: p.etapa,
-    servicio: p.servicio,
+    servicio: p.servicio ?? "",
     valor_estimado: p.valor_estimado ?? 0,
     fecha_creacion: p.fecha_creacion ?? "",
     fecha_actualizacion: p.fecha_actualizacion ?? "",
