@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
-import { ESTADO_LABEL, ESTADOS_HERRAMIENTA, type EstadoHerramienta } from "@/lib/herramientas/server";
+import { ESTADO_LABEL, ESTADOS_HERRAMIENTA, type EstadoHerramienta } from "@/lib/herramientas/types";
 
 type Herramienta = {
   id: string;

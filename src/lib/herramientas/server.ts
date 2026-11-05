@@ -1,15 +1,9 @@
 import "server-only";
 import type { AppSupabaseClient } from "@/lib/supabase/schema";
+import { ESTADOS_HERRAMIENTA, type EstadoHerramienta } from "./types";
 
-export const ESTADOS_HERRAMIENTA = ["FUNCIONANDO", "AVERIADA", "EN_REPARACION", "DADA_DE_BAJA"] as const;
-export type EstadoHerramienta = (typeof ESTADOS_HERRAMIENTA)[number];
-
-export const ESTADO_LABEL: Record<EstadoHerramienta, string> = {
-  FUNCIONANDO: "Funcionando",
-  AVERIADA: "Averiada",
-  EN_REPARACION: "En reparación",
-  DADA_DE_BAJA: "Dada de baja",
-};
+export { ESTADOS_HERRAMIENTA, ESTADO_LABEL } from "./types";
+export type { EstadoHerramienta } from "./types";
 
 export const HERRAMIENTA_COLS =
   "id, nombre, categoria, marca, modelo, numero_serie, ubicacion, responsable, estado, " +

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Wrench, Plus, Pencil, Trash2 } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
-import { ESTADO_LABEL, ESTADOS_HERRAMIENTA, type EstadoHerramienta } from "@/lib/herramientas/server";
+import { ESTADO_LABEL, ESTADOS_HERRAMIENTA, type EstadoHerramienta } from "@/lib/herramientas/types";
 import HerramientaModal from "./_components/HerramientaModal";
 
 type Herramienta = {
