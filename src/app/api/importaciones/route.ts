@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esUuid, getComexCtx, insertarConNumero, textoBusqueda, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { anioGestionActiva, rangoGestion } from "@/lib/gestion/gestion-activa";
 
 const COLS =
   "id, numero, proveedor_id, proveedor_nombre, pais_origen, incoterm, moneda, monto_estimado, tipo_cambio, " +
@@ -30,6 +31,14 @@ export async function GET(request: NextRequest) {
       .eq("empresa_id", ctx.auth.empresa_id)
       .order("created_at", { ascending: false })
       .limit(500);
+    // Filtro por gestión (año) activa: la importación cae en la gestión según su
+    // fecha_pedido (la fecha de operación), con fallback a created_at si no se
+    // cargó. Pasar ?gestion=all para ver todas.
+    const gestionParam = sp.get("gestion");
+    if (gestionParam !== "all") {
+      const rg = rangoGestion(anioGestionActiva(request));
+      q = q.or(`and(fecha_pedido.gte.${rg.desde},fecha_pedido.lte.${rg.hasta}),and(fecha_pedido.is.null,created_at.gte.${rg.desde},created_at.lte.${rg.hasta}T23:59:59)`);
+    }
     const estado = sp.get("estado");
     if (estado && ESTADOS.has(estado)) q = q.eq("estado", estado);
     const responsable = sp.get("responsable");
