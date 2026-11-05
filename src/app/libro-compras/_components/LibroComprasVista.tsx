@@ -21,6 +21,7 @@ type Compra = {
   proveedor_nombre: string;
   proveedor_ruc: string | null;
   moneda: string;
+  cotizacion: number;
   total_exentas: number;
   total_gravado10: number;
   total_gravado5: number;
@@ -48,12 +49,21 @@ export default function LibroComprasVista({
   seccion,
   titulo,
   subtitulo,
+  monedaMostrar,
 }: {
   seccion: Seccion | null;
   titulo: string;
   subtitulo?: string;
+  /** Si se pasa (ej. "PYG"), todos los montos se convierten a esa moneda usando la cotización de cada compra. */
+  monedaMostrar?: "PYG";
 }) {
   const esGeneral = seccion === null;
+  const convertir = monedaMostrar === "PYG";
+  // Factor de conversión de la fila a PYG: 1 si ya está en PYG o si no se convierte.
+  const cot = (f: { moneda: string; cotizacion: number }): number =>
+    !convertir || f.moneda === "PYG" ? 1 : (Number(f.cotizacion) || 1);
+  const conv = (f: { moneda: string; cotizacion: number }, v: number): number =>
+    Math.round(Number(v) * cot(f));
   const [filas, setFilas] = useState<Compra[]>([]);
   const [tipos, setTipos] = useState<TipoComprobante[]>([]);
   const [filtros, setFiltros] = useState({ desde: primerDiaMes(), hasta: "", tipo: "", estado: "", q: "" });
@@ -110,6 +120,7 @@ export default function LibroComprasVista({
               proveedor_nombre: g.proveedor_nombre || g.categoria || "—",
               proveedor_ruc: g.proveedor_documento ?? null,
               moneda: "PYG",
+              cotizacion: 1,
               total_exentas: Number(g.monto) || 0,
               total_gravado10: 0,
               total_gravado5: 0,
@@ -141,7 +152,8 @@ export default function LibroComprasVista({
   async function exportar() {
     setExportando(true);
     try {
-      const r = await fetchWithSupabaseSession(`/api/libro-compras/export?${qs}`, { cache: "no-store" });
+      const qsExp = convertir ? `${qs}&moneda_mostrar=PYG` : qs;
+      const r = await fetchWithSupabaseSession(`/api/libro-compras/export?${qsExp}`, { cache: "no-store" });
       if (!r.ok) throw new Error("No se pudo exportar.");
       const blob = await r.blob();
       const a = document.createElement("a");
@@ -158,8 +170,10 @@ export default function LibroComprasVista({
 
   // Totales en guaraníes solo de lo registrado (los anulados no suman).
   const vigentes = filas.filter((f) => f.estado !== "anulada");
-  const soloPyg = vigentes.every((f) => f.moneda === "PYG");
-  const suma = (k: keyof Compra) => vigentes.reduce((s, f) => s + Number(f[k]), 0);
+  // Si se está convirtiendo todo a PYG, podemos sumar aunque haya USD/BOB.
+  const soloPyg = convertir || vigentes.every((f) => f.moneda === "PYG");
+  const suma = (k: keyof Compra) =>
+    vigentes.reduce((s, f) => s + Number(f[k]) * cot(f), 0);
   const nCols = esGeneral ? 12 : 11;
 
   return (
@@ -262,7 +276,10 @@ export default function LibroComprasVista({
             )}
             {filas.map((f) => {
               const anulada = f.estado === "anulada";
-              const n = (v: number) => (anulada ? <s>{Number(v).toLocaleString("es-PY")}</s> : Number(v).toLocaleString("es-PY"));
+              const n = (v: number) => {
+                const x = conv(f, v);
+                return anulada ? <s>{x.toLocaleString("es-PY")}</s> : x.toLocaleString("es-PY");
+              };
               return (
                 <tr key={f.id} className={`border-t border-slate-100 hover:bg-slate-50 ${anulada ? "text-slate-400" : ""}`}>
                   <td className="px-3 py-2.5 whitespace-nowrap">{fechaES(f.fecha)}</td>
@@ -303,7 +320,12 @@ export default function LibroComprasVista({
                   <td className="px-3 py-2.5 text-right">{n(f.iva10)}</td>
                   <td className="px-3 py-2.5 text-right">{n(f.total_gravado5)}</td>
                   <td className="px-3 py-2.5 text-right">{n(f.iva5)}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">{anulada ? <s>{money(f.total, f.moneda)}</s> : money(f.total, f.moneda)}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">{(() => {
+                    const monedaOut = convertir ? "PYG" : f.moneda;
+                    const total = conv(f, f.total);
+                    const s = money(total, monedaOut);
+                    return anulada ? <s>{s}</s> : s;
+                  })()}</td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-1.5">
                       <a
