@@ -23,20 +23,35 @@ export interface ParsedSheet {
   rows: Record<string, string>[];
 }
 
+/** Convierte un valor crudo de celda a string, normalizando fechas a ISO (YYYY-MM-DD). */
+function cellToString(v: unknown): string {
+  if (v == null) return "";
+  if (v instanceof Date) {
+    // Las celdas de fecha de Excel vienen como Date gracias a cellDates:true.
+    // Serializamos como YYYY-MM-DD en UTC para evitar corrimientos por timezone.
+    const y = v.getUTCFullYear();
+    const m = String(v.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(v.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  return String(v);
+}
+
 export async function parseXlsxBuffer(buf: ArrayBuffer): Promise<ParsedSheet> {
-  const wb = XLSX.read(buf, { type: "array" });
+  // cellDates: true → fechas de Excel se devuelven como objetos Date, no como
+  // serial numbers (45713, etc.) que luego se stringifican y rompen el parseo.
+  const wb = XLSX.read(buf, { type: "array", cellDates: true });
   const sheetName = wb.SheetNames[0];
   if (!sheetName) return { headers: [], rows: [] };
   const ws = wb.Sheets[sheetName];
-  const rowsRaw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+  const rowsRaw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "", raw: true });
   if (rowsRaw.length === 0) return { headers: [], rows: [] };
   const rawHeaders = Object.keys(rowsRaw[0]);
   const headers = rawHeaders.map(normalizeHeader);
   const rows: Record<string, string>[] = rowsRaw.map((r) => {
     const out: Record<string, string> = {};
     rawHeaders.forEach((rh, i) => {
-      const v = r[rh];
-      out[headers[i]] = v == null ? "" : String(v);
+      out[headers[i]] = cellToString(r[rh]);
     });
     return out;
   });

@@ -35,6 +35,19 @@ export async function GET(request: NextRequest) {
     const busca = textoBusqueda(sp.get("q"));
     if (busca) q = q.or(`proveedor_nombre.ilike.%${busca}%,nro_comprobante.ilike.%${busca}%,numero_control.ilike.%${busca}%,proveedor_ruc.ilike.%${busca}%`);
     const filas = await traerTodo<Fila>((a, z) => q.range(a, z));
+    // Si se pide convertir a PYG (Libro de compras C/E), multiplicamos cada
+    // importe por la cotización de la fila para expresarlo en guaraníes.
+    const convertir = sp.get("moneda_mostrar") === "PYG";
+    const factor = (r: Fila): number => (!convertir || r.moneda === "PYG" ? 1 : n(r.cotizacion) || 1);
+    const AMT_KEYS = ["total_exentas", "total_gravado10", "iva10", "total_gravado5", "iva5", "total", "retencion_iva", "retencion_renta"] as const;
+    if (convertir) {
+      for (const r of filas) {
+        const f = factor(r);
+        if (f !== 1) {
+          for (const k of AMT_KEYS) r[k] = Math.round(n(r[k]) * f);
+        }
+      }
+    }
     const vigentes = filas.filter((f) => f.estado !== "anulada");
     const tot = (k: string) => vigentes.reduce((s, f) => s + n(f[k]), 0);
     const totalFila: Fila = {
@@ -50,7 +63,8 @@ export async function GET(request: NextRequest) {
       { header: "Timbrado", value: (r) => r.timbrado as string, width: 11 },
       { header: "Proveedor", value: (r) => r.proveedor_nombre as string, width: 32 },
       { header: "RUC", value: (r) => r.proveedor_ruc as string, width: 13 },
-      { header: "Moneda", value: (r) => r.moneda as string, width: 7 },
+      { header: "Moneda", value: (r) => (convertir ? "PYG" : (r.moneda as string)), width: 7 },
+      { header: "Moneda original", value: (r) => (convertir ? (r.moneda as string) : ""), width: 10 },
       { header: "Cotización", value: (r) => (r.moneda && r.moneda !== "PYG" ? n(r.cotizacion) : ""), width: 10 },
       { header: "Exentas", value: (r) => n(r.total_exentas), width: 13 },
       { header: "Gravado 10%", value: (r) => n(r.total_gravado10), width: 13 },
