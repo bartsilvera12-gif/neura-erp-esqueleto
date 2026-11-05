@@ -168,6 +168,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Transferencias entre almacenes", href: "/inventario/transferencias" },
     { label: "Categorías", href: "/inventario/categorias" },
     { label: "Almacenes", href: "/inventario/ubicaciones" },
+    { label: "Herramientas y máquinas", href: "/inventario/herramientas" },
   ]},
   {
     key: "compras",
