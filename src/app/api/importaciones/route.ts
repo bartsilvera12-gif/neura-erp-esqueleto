@@ -31,13 +31,22 @@ export async function GET(request: NextRequest) {
       .eq("empresa_id", ctx.auth.empresa_id)
       .order("created_at", { ascending: false })
       .limit(500);
-    // Filtro por gestión (año) activa: la importación cae en la gestión según su
-    // fecha_pedido (la fecha de operación), con fallback a created_at si no se
-    // cargó. Pasar ?gestion=all para ver todas.
+    // Filtro por gestión (año) activa: la importación cae en la gestión según la
+    // fecha en que IMPACTA (se nacionalizó: ahí entran el costo y el inventario),
+    // con respaldo en cascada arribo → pedido → fecha de carga para las que
+    // todavía no se nacionalizaron. Pasar ?gestion=all para ver todas.
     const gestionParam = sp.get("gestion");
     if (gestionParam !== "all") {
       const rg = rangoGestion(anioGestionActiva(request));
-      q = q.or(`and(fecha_pedido.gte.${rg.desde},fecha_pedido.lte.${rg.hasta}),and(fecha_pedido.is.null,created_at.gte.${rg.desde},created_at.lte.${rg.hasta}T23:59:59)`);
+      const fin = `${rg.hasta}T23:59:59`;
+      q = q.or(
+        [
+          `and(fecha_nacionalizacion.gte.${rg.desde},fecha_nacionalizacion.lte.${rg.hasta})`,
+          `and(fecha_nacionalizacion.is.null,fecha_arribo.gte.${rg.desde},fecha_arribo.lte.${rg.hasta})`,
+          `and(fecha_nacionalizacion.is.null,fecha_arribo.is.null,fecha_pedido.gte.${rg.desde},fecha_pedido.lte.${rg.hasta})`,
+          `and(fecha_nacionalizacion.is.null,fecha_arribo.is.null,fecha_pedido.is.null,created_at.gte.${rg.desde},created_at.lte.${fin})`,
+        ].join(",")
+      );
     }
     const estado = sp.get("estado");
     if (estado && ESTADOS.has(estado)) q = q.eq("estado", estado);
