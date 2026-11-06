@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esUuid, getComexCtx, insertarConNumero, textoBusqueda, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
-import { anioGestionActiva, rangoGestion } from "@/lib/gestion/gestion-activa";
+import { anioGestionActiva, anioDeFecha, rangoGestion } from "@/lib/gestion/gestion-activa";
 
 const COLS =
   "id, numero, proveedor_id, proveedor_nombre, pais_origen, incoterm, moneda, monto_estimado, tipo_cambio, " +
@@ -85,6 +85,15 @@ export async function POST(request: NextRequest) {
     if (faltan.length) return NextResponse.json(errorResponse(`Completá: ${faltan.join(", ")}.`), { status: 400 });
 
 
+    // Número que reinicia cada gestión (año) y lleva el año en el código: IMP-AAAA-0001.
+    // El año es el de la gestión a la que pertenece la importación (misma regla que el
+    // listado: nacionalización → arribo → pedido) y, si todavía no tiene esas fechas,
+    // la gestión que se está viendo.
+    const anio =
+      anioDeFecha(b.fecha_nacionalizacion) ??
+      anioDeFecha(b.fecha_arribo) ??
+      anioDeFecha(b.fecha_pedido) ??
+      anioGestionActiva(request);
     const creada = await insertarConNumero(ctx.supabase, "importaciones", ctx.auth.empresa_id, "IMP", {
         proveedor_id: b.proveedor_id ? String(b.proveedor_id) : null,
         proveedor_nombre: proveedorNombre.slice(0, 200),
@@ -105,7 +114,7 @@ export async function POST(request: NextRequest) {
         responsable_nombre: responsableNombre.slice(0, 200),
         created_by_user_id: ctx.auth.usuarioCatalogId ?? null,
         created_by_nombre: nombreUsuario(ctx.auth),
-    });
+    }, anio);
     await registrarHistorial(ctx.supabase, ctx.auth, "IMPORTACION", creada.id, "CREAR", {
       numero: creada.numero,
       proveedor: proveedorNombre,

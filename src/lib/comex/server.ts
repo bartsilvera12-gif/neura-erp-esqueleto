@@ -186,26 +186,36 @@ export function rutaAdjunto(empresaId: string, origenTipo: OrigenComex, origenId
 }
 
 /**
- * Inserta con el siguiente número PREFIJO-000001. Si dos personas crean a la
- * vez y chocan con el número (índice único), reintenta con el siguiente.
+ * Inserta con el siguiente número. Si dos personas crean a la vez y chocan con
+ * el número (índice único), reintenta con el siguiente.
+ *
+ * Si se pasa `anio`, la numeración REINICIA cada gestión y el año va en el
+ * código: `PREFIJO-AAAA-0001` (ej. IMP-2025-0001, IMP-2026-0001). Sin `anio`
+ * usa la numeración corrida histórica `PREFIJO-000001`.
  */
 export async function insertarConNumero(
   sb: AppSupabaseClient,
   tabla: "importaciones" | "exportaciones",
   empresaId: string,
   prefijo: "IMP" | "EXP",
-  fila: Record<string, unknown>
+  fila: Record<string, unknown>,
+  anio?: number
 ): Promise<{ id: string; numero: string }> {
   for (let intento = 0; intento < 5; intento++) {
+    // Prefijo de búsqueda del último número: por año si reinicia, si no el corrido.
+    const filtro = anio ? `${prefijo}-${anio}-%` : `${prefijo}-%`;
     const { data: ult } = await sb
       .from(tabla)
       .select("numero")
       .eq("empresa_id", empresaId)
-      .like("numero", `${prefijo}-%`)
+      .like("numero", filtro)
       .order("numero", { ascending: false })
       .limit(1);
     const m = (((ult ?? [])[0] as { numero?: string } | undefined)?.numero ?? "").match(/(\d+)$/);
-    const numero = `${prefijo}-${String((m ? Number(m[1]) : 0) + 1 + intento).padStart(6, "0")}`;
+    const siguiente = (m ? Number(m[1]) : 0) + 1 + intento;
+    const numero = anio
+      ? `${prefijo}-${anio}-${String(siguiente).padStart(4, "0")}`
+      : `${prefijo}-${String(siguiente).padStart(6, "0")}`;
     const { data, error } = await sb.from(tabla).insert({ ...fila, empresa_id: empresaId, numero }).select("id, numero").single();
     if (!error) return data as { id: string; numero: string };
     if (error.code !== "23505") throw new Error(error.message);
