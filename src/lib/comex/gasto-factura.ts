@@ -101,12 +101,33 @@ export async function crearFacturaDeGasto(
   sb: AppSupabaseClient,
   auth: UsuarioConEmpresaYRol,
   g: GastoParaFactura
-): Promise<{ compraId: string; numeroControl: string }> {
+): Promise<{ compraId: string; numeroControl: string; existed: boolean }> {
   const falta = faltaParaFactura(g);
   if (falta) throw new ErrorValidacion(`Para mandar el gasto al Libro de Compras ${falta}.`);
+  // Idempotencia: si ya existe una factura con el mismo (empresa, ruc, comprobante)
+  // vigente, se reutiliza. Esto evita que re-importar la misma plantilla de gastos
+  // falle con "Ese comprobante de ese proveedor ya está cargado" cuando las
+  // facturas se habían cargado en un intento anterior (y los gastos no quedaron
+  // enlazados por el rollback).
+  const rucN = (g.proveedor_ruc ?? "").trim();
+  const nro = (g.comprobante ?? "").trim();
+  if (rucN && nro) {
+    const { data: prev } = await sb
+      .from("libro_compras")
+      .select("id, numero_control, estado")
+      .eq("empresa_id", auth.empresa_id)
+      .eq("proveedor_ruc", rucN)
+      .eq("nro_comprobante", nro)
+      .neq("estado", "anulada")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const existente = prev as { id: string; numero_control: string } | null;
+    if (existente) return { compraId: existente.id, numeroControl: existente.numero_control, existed: true };
+  }
   const tipoId = await tipoCompraCreditoId(sb, auth.empresa_id);
   const r = await guardarCompra(sb, auth, facturaBodyDeGasto(g, tipoId));
-  return { compraId: r.id, numeroControl: r.numero_control };
+  return { compraId: r.id, numeroControl: r.numero_control, existed: false };
 }
 
 /**
