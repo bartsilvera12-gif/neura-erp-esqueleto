@@ -104,26 +104,32 @@ export async function crearFacturaDeGasto(
 ): Promise<{ compraId: string; numeroControl: string; existed: boolean }> {
   const falta = faltaParaFactura(g);
   if (falta) throw new ErrorValidacion(`Para mandar el gasto al Libro de Compras ${falta}.`);
-  // Idempotencia: si ya existe una factura con el mismo (empresa, ruc, comprobante)
-  // vigente, se reutiliza. Esto evita que re-importar la misma plantilla de gastos
-  // falle con "Ese comprobante de ese proveedor ya está cargado" cuando las
-  // facturas se habían cargado en un intento anterior (y los gastos no quedaron
-  // enlazados por el rollback).
+  // Idempotencia: si ya existe una factura DE COMERCIO EXTERIOR con el mismo
+  // (empresa, ruc, nro_comprobante, moneda, total), se reutiliza. Esto evita
+  // que re-importar la plantilla de gastos de una importación falle con
+  // "Ese comprobante de ese proveedor ya está cargado" cuando las facturas se
+  // habían cargado en un intento anterior y quedaron sin enlazar por rollback.
+  // Se exige sección=COMERCIO_EXTERIOR + misma moneda + mismo total para no
+  // reutilizar por azar una compra manual vieja de Showroom con el mismo RUC
+  // y número de comprobante (talonarios paraguayos pueden repetir numeración).
   const rucN = (g.proveedor_ruc ?? "").trim();
   const nro = (g.comprobante ?? "").trim();
   if (rucN && nro) {
     const { data: prev } = await sb
       .from("libro_compras")
-      .select("id, numero_control, estado")
+      .select("id, numero_control, moneda, total, estado")
       .eq("empresa_id", auth.empresa_id)
+      .eq("seccion", "COMERCIO_EXTERIOR")
       .eq("proveedor_ruc", rucN)
       .eq("nro_comprobante", nro)
+      .eq("moneda", g.moneda)
       .neq("estado", "anulada")
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const existente = prev as { id: string; numero_control: string } | null;
-    if (existente) return { compraId: existente.id, numeroControl: existente.numero_control, existed: true };
+      .limit(5);
+    const candidatos = (prev ?? []) as { id: string; numero_control: string; total: number }[];
+    const tolerancia = g.moneda === "PYG" ? 1 : 0.01;
+    const match = candidatos.find((c) => Math.abs(Number(c.total) - g.monto) <= tolerancia);
+    if (match) return { compraId: match.id, numeroControl: match.numero_control, existed: true };
   }
   const tipoId = await tipoCompraCreditoId(sb, auth.empresa_id);
   const r = await guardarCompra(sb, auth, facturaBodyDeGasto(g, tipoId));
