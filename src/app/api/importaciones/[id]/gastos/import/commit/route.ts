@@ -82,9 +82,11 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
 
         // 2) Si lleva IVA, se genera la factura en el Libro de Compras y se enlaza.
         //    Si falla, se revierte el gasto para no dejarlo sin su factura.
+        //    `crearFacturaDeGasto` es idempotente: si ya existe una factura con el
+        //    mismo (ruc, comprobante), la reutiliza y lo avisa en warnings.
         if (g.lleva_iva) {
           try {
-            const { compraId } = await crearFacturaDeGasto(sb, ctx.auth, {
+            const { compraId, existed } = await crearFacturaDeGasto(sb, ctx.auth, {
               fecha,
               tipo: g.tipo,
               descripcion: g.descripcion,
@@ -99,7 +101,12 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
               iva_porcentaje: g.iva_porcentaje,
             });
             await sb.from("comex_gastos").update({ libro_compra_id: compraId }).eq("empresa_id", emp).eq("id", gastoId);
-            facturasCreadas++;
+            if (existed) {
+              out.summary.warnings++;
+              out.warnings.push(`Fila ${g.row_number}: la factura ${g.comprobante} del proveedor ${g.proveedor_nombre} ya estaba cargada en el Libro de Compras; se enlazó la existente.`);
+            } else {
+              facturasCreadas++;
+            }
           } catch (e) {
             await sb.from("comex_gastos").delete().eq("empresa_id", emp).eq("id", gastoId);
             throw e;
