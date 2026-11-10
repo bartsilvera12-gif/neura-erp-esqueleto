@@ -73,7 +73,8 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
       const _cmp = String(d.datos.comprobante ?? "").trim();
       const _tim = String(d.datos.timbrado ?? "").trim();
       const _cta = String(d.datos.cuenta_codigo ?? "").trim();
-      const ahoraVaAlLibro = d.datos.lleva_iva === true || Boolean(_ruc && _cmp && _tim && _cta);
+      const _cmpReal = _cmp.length >= 3 && !/^0+$/.test(_cmp.replace(/[-\s]/g, ""));
+      const ahoraVaAlLibro = d.datos.lleva_iva === true || Boolean(_ruc && _cmpReal && _tim && _cta);
 
       // Se sincroniza la factura ANTES de tocar el gasto: si algo falla (ej.: la
       // cuota ya tiene pagos), el gasto no queda a medias.
