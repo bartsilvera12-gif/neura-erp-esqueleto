@@ -80,11 +80,15 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
         if (ins.error) throw new Error(ins.error.message);
         const gastoId = (ins.data as { id: string }).id;
 
-        // 2) Si lleva IVA, se genera la factura en el Libro de Compras y se enlaza.
+        // 2) Si lleva IVA o es exento con comprobante completo, se genera la
+        //    factura en el Libro de Compras y se enlaza. Las exentas con
+        //    comprobante igual van al libro (como exentas) para que el Libro
+        //    IVA refleje todos los documentos.
         //    Si falla, se revierte el gasto para no dejarlo sin su factura.
-        //    `crearFacturaDeGasto` es idempotente: si ya existe una factura con el
-        //    mismo (ruc, comprobante), la reutiliza y lo avisa en warnings.
-        if (g.lleva_iva) {
+        //    `crearFacturaDeGasto` es idempotente.
+        const vaAlLibro = g.lleva_iva
+          || Boolean(g.proveedor_ruc?.trim() && g.comprobante?.trim() && g.timbrado?.trim() && g.cuenta_codigo?.trim());
+        if (vaAlLibro) {
           try {
             const { compraId, existed } = await crearFacturaDeGasto(sb, ctx.auth, {
               fecha,

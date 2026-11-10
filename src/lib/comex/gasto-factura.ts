@@ -59,10 +59,12 @@ async function tipoCompraCreditoId(sb: AppSupabaseClient, empresaId: string): Pr
   return tipo.id;
 }
 
-/** Arma el cuerpo que entiende `guardarCompra` a partir de un gasto con IVA. */
+/** Arma el cuerpo que entiende `guardarCompra` a partir de un gasto (con IVA o exento). */
 function facturaBodyDeGasto(g: GastoParaFactura, tipoId: string): Record<string, unknown> {
-  const pct = g.iva_porcentaje === 5 ? 5 : 10;
   const detalle = [g.tipo, g.descripcion].filter(Boolean).join(" · ").slice(0, 300) || "Gasto de importación";
+  // Si el gasto no lleva IVA, la factura va al libro como EXENTA.
+  const esExento = g.iva_porcentaje == null || g.iva_porcentaje === 0;
+  const pct = g.iva_porcentaje === 5 ? 5 : 10;
   return {
     tipo_id: tipoId,
     seccion: "COMERCIO_EXTERIOR",
@@ -74,16 +76,16 @@ function facturaBodyDeGasto(g: GastoParaFactura, tipoId: string): Record<string,
     proveedor_ruc: g.proveedor_ruc,
     moneda: g.moneda,
     cotizacion: g.tipo_cambio,
-    impacta: "SOLO_IVA",
+    impacta: esExento ? "NO_IMPUTA" : "SOLO_IVA",
     explicacion: detalle,
     lineas: [
       {
         cuenta_codigo: g.cuenta_codigo,
         explicacion: detalle,
-        exentas: 0,
-        gravadas: g.monto,
-        iva_porcentaje: pct,
-        imputa_iva: true,
+        exentas: esExento ? g.monto : 0,
+        gravadas: esExento ? 0 : g.monto,
+        iva_porcentaje: esExento ? 0 : pct,
+        imputa_iva: !esExento,
         formulario: "Form120-R6-a",
       },
     ],
@@ -132,8 +134,35 @@ export async function crearFacturaDeGasto(
     if (match) return { compraId: match.id, numeroControl: match.numero_control, existed: true };
   }
   const tipoId = await tipoCompraCreditoId(sb, auth.empresa_id);
-  const r = await guardarCompra(sb, auth, facturaBodyDeGasto(g, tipoId));
-  return { compraId: r.id, numeroControl: r.numero_control, existed: false };
+  try {
+    const r = await guardarCompra(sb, auth, facturaBodyDeGasto(g, tipoId));
+    return { compraId: r.id, numeroControl: r.numero_control, existed: false };
+  } catch (e) {
+    // Fallback: si el INSERT choca contra el UNIQUE (ya hay una factura con el
+    // mismo tipo + ruc + timbrado + nro, aunque el monto cambie), reutilizamos
+    // la que ya está en COMERCIO_EXTERIOR y moneda coincidente. Evita el
+    // "Ese comprobante de ese proveedor ya está cargado" cuando el cliente
+    // corrige el monto del Excel y re-importa.
+    const msg = e instanceof Error ? e.message : String(e);
+    const duplicado = /ya está cargado|23505|comprobante_uq|duplicate key/i.test(msg);
+    if (duplicado && rucN && nro) {
+      const { data: alt } = await sb
+        .from("libro_compras")
+        .select("id, numero_control")
+        .eq("empresa_id", auth.empresa_id)
+        .eq("seccion", "COMERCIO_EXTERIOR")
+        .eq("proveedor_ruc", rucN)
+        .eq("nro_comprobante", nro)
+        .eq("moneda", g.moneda)
+        .neq("estado", "anulada")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const existente = alt as { id: string; numero_control: string } | null;
+      if (existente) return { compraId: existente.id, numeroControl: existente.numero_control, existed: true };
+    }
+    throw e;
+  }
 }
 
 /**
