@@ -7,6 +7,7 @@ import { MONEDAS_COMEX, TIPOS_GASTO_COMEX, FACTOR_COSTO_SIN_IVA, gastoEnGuaranie
 import { Aviso, api, btnPrimario, btnSecundario, fechaES, hoyPY, inputClass, jsonInit, labelClass, noRueda, sinFlechas } from "./ui";
 import ImportExcelButton from "@/components/ui/ImportExcelButton";
 import { ModalPagoCuota } from "@/app/libro-compras/_components/ModalPago";
+import ConsistenciaGastos from "./ConsistenciaGastos";
 
 const gs = (n: number) => `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
 const monto = (n: number, moneda: string) =>
@@ -288,15 +289,18 @@ export default function GastosPanel({
             <Plus className="h-3.5 w-3.5" /> Cargar gasto
           </button>
           {origenTipo === "IMPORTACION" && (
-            <ImportExcelButton
-              entidad="Gastos"
-              previewUrl={`/api/importaciones/${origenId}/gastos/import/preview`}
-              commitUrl={`/api/importaciones/${origenId}/gastos/import/commit`}
-              templateUrl={`/api/importaciones/${origenId}/gastos/import/template`}
-              label="Cargar por Excel"
-              titulo="Importar gastos desde Excel"
-              onCompleted={() => { void cargar(); onCambio?.(); }}
-            />
+            <>
+              <ImportExcelButton
+                entidad="Gastos"
+                previewUrl={`/api/importaciones/${origenId}/gastos/import/preview`}
+                commitUrl={`/api/importaciones/${origenId}/gastos/import/commit`}
+                templateUrl={`/api/importaciones/${origenId}/gastos/import/template`}
+                label="Cargar por Excel"
+                titulo="Importar gastos desde Excel"
+                onCompleted={() => { void cargar(); onCambio?.(); }}
+              />
+              <ConsistenciaGastos importacionId={origenId} onAplicado={() => { void cargar(); onCambio?.(); }} />
+            </>
           )}
         </div>
       )}

@@ -86,8 +86,11 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
         //    IVA refleje todos los documentos.
         //    Si falla, se revierte el gasto para no dejarlo sin su factura.
         //    `crearFacturaDeGasto` es idempotente.
+        // Un gasto exento va al Libro solo si trae comprobante REAL (no "0" placeholder).
+        const _comp = String(g.comprobante ?? "").trim();
+        const _nroReal = _comp.length >= 3 && !/^0+$/.test(_comp.replace(/[-\s]/g, ""));
         const vaAlLibro = g.lleva_iva
-          || Boolean(g.proveedor_ruc?.trim() && g.comprobante?.trim() && g.timbrado?.trim() && g.cuenta_codigo?.trim());
+          || Boolean(g.proveedor_ruc?.trim() && _nroReal && g.timbrado?.trim() && g.cuenta_codigo?.trim());
         if (vaAlLibro) {
           try {
             const { compraId, existed } = await crearFacturaDeGasto(sb, ctx.auth, {

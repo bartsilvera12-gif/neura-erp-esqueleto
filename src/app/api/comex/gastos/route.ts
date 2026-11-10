@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
     const _cmp = String(d.datos.comprobante ?? "").trim();
     const _tim = String(d.datos.timbrado ?? "").trim();
     const _cta = String(d.datos.cuenta_codigo ?? "").trim();
-    const _vaAlLibro = d.datos.lleva_iva || Boolean(_ruc && _cmp && _tim && _cta);
+    const _cmpReal = _cmp.length >= 3 && !/^0+$/.test(_cmp.replace(/[-\s]/g, ""));
+    const _vaAlLibro = d.datos.lleva_iva || Boolean(_ruc && _cmpReal && _tim && _cta);
     if (_vaAlLibro) {
       try {
         const { compraId } = await crearFacturaDeGasto(ctx.supabase, ctx.auth, {
