@@ -102,8 +102,15 @@ export async function POST(request: NextRequest) {
     if (error) throw new Error(error.message);
     let gasto = data as Record<string, unknown>;
 
-    // Si lleva IVA, se genera la factura en el Libro de Compras y se enlaza.
-    if (d.datos.lleva_iva) {
+    // Si lleva IVA o es exento con comprobante completo, se genera la factura
+    // en el Libro de Compras y se enlaza. Las exentas con comprobante van como
+    // EXENTAS al libro para que el Libro IVA refleje todos los documentos.
+    const _ruc = String(d.datos.proveedor_ruc ?? "").trim();
+    const _cmp = String(d.datos.comprobante ?? "").trim();
+    const _tim = String(d.datos.timbrado ?? "").trim();
+    const _cta = String(d.datos.cuenta_codigo ?? "").trim();
+    const _vaAlLibro = d.datos.lleva_iva || Boolean(_ruc && _cmp && _tim && _cta);
+    if (_vaAlLibro) {
       try {
         const { compraId } = await crearFacturaDeGasto(ctx.supabase, ctx.auth, {
           fecha: String(d.datos.fecha),

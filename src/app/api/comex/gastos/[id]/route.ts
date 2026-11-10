@@ -67,19 +67,25 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
       const sb = r.ctx.supabase;
       const emp = r.ctx.auth.empresa_id;
       const facturaId = r.gasto.libro_compra_id;
-      const ahoraIva = d.datos.lleva_iva === true;
+      // Un gasto va al Libro de Compras cuando lleva IVA o cuando, siendo
+      // exento, trae comprobante completo (ruc + nro + timbrado + cuenta).
+      const _ruc = String(d.datos.proveedor_ruc ?? "").trim();
+      const _cmp = String(d.datos.comprobante ?? "").trim();
+      const _tim = String(d.datos.timbrado ?? "").trim();
+      const _cta = String(d.datos.cuenta_codigo ?? "").trim();
+      const ahoraVaAlLibro = d.datos.lleva_iva === true || Boolean(_ruc && _cmp && _tim && _cta);
 
       // Se sincroniza la factura ANTES de tocar el gasto: si algo falla (ej.: la
       // cuota ya tiene pagos), el gasto no queda a medias.
       let nuevaFacturaId = facturaId;
       try {
         const g = gastoParaFactura(d.datos);
-        if (ahoraIva && facturaId) {
+        if (ahoraVaAlLibro && facturaId) {
           await actualizarFacturaDeGasto(sb, r.ctx.auth, facturaId, g);
-        } else if (ahoraIva && !facturaId) {
+        } else if (ahoraVaAlLibro && !facturaId) {
           nuevaFacturaId = (await crearFacturaDeGasto(sb, r.ctx.auth, g)).compraId;
-        } else if (!ahoraIva && facturaId) {
-          await anularFacturaDeGasto(sb, r.ctx.auth, facturaId, "El gasto dejó de llevar IVA");
+        } else if (!ahoraVaAlLibro && facturaId) {
+          await anularFacturaDeGasto(sb, r.ctx.auth, facturaId, "El gasto dejó de llevar comprobante");
           nuevaFacturaId = null;
         }
       } catch (e) {
