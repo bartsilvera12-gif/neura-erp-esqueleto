@@ -48,6 +48,8 @@ export default function GastosVista({ seccion }: { seccion: Seccion }) {
   const [cargando, setCargando] = useState(true);
   const [eliminando, setEliminando] = useState<string | null>(null);
   const [anularFila, setAnularFila] = useState<FilaFactura | null>(null);
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
 
   const libroRuta = LIBRO_COMPRAS_RUTA[seccion];
 
@@ -68,7 +70,9 @@ export default function GastosVista({ seccion }: { seccion: Seccion }) {
   const filas: Fila[] = [
     ...gastos.map((g): FilaRecibo => ({ ...g, kind: "recibo", fechaOrden: (g.fecha || "").slice(0, 10) })),
     ...facturas.map((f): FilaFactura => ({ ...f, kind: "factura", fechaOrden: (f.fecha || "").slice(0, 10) })),
-  ].sort((a, b) => b.fechaOrden.localeCompare(a.fechaOrden));
+  ]
+    .filter((f) => (!desde || f.fechaOrden >= desde) && (!hasta || f.fechaOrden <= hasta))
+    .sort((a, b) => b.fechaOrden.localeCompare(a.fechaOrden));
 
   async function handleEliminar(g: Gasto) {
     if (!confirm(`¿Eliminar el gasto "${g.descripcion || g.categoria || "sin descripción"}"?`)) return;
@@ -132,6 +136,39 @@ export default function GastosVista({ seccion }: { seccion: Seccion }) {
             <span>+</span>
             Nuevo gasto
           </Link>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-xs font-medium text-slate-500">
+          Desde
+          <input
+            type="date"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className="zx-surface mt-1 block px-3 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs font-medium text-slate-500">
+          Hasta
+          <input
+            type="date"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className="zx-surface mt-1 block px-3 py-1.5 text-sm"
+          />
+        </label>
+        {(desde || hasta) && (
+          <button
+            type="button"
+            onClick={() => {
+              setDesde("");
+              setHasta("");
+            }}
+            className="text-xs text-slate-500 underline hover:text-slate-800"
+          >
+            Limpiar fechas
+          </button>
         )}
       </div>
 
