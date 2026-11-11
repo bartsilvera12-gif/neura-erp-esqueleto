@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   BookOpenCheck,
   ClipboardList,
+  FileSpreadsheet,
   ReceiptText,
   Repeat,
   Wallet,
@@ -68,6 +69,14 @@ const REPORTES: Reporte[] = [
       "Grilla mensual de suscripciones por cliente: facturado, cobrado y pendiente.",
     familia: "Comercial",
     icon: Repeat,
+  },
+  {
+    href: "/reportes/rg90",
+    titulo: "Exportación RG90",
+    descripcion:
+      "Archivo oficial para el Registro Electrónico de Comprobantes en Marangatu (DNIT). Compras y ventas, con validación previa de datos faltantes.",
+    familia: "Impositivo",
+    icon: FileSpreadsheet,
   },
 ];
 
