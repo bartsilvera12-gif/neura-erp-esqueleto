@@ -199,7 +199,8 @@ export async function insertarConNumero(
   empresaId: string,
   prefijo: "IMP" | "EXP",
   fila: Record<string, unknown>,
-  anio?: number
+  anio?: number,
+  digitos?: number
 ): Promise<{ id: string; numero: string }> {
   for (let intento = 0; intento < 5; intento++) {
     // Prefijo de búsqueda del último número: por año si reinicia, si no el corrido.
@@ -214,7 +215,7 @@ export async function insertarConNumero(
     const m = (((ult ?? [])[0] as { numero?: string } | undefined)?.numero ?? "").match(/(\d+)$/);
     const siguiente = (m ? Number(m[1]) : 0) + 1 + intento;
     const numero = anio
-      ? `${prefijo}-${anio}-${String(siguiente).padStart(4, "0")}`
+      ? `${prefijo}-${anio}-${String(siguiente).padStart(digitos ?? 4, "0")}`
       : `${prefijo}-${String(siguiente).padStart(6, "0")}`;
     const { data, error } = await sb.from(tabla).insert({ ...fila, empresa_id: empresaId, numero }).select("id, numero").single();
     if (!error) return data as { id: string; numero: string };

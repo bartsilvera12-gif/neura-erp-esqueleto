@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { esUuid, getComexCtx, insertarConNumero, textoBusqueda, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
 import { ESTADO_EXPORTACION_LABEL } from "@/lib/comex/estados";
+import { anioGestionActiva, anioDeFecha } from "@/lib/gestion/gestion-activa";
 import { EXPORTACION_COLS } from "@/lib/exportaciones/types";
 
 
@@ -48,6 +49,8 @@ export async function POST(request: NextRequest) {
     if (sinProforma && !motivoSinProforma)
       return NextResponse.json(errorResponse("Indicá por qué no lleva proforma (por ejemplo: contenedor Sarasota)."), { status: 400 });
 
+    // Número que reinicia cada gestión: EXP-AAAA-00001 (igual que Importaciones).
+    const anio = anioDeFecha(b.fecha_comprometida_embarque) ?? anioGestionActiva(request);
     const creada = await insertarConNumero(ctx.supabase, "exportaciones", emp, "EXP", {
         cliente_id: b.cliente_id ? String(b.cliente_id) : null,
         cliente_nombre: cliente.slice(0, 200),
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest) {
         fecha_comprometida_entrega: b.fecha_comprometida_entrega || null,
         observaciones: b.observaciones ? String(b.observaciones).slice(0, 2000) : null,
         created_by_nombre: nombreUsuario(ctx.auth),
-    });
+    }, anio, 5);
     await registrarHistorial(ctx.supabase, ctx.auth, "EXPORTACION", creada.id, "CREAR", {
       numero: creada.numero,
       cliente,
