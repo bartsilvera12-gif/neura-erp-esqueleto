@@ -129,9 +129,23 @@ function mapTipoCompra(tipoCodigo: number | null, tipoNombre: string | null): st
 
 async function leerInformante(client: Client, schema: string, empresaId: string): Promise<{ ruc: string; nombre: string }> {
   const tE = quoteSchemaTable(schema, "empresas");
+  // Algunos schemas tienen `nombre_empresa` y otros `nombre`. Preguntamos al
+  // information_schema por las columnas presentes y elegimos la que haya.
+  const { rows: cols } = await client.query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns
+      WHERE table_schema=$1 AND table_name='empresas'
+        AND column_name IN ('nombre_empresa','nombre','ruc')`,
+    [schema]
+  );
+  const has = new Set(cols.map((c) => c.column_name));
+  const nomExpr = has.has("nombre_empresa") && has.has("nombre")
+    ? "COALESCE(NULLIF(btrim(nombre_empresa),''), NULLIF(btrim(nombre),''))"
+    : has.has("nombre_empresa") ? "NULLIF(btrim(nombre_empresa),'')"
+    : has.has("nombre") ? "NULLIF(btrim(nombre),'')"
+    : "''";
+  const rucExpr = has.has("ruc") ? "ruc" : "NULL";
   const { rows } = await client.query<{ ruc: string | null; nombre: string | null }>(
-    `SELECT ruc, COALESCE(NULLIF(btrim(nombre_empresa),''), NULLIF(btrim(nombre),'')) AS nombre
-       FROM ${tE} WHERE id=$1::uuid`,
+    `SELECT ${rucExpr} AS ruc, ${nomExpr} AS nombre FROM ${tE} WHERE id=$1::uuid`,
     [empresaId]
   );
   return {
