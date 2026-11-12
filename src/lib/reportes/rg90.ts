@@ -235,62 +235,32 @@ async function listVentas(client: Client, schema: string, empresaId: string, f: 
   // Combina facturas emitidas + notas de crédito. Facturas electrónicas traen CDC;
   // las físicas no. Tipo de cambio: si la factura tiene moneda != PYG, se aplica
   // su tipo_cambio para expresar los montos en guaraníes.
-  const tF = quoteSchemaTable(schema, "facturas");
-  const tFI = quoteSchemaTable(schema, "factura_items");
-  const tFE = quoteSchemaTable(schema, "factura_electronica");
-  const tCl = quoteSchemaTable(schema, "clientes");
-  const tNC = quoteSchemaTable(schema, "nota_credito");
-  const tNCE = quoteSchemaTable(schema, "nota_credito_electronica");
-  const clienteExpr = "COALESCE(NULLIF(btrim(cl.razon_social),''), NULLIF(btrim(cl.nombre),''), NULLIF(btrim(cl.empresa),''))";
-  const rucExpr = "COALESCE(NULLIF(btrim(cl.ruc_factura),''), NULLIF(btrim(cl.ruc),''), NULLIF(btrim(cl.documento),''))";
-
+  // Las facturas del módulo de Facturación se guardan en facturas_exportacion
+  // (la tabla "facturas" es la de cuentas por cobrar y puede estar vacía).
+  const tF = quoteSchemaTable(schema, "facturas_exportacion");
   const sql = `
-    WITH fact AS (
-      SELECT 'factura'::text AS origen_tipo, f.id, f.fecha::date AS fecha,
-             ${clienteExpr} AS cliente, ${rucExpr} AS ruc,
-             COALESCE(fe.timbrado, f.timbrado) AS timbrado,
-             COALESCE(fe.cdc, NULL) AS cdc,
-             COALESCE(fe.numero_factura, f.numero_factura) AS numero,
-             COALESCE(f.condicion, 'contado') AS condicion,
-             COALESCE(f.moneda, 'PYG') AS moneda,
-             COALESCE(f.tipo_cambio::numeric, 1) AS tipo_cambio,
-             (SELECT COALESCE(SUM(i.subtotal),0) FROM ${tFI} i WHERE i.factura_id = f.id AND (i.iva IS NULL OR i.iva = 0))::numeric AS exento,
-             (SELECT COALESCE(SUM(i.subtotal),0) FROM ${tFI} i WHERE i.factura_id = f.id AND abs(i.iva::numeric / NULLIF(i.subtotal,0) - 0.05) <= 0.005)::numeric AS gravado5,
-             (SELECT COALESCE(SUM(i.iva),0)     FROM ${tFI} i WHERE i.factura_id = f.id AND abs(i.iva::numeric / NULLIF(i.subtotal,0) - 0.05) <= 0.005)::numeric AS iva5,
-             (SELECT COALESCE(SUM(i.subtotal),0) FROM ${tFI} i WHERE i.factura_id = f.id AND abs(i.iva::numeric / NULLIF(i.subtotal,0) - 0.10) <= 0.01)::numeric AS gravado10,
-             (SELECT COALESCE(SUM(i.iva),0)     FROM ${tFI} i WHERE i.factura_id = f.id AND abs(i.iva::numeric / NULLIF(i.subtotal,0) - 0.10) <= 0.01)::numeric AS iva10,
-             f.total::numeric AS total,
-             f.es_electronica
-        FROM ${tF} f
-        LEFT JOIN ${tFE} fe ON fe.factura_id = f.id
-        LEFT JOIN ${tCl} cl ON cl.id = f.cliente_id
-       WHERE f.empresa_id = $1::uuid
-         AND f.fecha >= $2::date AND f.fecha <= $3::date
-         AND COALESCE(f.anulada, false) = false
-    ),
-    nc AS (
-      SELECT 'nota_credito'::text AS origen_tipo, n.id, n.fecha::date AS fecha,
-             ${clienteExpr} AS cliente, ${rucExpr} AS ruc,
-             COALESCE(nce.timbrado, n.timbrado) AS timbrado,
-             COALESCE(nce.cdc, NULL) AS cdc,
-             COALESCE(nce.numero, n.numero) AS numero,
-             'contado'::text AS condicion,
-             COALESCE(n.moneda, 'PYG') AS moneda,
-             COALESCE(n.tipo_cambio::numeric, 1) AS tipo_cambio,
-             (COALESCE(n.monto_exento,0))::numeric AS exento,
-             (COALESCE(n.gravado5,0))::numeric AS gravado5,
-             (COALESCE(n.iva5,0))::numeric AS iva5,
-             (COALESCE(n.gravado10,0))::numeric AS gravado10,
-             (COALESCE(n.iva10,0))::numeric AS iva10,
-             (COALESCE(n.total,0))::numeric AS total,
-             COALESCE(n.es_electronica, false) AS es_electronica
-        FROM ${tNC} n
-        LEFT JOIN ${tNCE} nce ON nce.nota_credito_id = n.id
-        LEFT JOIN ${tCl} cl ON cl.id = n.cliente_id
-       WHERE n.empresa_id = $1::uuid
-         AND n.fecha >= $2::date AND n.fecha <= $3::date
-    )
-    SELECT * FROM fact UNION ALL SELECT * FROM nc ORDER BY fecha
+    SELECT 'factura'::text AS origen_tipo, f.id::text AS id, f.fecha::date AS fecha,
+           NULLIF(btrim(f.cliente_nombre),'') AS cliente,
+           NULLIF(btrim(f.cliente_documento),'') AS ruc,
+           f.timbrado AS timbrado,
+           NULL::text AS cdc,
+           COALESCE(NULLIF(f.numero_formateado,''), f.establecimiento || '-' || f.punto_expedicion || '-' || lpad(COALESCE(f.numero,0)::text, 7, '0')) AS numero,
+           CASE WHEN upper(COALESCE(f.condicion_venta,'')) LIKE 'CR%' THEN 'credito' ELSE 'contado' END AS condicion,
+           COALESCE(f.moneda, 'PYG') AS moneda,
+           COALESCE(f.tipo_cambio::numeric, 1) AS tipo_cambio,
+           f.total_exentas::numeric AS exento,
+           f.total_gravado5::numeric AS gravado5,
+           f.iva5::numeric AS iva5,
+           f.total_gravado10::numeric AS gravado10,
+           f.iva10::numeric AS iva10,
+           f.total::numeric AS total,
+           false AS es_electronica
+      FROM ${tF} f
+     WHERE f.empresa_id = $1::uuid
+       AND f.fecha >= $2::date AND f.fecha <= $3::date
+       AND upper(COALESCE(f.estado,'')) <> 'ANULADA'
+       AND COALESCE(f.prueba, false) = false
+     ORDER BY f.fecha, f.created_at
   `;
 
   type R = {

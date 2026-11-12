@@ -78,7 +78,7 @@ export async function listLibroVentas(schemaRaw: string, empresaId: string, f: L
   const schema = assertAllowedChatDataSchema(schemaRaw);
   const tF = quoteSchemaTable(schema, "facturas");
   const tFI = quoteSchemaTable(schema, "factura_items");
-  const tFE = quoteSchemaTable(schema, "factura_electronica");
+  const tFX = quoteSchemaTable(schema, "facturas_exportacion");
   const tCl = quoteSchemaTable(schema, "clientes");
   const tNC = quoteSchemaTable(schema, "nota_credito");
   const tNCE = quoteSchemaTable(schema, "nota_credito_electronica");
@@ -105,29 +105,21 @@ export async function listLibroVentas(schemaRaw: string, empresaId: string, f: L
     unificado AS (
       -- ── A) FACTURAS con DTE aprobado ──────────────────────────────────────
       SELECT 'factura'::text AS origen_tipo,
-             CASE WHEN f.tipo = 'suscripcion' OR f.suscripcion_id IS NOT NULL THEN 'suscripcion' ELSE 'manual' END AS origen,
-             f.fecha::date AS fecha,
-             ${clienteExpr} AS cliente, ${rucExpr} AS ruc,
+             'manual'::text AS origen,
+             fx.fecha::date AS fecha,
+             NULLIF(btrim(fx.cliente_nombre),'') AS cliente,
+             NULLIF(btrim(fx.cliente_documento),'') AS ruc,
              'Factura'::text AS tipo_comprobante,
-             (SELECT timbrado_numero FROM timb) AS timbrado,
-             ${NUM_FISCAL_SQL("fe.cdc", "f.numero_factura")} AS numero,
-             CASE WHEN f.tipo = 'contado' THEN 'contado' ELSE 'credito' END AS condicion,
-             iv.exento, iv.gravado5, iv.iva5, iv.gravado10, iv.iva10,
-             f.monto AS total, f.estado AS estado, f.cliente_id AS cliente_id
-        FROM ${tF} f
-        JOIN ${tFE} fe ON fe.factura_id = f.id AND fe.estado_sifen = 'aprobado'
-        LEFT JOIN ${tCl} cl ON cl.id = f.cliente_id
-        LEFT JOIN LATERAL (
-          SELECT
-            COALESCE(SUM(CASE WHEN r.rate='exenta' THEN i.subtotal END),0) AS exento,
-            COALESCE(SUM(CASE WHEN r.rate='5'      THEN i.subtotal END),0) AS gravado5,
-            COALESCE(SUM(CASE WHEN r.rate='5'      THEN i.iva      END),0) AS iva5,
-            COALESCE(SUM(CASE WHEN r.rate='10'     THEN i.subtotal END),0) AS gravado10,
-            COALESCE(SUM(CASE WHEN r.rate='10'     THEN i.iva      END),0) AS iva10
-          FROM ${tFI} i, LATERAL (SELECT ${RATE_SQL} AS rate) r
-          WHERE i.factura_id = f.id
-        ) iv ON true
-       WHERE f.empresa_id = $1::uuid AND COALESCE(f.estado,'') <> 'Anulado'
+             fx.timbrado AS timbrado,
+             COALESCE(NULLIF(fx.numero_formateado,''), fx.establecimiento || '-' || fx.punto_expedicion || '-' || lpad(COALESCE(fx.numero,0)::text, 7, '0')) AS numero,
+             CASE WHEN upper(COALESCE(fx.condicion_venta,'')) LIKE 'CR%' THEN 'credito' ELSE 'contado' END AS condicion,
+             fx.total_exentas AS exento, fx.total_gravado5 AS gravado5, fx.iva5 AS iva5,
+             fx.total_gravado10 AS gravado10, fx.iva10 AS iva10,
+             fx.total AS total, fx.estado AS estado, fx.cliente_id AS cliente_id
+        FROM ${tFX} fx
+       WHERE fx.empresa_id = $1::uuid
+         AND upper(COALESCE(fx.estado,'')) <> 'ANULADA'
+         AND COALESCE(fx.prueba, false) = false
 
       UNION ALL
 
