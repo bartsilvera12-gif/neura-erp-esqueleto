@@ -217,6 +217,7 @@ const MENU_STRUCTURE: MenuItem[] = [
     { label: "Libro de compras (mercadería)", href: "/reportes/libro-compras" },
     { label: "Libro de ventas", href: "/reportes/libro-ventas" },
     { label: "Suscripciones", href: "/reportes/suscripciones" },
+    { label: "Exportación RG90", href: "/reportes/rg90" },
   ]},
   { key: "contabilidad", slug: "contabilidad", label: "Contabilidad", href: "/contabilidad", icon: BookOpen, children: [
     { label: "Plan de cuentas", href: "/contabilidad/plan-de-cuentas" },
