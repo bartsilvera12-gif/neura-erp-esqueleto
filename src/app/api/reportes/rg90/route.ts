@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import JSZip from "jszip";
 import { fetchDataSchemaForEmpresaId } from "@/lib/supabase/empresa-data-schema";
 import { requireReportesApiAccess } from "@/lib/reportes/reportes-auth";
 import { buildXlsxBuffer, xlsxResponseHeaders, nowStamp } from "@/lib/excel/export";
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     const result = await generarRG90(schema, auth.empresaId, f);
 
     const formato = (new URL(request.url).searchParams.get("formato") ?? "json").toLowerCase();
-    if (formato === "xlsx") {
+    if (formato === "xlsx" || formato === "zip") {
       const buf = buildXlsxBuffer<Rg90Row>(result.rows, [
         { header: "RUC del Informante", value: (r) => r.ruc_informante, width: 14 },
         { header: "Nombre o Razon Social del Informante", value: (r) => r.nombre_informante, width: 40 },
@@ -68,7 +69,20 @@ export async function GET(request: NextRequest) {
         { header: "Fecha de Registro", value: (r) => r.fecha_registro, width: 12 },
         { header: "Origen de la Información", value: (r) => r.origen_informacion, width: 14 },
       ], { sheetName: "Datos" });
-      return new Response(new Uint8Array(buf), { status: 200, headers: xlsxResponseHeaders(`RG90-${f.desde}-a-${f.hasta}-${nowStamp()}`) });
+      const baseName = `RG90-${f.desde}-a-${f.hasta}-${nowStamp()}`;
+      if (formato === "zip") {
+        // Marangatu también acepta la exportación zippeada. El ZIP contiene
+        // el mismo XLSX con el nombre del archivo del período.
+        const zip = new JSZip();
+        zip.file(`${baseName}.xlsx`, new Uint8Array(buf));
+        const zipBuf = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+        return new Response(new Uint8Array(zipBuf), { status: 200, headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="${baseName}.zip"`,
+          "Cache-Control": "no-store",
+        }});
+      }
+      return new Response(new Uint8Array(buf), { status: 200, headers: xlsxResponseHeaders(baseName) });
     }
 
     // JSON para la vista previa

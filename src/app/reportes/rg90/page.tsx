@@ -78,17 +78,17 @@ export default function Rg90Page() {
     } finally { setCargando(false); }
   }, [filtros]);
 
-  async function descargar() {
+  async function descargar(formato: "xlsx" | "zip") {
     if (!previa) return;
     setBajando(true);
     try {
-      const qs = new URLSearchParams({ desde: filtros.desde, hasta: filtros.hasta, tipos: filtros.tipos, formato: "xlsx" }).toString();
+      const qs = new URLSearchParams({ desde: filtros.desde, hasta: filtros.hasta, tipos: filtros.tipos, formato }).toString();
       const r = await fetchWithSupabaseSession(`/api/reportes/rg90?${qs}`, { cache: "no-store" });
       if (!r.ok) throw new Error(`Error ${r.status}`);
       const blob = await r.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `RG90-${filtros.desde}-a-${filtros.hasta}.xlsx`;
+      a.download = `RG90-${filtros.desde}-a-${filtros.hasta}.${formato}`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e) {
@@ -116,15 +116,27 @@ export default function Rg90Page() {
             Archivo para el Registro Electrónico de Comprobantes en Marangatu (DNIT) — formato oficial de 28 columnas.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void descargar()}
-          disabled={!previa || bajando || (previa?.total_filas ?? 0) === 0}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Download className="h-4 w-4" />
-          {bajando ? "Generando…" : "Descargar XLSX"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void descargar("xlsx")}
+            disabled={!previa || bajando || (previa?.total_filas ?? 0) === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="h-4 w-4" />
+            {bajando ? "Generando…" : "Descargar XLSX"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void descargar("zip")}
+            disabled={!previa || bajando || (previa?.total_filas ?? 0) === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50 px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Marangatu también acepta el archivo comprimido"
+          >
+            <Download className="h-4 w-4" />
+            Descargar ZIP
+          </button>
+        </div>
       </header>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
