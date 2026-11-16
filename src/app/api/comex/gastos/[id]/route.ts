@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { getComexCtx, estadoOperacion, operacionCerrada, registrarHistorial } from "@/lib/comex/server";
 import { datosGasto } from "@/lib/comex/gastos";
-import { actualizarFacturaDeGasto, anularFacturaDeGasto, crearFacturaDeGasto, type GastoParaFactura } from "@/lib/comex/gasto-factura";
+import { actualizarFacturaDeGasto, anularFacturaDeGasto, crearFacturaDeGasto, otrosGastosDeFactura, CAMPOS_CABECERA_FACTURA, type GastoParaFactura } from "@/lib/comex/gasto-factura";
 import { ErrorValidacion } from "@/lib/compras-libro/server";
 
 const COLS = "id, origen_tipo, origen_id, tipo, monto, moneda, pagado, lleva_iva, libro_compra_id";
@@ -79,14 +79,19 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
       // Se sincroniza la factura ANTES de tocar el gasto: si algo falla (ej.: la
       // cuota ya tiene pagos), el gasto no queda a medias.
       let nuevaFacturaId = facturaId;
+      // Otros conceptos de la misma factura (si la factura tiene varios).
+      const hermanos = facturaId ? await otrosGastosDeFactura(sb, emp, facturaId, id) : [];
       try {
         const g = gastoParaFactura(d.datos);
+        // Los hermanos comparten los datos de cabecera (proveedor, comprobante, etc.) del gasto editado.
+        const hermanosAlDia = hermanos.map((h) => ({ ...h, ...Object.fromEntries(CAMPOS_CABECERA_FACTURA.map((k) => [k, g[k]])) }));
         if (ahoraVaAlLibro && facturaId) {
-          await actualizarFacturaDeGasto(sb, r.ctx.auth, facturaId, g);
+          await actualizarFacturaDeGasto(sb, r.ctx.auth, facturaId, [g, ...hermanosAlDia]);
         } else if (ahoraVaAlLibro && !facturaId) {
           nuevaFacturaId = (await crearFacturaDeGasto(sb, r.ctx.auth, g)).compraId;
         } else if (!ahoraVaAlLibro && facturaId) {
-          await anularFacturaDeGasto(sb, r.ctx.auth, facturaId, "El gasto dejó de llevar comprobante");
+          if (hermanos.length) await actualizarFacturaDeGasto(sb, r.ctx.auth, facturaId, hermanos);
+          else await anularFacturaDeGasto(sb, r.ctx.auth, facturaId, "El gasto dejó de llevar comprobante");
           nuevaFacturaId = null;
         }
       } catch (e) {
@@ -100,6 +105,11 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
         .eq("empresa_id", emp)
         .eq("id", id);
       if (error) throw new Error(error.message);
+      // Los demás conceptos de la misma factura siguen la cabecera editada.
+      if (facturaId && ahoraVaAlLibro && hermanos.length) {
+        const cab = Object.fromEntries(CAMPOS_CABECERA_FACTURA.map((k) => [k, d.datos[k]]));
+        await sb.from("comex_gastos").update(cab).eq("empresa_id", emp).eq("libro_compra_id", facturaId).neq("id", id);
+      }
       await registrarHistorial(sb, r.ctx.auth, r.gasto.origen_tipo, r.gasto.origen_id, "EDITAR_GASTO", {
         tipo: d.datos.tipo,
         monto: d.datos.monto,
@@ -137,7 +147,10 @@ export async function DELETE(request: NextRequest, ctxParams: { params: Promise<
     // Si tenía factura en el Libro de Compras, se anula (devuelve los pagos a la caja / banco).
     if (r.gasto.libro_compra_id) {
       try {
-        await anularFacturaDeGasto(r.ctx.supabase, r.ctx.auth, r.gasto.libro_compra_id, "Se quitó el gasto de la importación");
+        // Si la factura tiene otros conceptos, se rearma con los que quedan; si no, se anula.
+        const hermanos = await otrosGastosDeFactura(r.ctx.supabase, r.ctx.auth.empresa_id, r.gasto.libro_compra_id, id);
+        if (hermanos.length) await actualizarFacturaDeGasto(r.ctx.supabase, r.ctx.auth, r.gasto.libro_compra_id, hermanos);
+        else await anularFacturaDeGasto(r.ctx.supabase, r.ctx.auth, r.gasto.libro_compra_id, "Se quitó el gasto de la importación");
       } catch (e) {
         const msg = e instanceof ErrorValidacion ? e.message : "No se pudo anular la factura del Libro de Compras.";
         return NextResponse.json(errorResponse(msg), { status: 400 });

@@ -44,6 +44,48 @@ export function faltaParaFactura(g: GastoParaFactura): string | null {
   return null;
 }
 
+/** Campos que comparten todos los conceptos de una misma factura. */
+export const CAMPOS_CABECERA_FACTURA = [
+  "fecha",
+  "proveedor_nombre",
+  "proveedor_ruc",
+  "comprobante",
+  "timbrado",
+  "cuenta_codigo",
+  "moneda",
+  "tipo_cambio",
+] as const;
+
+/** Los demás conceptos (gastos) que comparten la misma factura del Libro de Compras. */
+export async function otrosGastosDeFactura(
+  sb: AppSupabaseClient,
+  empresaId: string,
+  compraId: string,
+  excluirId: string
+): Promise<GastoParaFactura[]> {
+  const { data } = await sb
+    .from("comex_gastos")
+    .select("fecha, tipo, descripcion, proveedor_nombre, proveedor_ruc, comprobante, timbrado, cuenta_codigo, monto, moneda, tipo_cambio, iva_porcentaje, lleva_iva")
+    .eq("empresa_id", empresaId)
+    .eq("libro_compra_id", compraId)
+    .neq("id", excluirId)
+    .order("created_at", { ascending: true });
+  return ((data ?? []) as unknown as (GastoParaFactura & { lleva_iva: boolean })[]).map((x) => ({
+    fecha: String(x.fecha).slice(0, 10),
+    tipo: x.tipo,
+    descripcion: x.descripcion,
+    proveedor_nombre: x.proveedor_nombre,
+    proveedor_ruc: x.proveedor_ruc,
+    comprobante: x.comprobante,
+    timbrado: x.timbrado,
+    cuenta_codigo: x.cuenta_codigo,
+    monto: Number(x.monto),
+    moneda: x.moneda,
+    tipo_cambio: Number(x.tipo_cambio),
+    iva_porcentaje: x.lleva_iva ? Number(x.iva_porcentaje) : null,
+  }));
+}
+
 /** Id del tipo "COMPRA CRÉDITO" activo de la empresa (o lanza con un motivo claro). */
 async function tipoCompraCreditoId(sb: AppSupabaseClient, empresaId: string): Promise<string> {
   const { data } = await sb
@@ -59,12 +101,31 @@ async function tipoCompraCreditoId(sb: AppSupabaseClient, empresaId: string): Pr
   return tipo.id;
 }
 
-/** Arma el cuerpo que entiende `guardarCompra` a partir de un gasto (con IVA o exento). */
-function facturaBodyDeGasto(g: GastoParaFactura, tipoId: string): Record<string, unknown> {
-  const detalle = [g.tipo, g.descripcion].filter(Boolean).join(" · ").slice(0, 300) || "Gasto de importación";
-  // Si el gasto no lleva IVA, la factura va al libro como EXENTA.
-  const esExento = g.iva_porcentaje == null || g.iva_porcentaje === 0;
-  const pct = g.iva_porcentaje === 5 ? 5 : 10;
+/**
+ * Arma el cuerpo que entiende `guardarCompra` a partir de uno o varios gastos
+ * (conceptos) de UNA misma factura. Cada concepto es un renglón con su propio
+ * IVA (exento, 5% o 10%); la cuota es única y suma todos los conceptos.
+ */
+function facturaBodyDeGasto(gastos: GastoParaFactura | GastoParaFactura[], tipoId: string): Record<string, unknown> {
+  const gs = Array.isArray(gastos) ? gastos : [gastos];
+  const g = gs[0];
+  const detalleDe = (x: GastoParaFactura) => [x.tipo, x.descripcion].filter(Boolean).join(" · ").slice(0, 300) || "Gasto de importación";
+  const lineas = gs.map((x) => {
+    // Si el concepto no lleva IVA, va al libro como EXENTO.
+    const esExento = x.iva_porcentaje == null || x.iva_porcentaje === 0;
+    const pct = x.iva_porcentaje === 5 ? 5 : 10;
+    return {
+      cuenta_codigo: x.cuenta_codigo,
+      explicacion: detalleDe(x),
+      exentas: esExento ? x.monto : 0,
+      gravadas: esExento ? 0 : x.monto,
+      iva_porcentaje: esExento ? 0 : pct,
+      imputa_iva: !esExento,
+      formulario: "Form120-R6-a",
+    };
+  });
+  const hayIva = lineas.some((l) => l.imputa_iva);
+  const total = gs.reduce((s, x) => s + x.monto, 0);
   return {
     tipo_id: tipoId,
     seccion: "COMERCIO_EXTERIOR",
@@ -76,21 +137,11 @@ function facturaBodyDeGasto(g: GastoParaFactura, tipoId: string): Record<string,
     proveedor_ruc: g.proveedor_ruc,
     moneda: g.moneda,
     cotizacion: g.tipo_cambio,
-    impacta: esExento ? "NO_IMPUTA" : "SOLO_IVA",
-    explicacion: detalle,
-    lineas: [
-      {
-        cuenta_codigo: g.cuenta_codigo,
-        explicacion: detalle,
-        exentas: esExento ? g.monto : 0,
-        gravadas: esExento ? 0 : g.monto,
-        iva_porcentaje: esExento ? 0 : pct,
-        imputa_iva: !esExento,
-        formulario: "Form120-R6-a",
-      },
-    ],
+    impacta: hayIva ? "SOLO_IVA" : "NO_IMPUTA",
+    explicacion: gs.length > 1 ? gs.map(detalleDe).join(" / ").slice(0, 300) : detalleDe(g),
+    lineas,
     // Una sola cuota = cuenta por pagar al proveedor (se paga desde la pantalla de gastos).
-    cuotas_detalle: [{ vencimiento: g.fecha, monto: g.monto, pagado: 0 }],
+    cuotas_detalle: [{ vencimiento: g.fecha, monto: total, pagado: 0 }],
   };
 }
 
@@ -102,8 +153,11 @@ function facturaBodyDeGasto(g: GastoParaFactura, tipoId: string): Record<string,
 export async function crearFacturaDeGasto(
   sb: AppSupabaseClient,
   auth: UsuarioConEmpresaYRol,
-  g: GastoParaFactura
+  gastos: GastoParaFactura | GastoParaFactura[]
 ): Promise<{ compraId: string; numeroControl: string; existed: boolean }> {
+  const lista = Array.isArray(gastos) ? gastos : [gastos];
+  // Para las validaciones y el control de duplicados se usa el total de la factura.
+  const g = { ...lista[0], monto: lista.reduce((s, x) => s + x.monto, 0) };
   const falta = faltaParaFactura(g);
   if (falta) throw new ErrorValidacion(`Para mandar el gasto al Libro de Compras ${falta}.`);
   // Idempotencia: si ya existe una factura DE COMERCIO EXTERIOR con el mismo
@@ -135,7 +189,7 @@ export async function crearFacturaDeGasto(
   }
   const tipoId = await tipoCompraCreditoId(sb, auth.empresa_id);
   try {
-    const r = await guardarCompra(sb, auth, facturaBodyDeGasto(g, tipoId));
+    const r = await guardarCompra(sb, auth, facturaBodyDeGasto(lista, tipoId));
     return { compraId: r.id, numeroControl: r.numero_control, existed: false };
   } catch (e) {
     // Fallback: si el INSERT choca contra el UNIQUE (ya hay una factura con el
@@ -174,12 +228,13 @@ export async function actualizarFacturaDeGasto(
   sb: AppSupabaseClient,
   auth: UsuarioConEmpresaYRol,
   compraId: string,
-  g: GastoParaFactura
+  gastos: GastoParaFactura | GastoParaFactura[]
 ): Promise<void> {
+  const g = Array.isArray(gastos) ? gastos[0] : gastos;
   const falta = faltaParaFactura(g);
   if (falta) throw new ErrorValidacion(`Para mandar el gasto al Libro de Compras ${falta}.`);
   const tipoId = await tipoCompraCreditoId(sb, auth.empresa_id);
-  await guardarCompra(sb, auth, facturaBodyDeGasto(g, tipoId), compraId);
+  await guardarCompra(sb, auth, facturaBodyDeGasto(gastos, tipoId), compraId);
 }
 
 /**

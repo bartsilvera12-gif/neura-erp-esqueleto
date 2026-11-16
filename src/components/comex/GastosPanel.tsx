@@ -90,6 +90,8 @@ export default function GastosPanel({
   const [abierto, setAbierto] = useState(false);
   // Si está editando un gasto ya cargado, guarda su id (si no, es alta nueva).
   const [editId, setEditId] = useState<string | null>(null);
+  // Conceptos adicionales de la misma factura (cada uno con su propio IVA). Solo en altas.
+  const [extras, setExtras] = useState<{ tipo: string; descripcion: string; monto: string; iva: string }[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quitar, setQuitar] = useState<GastoComex | null>(null);
@@ -127,6 +129,8 @@ export default function GastosPanel({
       .catch(() => undefined);
   }, []);
 
+  // La factura va al Libro de Compras si algún concepto lleva IVA.
+  const hayIva = f.lleva_iva || extras.some((x) => Number(x.iva) > 0);
   const t = useMemo(() => totalesGastos(lista), [lista]);
   // Total también en dólares: se usa el tipo de cambio de los gastos en USD.
   const cuentaNombre = useMemo(() => new Map(cuentas.map((c) => [c.cuenta, c.denominacion])), [cuentas]);
@@ -139,7 +143,8 @@ export default function GastosPanel({
   /** Abre el formulario en blanco para cargar un gasto nuevo. */
   function abrirNuevo() {
     setEditId(null);
-    setF(vacio);
+    setF({ ...vacio, fecha: hoyPY() });
+    setExtras([]);
     setCuentaTexto("");
     setError(null);
     setAbierto(true);
@@ -148,6 +153,7 @@ export default function GastosPanel({
   /** Abre el formulario precargado con los datos del gasto, para modificarlo. */
   function editar(g: GastoComex) {
     setEditId(g.id);
+    setExtras([]);
     setF({
       fecha: (g.fecha ?? "").slice(0, 10) || hoyPY(),
       tipo: g.tipo,
@@ -174,12 +180,21 @@ export default function GastosPanel({
     setAbierto(false);
     setEditId(null);
     setF(vacio);
+    setExtras([]);
     setCuentaTexto("");
   }
 
   async function guardar() {
     if (f.tipo === "OTRO" && !f.descripcion.trim()) {
       setError('Cuando el concepto es "OTRO", poné el detalle del gasto.');
+      return;
+    }
+    if (!editId && extras.some((x) => x.tipo === "OTRO" && !x.descripcion.trim())) {
+      setError('Cuando un concepto es "OTRO", poné el detalle del gasto.');
+      return;
+    }
+    if (!editId && extras.some((x) => !(Number(x.monto) > 0))) {
+      setError("Cada concepto agregado necesita un monto mayor a 0.");
       return;
     }
     setGuardando(true);
@@ -189,6 +204,9 @@ export default function GastosPanel({
         ...f,
         monto: Number(f.monto),
         tipo_cambio: f.moneda === "PYG" ? 1 : Number(f.tipo_cambio),
+        ...(!editId && extras.length
+          ? { extras: extras.map((x) => ({ tipo: x.tipo, descripcion: x.descripcion, monto: Number(x.monto), iva_porcentaje: Number(x.iva) })) }
+          : {}),
       };
       if (editId) {
         // Edición de un gasto ya cargado (incluye los cargados por Excel).
@@ -356,7 +374,7 @@ export default function GastosPanel({
               </div>
             )}
             <div>
-              <label className={labelClass}>Proveedor{f.lleva_iva ? " *" : ""}</label>
+              <label className={labelClass}>Proveedor{hayIva ? " *" : ""}</label>
               <input
                 value={f.proveedor_nombre}
                 onChange={(e) => setF({ ...f, proveedor_nombre: e.target.value })}
@@ -364,22 +382,24 @@ export default function GastosPanel({
                 className={inputClass}
               />
             </div>
-            {f.lleva_iva && (
+            {hayIva && (
               <div>
                 <label className={labelClass}>RUC proveedor *</label>
                 <input value={f.proveedor_ruc} onChange={(e) => setF({ ...f, proveedor_ruc: e.target.value })} placeholder="80012345-6" className={`${inputClass} font-mono`} />
               </div>
             )}
             <div>
-              <label className={labelClass}>Comprobante{f.lleva_iva ? " *" : ""}</label>
+              <label className={labelClass}>Comprobante{hayIva ? " *" : ""}</label>
               <input value={f.comprobante} onChange={(e) => setF({ ...f, comprobante: e.target.value })} placeholder="Nº factura o recibo" className={inputClass} />
             </div>
+            {hayIva && (
+              <div>
+                <label className={labelClass}>Timbrado *</label>
+                <input value={f.timbrado} onChange={(e) => setF({ ...f, timbrado: e.target.value.replace(/\D/g, "") })} placeholder="12345678" className={`${inputClass} font-mono`} />
+              </div>
+            )}
             {f.lleva_iva && (
               <>
-                <div>
-                  <label className={labelClass}>Timbrado *</label>
-                  <input value={f.timbrado} onChange={(e) => setF({ ...f, timbrado: e.target.value.replace(/\D/g, "") })} placeholder="12345678" className={`${inputClass} font-mono`} />
-                </div>
                 <div>
                   <label className={labelClass}>IVA</label>
                   <select value={f.iva_porcentaje} onChange={(e) => setF({ ...f, iva_porcentaje: e.target.value })} className={inputClass}>
@@ -425,6 +445,69 @@ export default function GastosPanel({
               />
             </div>
           </div>
+          {!editId && (
+            <div className="space-y-2 rounded-lg border border-dashed border-slate-300 p-3">
+              <p className="text-xs text-slate-500">
+                ¿La factura trae más conceptos con distinto IVA (ej.: uno exento y otros al 10%)? Agregalos acá: quedan en una sola factura. El primer concepto usa el IVA de arriba (tildá &quot;Lleva IVA&quot; o no).
+              </p>
+              {extras.map((x, i) => (
+                <div key={i} className="grid items-end gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                  <div>
+                    <label className={labelClass}>Concepto {i + 2}</label>
+                    <select value={x.tipo} onChange={(e) => setExtras(extras.map((y, j) => (j === i ? { ...y, tipo: e.target.value } : y)))} className={inputClass}>
+                      {TIPOS_GASTO_COMEX.map((o) => (
+                        <option key={o}>{o}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Detalle</label>
+                    <input value={x.descripcion} onChange={(e) => setExtras(extras.map((y, j) => (j === i ? { ...y, descripcion: e.target.value } : y)))} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Monto (IVA incluido)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={x.monto}
+                      onWheel={noRueda}
+                      onChange={(e) => setExtras(extras.map((y, j) => (j === i ? { ...y, monto: e.target.value } : y)))}
+                      className={`${inputClass} ${sinFlechas}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>IVA del concepto</label>
+                    <select value={x.iva} onChange={(e) => setExtras(extras.map((y, j) => (j === i ? { ...y, iva: e.target.value } : y)))} className={inputClass}>
+                      <option value="0">Exenta</option>
+                      <option value="5">5%</option>
+                      <option value="10">10%</option>
+                    </select>
+                  </div>
+                  <button type="button" onClick={() => setExtras(extras.filter((_, j) => j !== i))} className="pb-2 text-xs font-medium text-rose-600 hover:underline">
+                    Quitar concepto
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setExtras([...extras, { tipo: TIPOS_GASTO_COMEX[0], descripcion: "", monto: "", iva: "10" }])}
+                className={btnSecundario}
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar concepto a la factura
+              </button>
+              {extras.length > 0 && (
+                <p className="text-xs text-slate-600">
+                  Total de la factura: {monto(Number(f.monto || 0) + extras.reduce((s, x) => s + (Number(x.monto) || 0), 0), f.moneda)} · IVA total:{" "}
+                  {monto(
+                    (f.lleva_iva ? Number(f.monto || 0) / (f.iva_porcentaje === "5" ? 21 : 11) : 0) +
+                      extras.reduce((s, x) => s + (Number(x.iva) > 0 ? (Number(x.monto) || 0) / (x.iva === "5" ? 21 : 11) : 0), 0),
+                    f.moneda
+                  )}
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4">
               <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-700">

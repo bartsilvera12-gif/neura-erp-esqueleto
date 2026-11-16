@@ -88,19 +88,41 @@ export async function POST(request: NextRequest) {
     const d = datosGasto(b);
     if ("error" in d) return NextResponse.json(errorResponse(d.error), { status: 400 });
 
-    const { data, error } = await ctx.supabase
+    // Conceptos adicionales de la MISMA factura (cada uno con su propio IVA):
+    // comparten proveedor, comprobante, timbrado, cuenta, fecha y moneda.
+    const extrasRaw = Array.isArray(b.extras) ? (b.extras as Record<string, unknown>[]) : [];
+    const extras: Record<string, unknown>[] = [];
+    for (const x of extrasRaw) {
+      const ivaX = Number(x.iva_porcentaje);
+      const de = datosGasto({
+        ...b,
+        tipo: x.tipo,
+        descripcion: x.descripcion,
+        monto: x.monto,
+        lleva_iva: ivaX === 5 || ivaX === 10,
+        iva_porcentaje: ivaX,
+      });
+      if ("error" in de) return NextResponse.json(errorResponse(de.error), { status: 400 });
+      extras.push(de.datos);
+    }
+    const todos = [d.datos, ...extras];
+
+    const { data: insertados, error } = await ctx.supabase
       .from("comex_gastos")
-      .insert({
-        ...d.datos,
-        empresa_id: ctx.auth.empresa_id,
-        origen_tipo: origenTipo,
-        origen_id: origenId,
-        usuario_nombre: nombreUsuario(ctx.auth),
-      })
-      .select(COLS)
-      .single();
+      .insert(
+        todos.map((x) => ({
+          ...x,
+          empresa_id: ctx.auth.empresa_id,
+          origen_tipo: origenTipo,
+          origen_id: origenId,
+          usuario_nombre: nombreUsuario(ctx.auth),
+        }))
+      )
+      .select(COLS);
     if (error) throw new Error(error.message);
-    let gasto = data as Record<string, unknown>;
+    const filas = (insertados ?? []) as Record<string, unknown>[];
+    const idsInsertados = filas.map((x) => x.id as string);
+    let gasto = filas[0];
 
     // Si lleva IVA o es exento con comprobante completo, se genera la factura
     // en el Libro de Compras y se enlaza. Las exentas con comprobante van como
@@ -110,42 +132,45 @@ export async function POST(request: NextRequest) {
     const _tim = String(d.datos.timbrado ?? "").trim();
     const _cta = String(d.datos.cuenta_codigo ?? "").trim();
     const _cmpReal = _cmp.length >= 3 && !/^0+$/.test(_cmp.replace(/[-\s]/g, ""));
-    const _vaAlLibro = d.datos.lleva_iva || Boolean(_ruc && _cmpReal && _tim && _cta);
+    const _vaAlLibro = todos.some((x) => x.lleva_iva) || Boolean(_ruc && _cmpReal && _tim && _cta);
     if (_vaAlLibro) {
       try {
-        const { compraId } = await crearFacturaDeGasto(ctx.supabase, ctx.auth, {
-          fecha: String(d.datos.fecha),
-          tipo: d.datos.tipo as string | null,
-          descripcion: d.datos.descripcion as string | null,
-          proveedor_nombre: d.datos.proveedor_nombre as string | null,
-          proveedor_ruc: d.datos.proveedor_ruc as string | null,
-          comprobante: d.datos.comprobante as string | null,
-          timbrado: d.datos.timbrado as string | null,
-          cuenta_codigo: d.datos.cuenta_codigo as string | null,
-          monto: d.datos.monto as number,
-          moneda: d.datos.moneda as string,
-          tipo_cambio: d.datos.tipo_cambio as number,
-          iva_porcentaje: d.datos.iva_porcentaje as number | null,
-        });
+        const { compraId } = await crearFacturaDeGasto(
+          ctx.supabase,
+          ctx.auth,
+          todos.map((x) => ({
+            fecha: String(x.fecha),
+            tipo: x.tipo as string | null,
+            descripcion: x.descripcion as string | null,
+            proveedor_nombre: x.proveedor_nombre as string | null,
+            proveedor_ruc: x.proveedor_ruc as string | null,
+            comprobante: x.comprobante as string | null,
+            timbrado: x.timbrado as string | null,
+            cuenta_codigo: x.cuenta_codigo as string | null,
+            monto: x.monto as number,
+            moneda: x.moneda as string,
+            tipo_cambio: x.tipo_cambio as number,
+            iva_porcentaje: x.iva_porcentaje as number | null,
+          }))
+        );
         const upd = await ctx.supabase
           .from("comex_gastos")
           .update({ libro_compra_id: compraId })
           .eq("empresa_id", ctx.auth.empresa_id)
-          .eq("id", (gasto as { id: string }).id)
-          .select(COLS)
-          .single();
-        if (!upd.error && upd.data) gasto = upd.data as Record<string, unknown>;
+          .in("id", idsInsertados)
+          .select(COLS);
+        if (!upd.error && upd.data?.length) gasto = (upd.data as unknown as Record<string, unknown>[])[0];
       } catch (e) {
-        // Se revierte el gasto para no dejarlo sin su factura.
-        await ctx.supabase.from("comex_gastos").delete().eq("empresa_id", ctx.auth.empresa_id).eq("id", (gasto as { id: string }).id);
+        // Se revierten los gastos para no dejarlos sin su factura.
+        await ctx.supabase.from("comex_gastos").delete().eq("empresa_id", ctx.auth.empresa_id).in("id", idsInsertados);
         const msg = e instanceof ErrorValidacion ? e.message : "No se pudo crear la factura en el Libro de Compras.";
         return NextResponse.json(errorResponse(msg), { status: 400 });
       }
     }
 
     await registrarHistorial(ctx.supabase, ctx.auth, origenTipo, origenId, "CARGAR_GASTO", {
-      tipo: d.datos.tipo,
-      monto: d.datos.monto,
+      tipo: todos.map((x) => x.tipo).join(" + "),
+      monto: todos.reduce((s, x) => s + (x.monto as number), 0),
       moneda: d.datos.moneda,
     });
     return NextResponse.json(successResponse({ gasto }));
