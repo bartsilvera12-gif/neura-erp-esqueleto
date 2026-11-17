@@ -42,6 +42,33 @@ export function FacturaCobrosModal({
 
   useEffect(() => { void cargar(); }, [cargar]);
 
+  // Recibos ya emitidos que todavía no están en ninguna factura (misma moneda).
+  const [sinFactura, setSinFactura] = useState<(Recibo & { cliente_nombre: string; moneda: string })[]>([]);
+  const [reciboElegido, setReciboElegido] = useState("");
+  const cargarSinFactura = useCallback(async () => {
+    const r = await fetchWithSupabaseSession(`/api/recibos-dinero?sin_factura=1`, { cache: "no-store" });
+    const j = (await r.json().catch(() => ({}))) as { success?: boolean; data?: { recibos: (Recibo & { cliente_nombre: string; moneda: string })[] } };
+    if (r.ok && j.success) setSinFactura(j.data?.recibos ?? []);
+  }, []);
+  useEffect(() => { void cargarSinFactura(); }, [cargarSinFactura]);
+  const disponibles = sinFactura.filter((r) => (r.moneda === "USD" ? "USD" : "PYG") === factura.moneda);
+
+  async function vincular() {
+    if (!reciboElegido) return;
+    setMensaje(null); setError(null); setGuardando(true);
+    const r = await fetchWithSupabaseSession(`/api/recibos-dinero/${reciboElegido}/vincular-factura`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ factura_exportacion_id: factura.id }),
+    });
+    const j = (await r.json().catch(() => ({}))) as { success?: boolean; error?: string };
+    setGuardando(false);
+    if (!r.ok || !j.success) { setError(j.error ?? `Error ${r.status}`); return; }
+    setMensaje("Recibo vinculado a la factura.");
+    setReciboElegido("");
+    await Promise.all([cargar(), cargarSinFactura()]);
+  }
+
   const cobrado = (recibos ?? []).filter((x) => !x.anulado).reduce((a, r) => a + Number(r.monto), 0);
   const saldo = Math.max(0, factura.total - cobrado);
   const moneda = factura.moneda === "USD" ? "USD" : "Gs";
@@ -113,6 +140,40 @@ export function FacturaCobrosModal({
               </div>
             )}
           </div>
+
+          {saldo > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vincular recibo existente</h3>
+              {disponibles.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">No hay recibos sin factura en {factura.moneda === "USD" ? "dólares" : "guaraníes"}.</p>
+              ) : (
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="min-w-[240px] flex-1">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Recibo de dinero</label>
+                    <select
+                      value={reciboElegido}
+                      onChange={(e) => setReciboElegido(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                    >
+                      <option value="">Elegí un recibo…</option>
+                      {disponibles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.numero_recibo} · {r.cliente_nombre} · {fmt(Number(r.monto))}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={vincular}
+                    disabled={guardando || !reciboElegido}
+                    className="rounded-lg bg-[#4FAEB2] hover:bg-[#3F8E91] text-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                  >
+                    {guardando ? "Vinculando…" : "Vincular recibo"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {saldo > 0 && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">

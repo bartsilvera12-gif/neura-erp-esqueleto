@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
       .from("exportaciones")
       .select(EXPORTACION_COLS)
       .eq("empresa_id", ctx.auth.empresa_id)
+      // Gestión activa: el número lleva el año (EXP-AAAA-00001), así cada gestión ve solo lo suyo.
+      .like("numero", `EXP-${anioGestionActiva(request)}-%`)
       .order("created_at", { ascending: false })
       .limit(500);
     const estado = sp.get("estado");

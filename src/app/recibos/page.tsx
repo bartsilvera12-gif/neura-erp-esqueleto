@@ -16,6 +16,7 @@ import {
   type ReciboOrigen,
   type BancoOpcion,
 } from "@/lib/recibos/client";
+import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { FancySelect } from "@/components/ui/FancySelect";
 import MontoInput from "@/components/ui/MontoInput";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -71,6 +72,7 @@ export default function RecibosPage() {
   const [motivoAnular, setMotivoAnular] = useState("");
   const [borrando, setBorrando] = useState<Recibo | null>(null);
   const [depositando, setDepositando] = useState<Recibo | null>(null);
+  const [vinculando, setVinculando] = useState<Recibo | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const usaLR = esInstanciaLR();
 
@@ -304,6 +306,21 @@ export default function RecibosPage() {
                             </button>
                           )
                         )}
+                        {!r.anulado && !r.factura_exportacion_id && (
+                          <button
+                            type="button"
+                            onClick={() => setVinculando(r)}
+                            title="Vincular a una factura"
+                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-[#4FAEB2] hover:text-[#3F8E91]"
+                          >
+                            Vincular a factura
+                          </button>
+                        )}
+                        {r.factura_exportacion_id && !r.anulado && (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                            Con factura
+                          </span>
+                        )}
                         {isAdmin && !r.anulado && (
                           <button
                             type="button"
@@ -380,6 +397,17 @@ export default function RecibosPage() {
         onCancel={() => setBorrando(null)}
       />
 
+      {vinculando && (
+        <ModalVincularFactura
+          recibo={vinculando}
+          onClose={() => setVinculando(null)}
+          onHecho={() => {
+            setVinculando(null);
+            void cargar();
+          }}
+        />
+      )}
+
       {depositando && (
         <ModalDeposito
           recibo={depositando}
@@ -401,6 +429,92 @@ export default function RecibosPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+type FacturaOpcion = {
+  id: string;
+  numero_formateado: string | null;
+  numero: number | null;
+  cliente_nombre: string | null;
+  total: number;
+  moneda: string;
+  estado: string;
+};
+
+/** Vincula un recibo ya emitido a una factura existente (sin crear cobros nuevos). */
+function ModalVincularFactura({ recibo, onClose, onHecho }: { recibo: Recibo; onClose: () => void; onHecho: () => void }) {
+  const [facturas, setFacturas] = useState<FacturaOpcion[] | null>(null);
+  const [facturaId, setFacturaId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const moneda = recibo.moneda === "USD" ? "USD" : "PYG";
+
+  useEffect(() => {
+    void fetch("/api/facturas-exportacion", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        const lista = ((j?.data?.facturas ?? []) as FacturaOpcion[]).filter(
+          (f) => f.estado !== "ANULADA" && (f.moneda === "USD" ? "USD" : "PYG") === moneda
+        );
+        setFacturas(lista);
+      })
+      .catch(() => setFacturas([]));
+  }, [moneda]);
+
+  async function vincular() {
+    if (!facturaId) return;
+    setBusy(true);
+    setErr(null);
+    const res = await fetchWithSupabaseSession(`/api/recibos-dinero/${recibo.id}/vincular-factura`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ factura_exportacion_id: facturaId }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok || j?.success === false) return setErr(j?.error ?? `Error ${res.status}`);
+    onHecho();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-white shadow-lg">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+          <h2 className="text-base font-semibold text-slate-900">Vincular recibo {recibo.numero_recibo} a una factura</h2>
+          <button type="button" onClick={onClose} className="rounded p-1 hover:bg-slate-100" aria-label="Cerrar">
+            <X className="h-4 w-4 text-slate-500" />
+          </button>
+        </div>
+        <div className="space-y-4 p-5">
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            El recibo ({fmtMonto(recibo.monto, recibo.moneda)}) pasa a contar como cobro de la factura que elijas. No se crea ningún cobro nuevo.
+          </p>
+          <div>
+            <label className={labelCls}>Factura</label>
+            {facturas === null ? (
+              <p className="text-sm text-slate-400">Cargando facturas…</p>
+            ) : (
+              <select value={facturaId} onChange={(e) => setFacturaId(e.target.value)} className={inputCls}>
+                <option value="">Elegí la factura…</option>
+                {facturas.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.numero_formateado ?? f.numero ?? "s/n"} · {f.cliente_nombre ?? "—"} · {fmtMonto(f.total, f.moneda)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          {err && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
+            <button type="button" onClick={vincular} disabled={busy || !facturaId} className="rounded-lg bg-[#4FAEB2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] disabled:opacity-50">
+              {busy ? "Vinculando…" : "Vincular"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

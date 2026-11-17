@@ -13,6 +13,7 @@ import {
   buildMontoNcAprobadaPorFacturaId,
   montoFacturaNetoValorComercial,
   getDashboardData,
+  gestionDashboardActiva,
   type ProspectoRaw,
   type ClienteRaw,
   type FacturaRaw,
@@ -151,7 +152,11 @@ function formatFecha(s: string): string {
 }
 
 function getRango(periodo: Periodo): { desde: Date; hasta: Date } {
-  const ahora = new Date();
+  // Si la gestión activa no es el año en curso, "hoy" es el cierre de esa gestión
+  // (así los filtros Mes / 30 días / Año muestran solo datos de esa gestión).
+  const gestion = gestionDashboardActiva();
+  const real = new Date();
+  const ahora = gestion === real.getFullYear() ? real : new Date(gestion, 11, 31, 12, 0, 0, 0);
   switch (periodo) {
     case "mes":
       return rangoMesCalendarioLocal(ahora);

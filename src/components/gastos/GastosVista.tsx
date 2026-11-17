@@ -141,6 +141,27 @@ export default function GastosVista({ seccion }: { seccion: Seccion }) {
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-xs font-medium text-slate-500">
+          Mes y año
+          <input
+            type="month"
+            aria-label="Mes y año"
+            value={desde && desde.slice(0, 7) === hasta.slice(0, 7) && desde.endsWith("-01") ? desde.slice(0, 7) : ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (!v) {
+                setDesde("");
+                setHasta("");
+                return;
+              }
+              const [y, m] = v.split("-").map(Number);
+              const ultimo = new Date(y, m, 0).getDate();
+              setDesde(`${v}-01`);
+              setHasta(`${v}-${String(ultimo).padStart(2, "0")}`);
+            }}
+            className="zx-surface mt-1 block px-3 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs font-medium text-slate-500">
           Desde
           <input
             type="date"

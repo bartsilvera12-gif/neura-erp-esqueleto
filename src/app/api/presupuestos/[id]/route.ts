@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { faltanteDeStock } from "@/lib/presupuestos/server/stock";
 import { esInstanciaLR } from "@/lib/inventario/campos-lr";
+import { sincronizarValorProspecto } from "@/lib/presupuestos/server/presupuestos-pg";
 import { ESTADOS_PRESUPUESTO, type EstadoPresupuesto } from "@/lib/presupuestos/types";
 
 const PRESU_COLS =
@@ -182,6 +183,17 @@ export async function PATCH(request: NextRequest, ctxParams: { params: Promise<{
         .select(PRESU_COLS)
         .maybeSingle();
       if (updHead.error) throw new Error(updHead.error.message);
+      // Si el presupuesto está vinculado a un prospecto del CRM, su valor estimado sigue al total.
+      const prq = await ctx.supabase
+        .from("presupuestos")
+        .select("prospecto_id")
+        .eq("empresa_id", ctx.auth.empresa_id)
+        .eq("id", id)
+        .maybeSingle();
+      const prospectoId = (prq.data as { prospecto_id?: string | null } | null)?.prospecto_id;
+      if (prospectoId) {
+        await sincronizarValorProspecto(ctx.supabase, ctx.auth.empresa_id, prospectoId, total);
+      }
       return NextResponse.json(successResponse({ presupuesto: updHead.data }));
     }
 

@@ -10,6 +10,7 @@ export type Recibo = {
   cliente_documento: string | null;
   origen: ReciboOrigen;
   venta_id: string | null;
+  factura_exportacion_id?: string | null;
   fecha: string;
   moneda: string;
   monto: number;

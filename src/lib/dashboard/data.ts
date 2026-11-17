@@ -263,6 +263,20 @@ async function fetchProspectos(): Promise<ProspectoRaw[]> {
  * Dashboard: tablas operativas vía `/api/dashboard/tenant-tables` (service role + schema tenant).
  * No depende del cliente browser + RLS en esquemas `erp_*`.
  */
+/** Año de la gestión activa (cookie `neura_gestion` del selector del header). Default: año actual. */
+export function gestionDashboardActiva(): number {
+  try {
+    const m = (typeof document !== "undefined" ? document.cookie : "").match(/(?:^|;\s*)neura_gestion=(\d{4})(?:;|$)/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n >= 2000 && n <= 2100) return n;
+    }
+  } catch {
+    /* nop */
+  }
+  return new Date().getFullYear();
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
   const prospectos = await fetchProspectos();
 
@@ -307,15 +321,9 @@ export async function getDashboardData(): Promise<DashboardData> {
    * Si querés ver TODO el histórico explícitamente, pasá `?desde=&hasta=` vacíos en URL
    * o llamá al endpoint sin el query string.
    */
-  const dashboardNow = new Date();
-  const dashboardDesde = new Date(
-    dashboardNow.getFullYear(),
-    dashboardNow.getMonth() - 13,
-    dashboardNow.getDate()
-  );
-  const fmtYmd = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const dashboardRangeQs = `?desde=${fmtYmd(dashboardDesde)}&hasta=${fmtYmd(dashboardNow)}`;
+  // Gestión activa (selector del header): el Dashboard muestra solo los datos de ese año.
+  const gestion = gestionDashboardActiva();
+  const dashboardRangeQs = `?desde=${gestion}-01-01&hasta=${gestion}-12-31`;
 
   try {
     const res = await fetchWithSupabaseSession(

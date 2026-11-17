@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
       plazo_entrega: body.plazo_entrega ? String(body.plazo_entrega) : null,
       observaciones: body.observaciones ? String(body.observaciones).slice(0, 4000) : null,
       ubicacion_id: ubicacionId,
+      prospecto_id: body.prospecto_id ? String(body.prospecto_id) : null,
       items,
     }, ctx.auth.usuarioCatalogId ?? null);
 

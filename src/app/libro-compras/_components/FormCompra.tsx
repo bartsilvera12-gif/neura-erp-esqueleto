@@ -344,7 +344,43 @@ export default function FormCompra({ id }: { id?: string }) {
     );
   }
 
-  function payload() {
+  const soloDigitosRuc = (s: string) => s.replace(/[^0-9kK]/g, "").toUpperCase();
+
+  /** Al escribir el RUC: si ya está registrado, se completa el proveedor (sin duplicar). */
+  function onRucChange(ruc: string) {
+    const r = soloDigitosRuc(ruc);
+    const match = r.length >= 4 ? proveedores.find((p) => p.ruc && soloDigitosRuc(p.ruc) === r) : undefined;
+    if (match) setProveedor({ id: match.id, nombre: match.nombre, ruc: match.ruc ?? ruc });
+    else setProveedor((p) => ({ ...p, id: null, ruc }));
+  }
+
+  /**
+   * Antes de guardar: el proveedor tiene que existir. Si ya está (mismo RUC o mismo nombre)
+   * se usa ese; si no, se da de alta con los datos de la factura para las próximas compras.
+   */
+  async function resolverProveedor(): Promise<{ id: string | null; nombre: string; ruc: string }> {
+    const nombre = proveedor.nombre.trim();
+    const ruc = proveedor.ruc.trim();
+    if (proveedor.id || !nombre) return proveedor;
+    try {
+      const r = soloDigitosRuc(ruc);
+      let hit: Proveedor | undefined = r ? proveedores.find((p) => p.ruc && soloDigitosRuc(p.ruc) === r) : undefined;
+      if (!hit && ruc) {
+        const d = await api<{ proveedor: Proveedor | null }>(`/api/proveedores?ruc=${encodeURIComponent(ruc)}`);
+        hit = d.proveedor ?? undefined;
+      }
+      if (!hit && !ruc) hit = proveedores.find((p) => p.nombre.trim().toLowerCase() === nombre.toLowerCase());
+      if (hit) return { id: hit.id, nombre: hit.nombre, ruc: hit.ruc ?? ruc };
+      const nuevo = await api<{ proveedor: Proveedor }>("/api/proveedores", jsonInit("POST", { nombre, ruc: ruc || null }));
+      setProveedores((ps) => [...ps, nuevo.proveedor]);
+      return { id: nuevo.proveedor.id, nombre: nuevo.proveedor.nombre, ruc: nuevo.proveedor.ruc ?? ruc };
+    } catch {
+      // Si no se pudo registrar, la factura se guarda igual con los datos escritos.
+      return proveedor;
+    }
+  }
+
+  function payload(prov: { id: string | null; nombre: string; ruc: string } = proveedor) {
     return {
       tipo_id: tipoId,
       seccion: seccionParam ?? undefined,
@@ -353,9 +389,9 @@ export default function FormCompra({ id }: { id?: string }) {
       timbrado,
       es_electronica: esElectronica,
       cdc: cdc.replace(/\D/g, "") || null,
-      proveedor_id: proveedor.id,
-      proveedor_nombre: proveedor.nombre,
-      proveedor_ruc: proveedor.ruc,
+      proveedor_id: prov.id,
+      proveedor_nombre: prov.nombre,
+      proveedor_ruc: prov.ruc,
       moneda,
       cotizacion: Number(cotizacion) || 1,
       impacta,
@@ -384,9 +420,11 @@ export default function FormCompra({ id }: { id?: string }) {
     setError(null);
     setAviso(null);
     try {
+      const prov = await resolverProveedor();
+      if (prov.id && prov.id !== proveedor.id) setProveedor(prov);
       const d = id
-        ? await api<{ id: string; numero_control: string; aviso: string | null }>(`/api/libro-compras/${id}`, jsonInit("PUT", payload()))
-        : await api<{ id: string; numero_control: string; aviso: string | null }>("/api/libro-compras", jsonInit("POST", payload()));
+        ? await api<{ id: string; numero_control: string; aviso: string | null }>(`/api/libro-compras/${id}`, jsonInit("PUT", payload(prov)))
+        : await api<{ id: string; numero_control: string; aviso: string | null }>("/api/libro-compras", jsonInit("POST", payload(prov)));
       if (yNuevo) {
         // Se queda en la pantalla para cargar el siguiente (conserva tipo, fecha y moneda).
         setCdc("");
@@ -530,7 +568,7 @@ export default function FormCompra({ id }: { id?: string }) {
           </div>
           <div>
             <label className={labelClass}>RUC</label>
-            <input value={proveedor.ruc} onChange={(e) => setProveedor({ ...proveedor, ruc: e.target.value })} className={`${inputClass} font-mono`} />
+            <input value={proveedor.ruc} onChange={(e) => onRucChange(e.target.value)} className={`${inputClass} font-mono`} />
           </div>
           <div>
             <label className={labelClass}>Timbrado {tipo?.codigo === 12 ? "" : "*"}</label>

@@ -29,7 +29,29 @@ export interface CrearPresupuestoInput {
   observaciones: string | null;
   /** Almacén del que va a salir la mercadería. */
   ubicacion_id: string | null;
+  /** Prospecto del CRM al que queda vinculado el presupuesto (opcional). */
+  prospecto_id?: string | null;
   items: PresupuestoItemInput[];
+}
+
+/**
+ * Copia el total del presupuesto al "Valor estimado" del prospecto vinculado.
+ * Best-effort: si falla no corta el guardado del presupuesto.
+ */
+export async function sincronizarValorProspecto(
+  sb: AppSupabaseClient,
+  empresaId: string,
+  prospectoId: string | null | undefined,
+  total: number
+): Promise<void> {
+  if (!prospectoId) return;
+  try {
+    await sb
+      .from("crm_prospectos")
+      .update({ valor_estimado: Math.round(total), fecha_actualizacion: new Date().toISOString() })
+      .eq("empresa_id", empresaId)
+      .eq("id", prospectoId);
+  } catch {}
 }
 
 function round2(n: number): number {
@@ -139,6 +161,7 @@ export async function crearPresupuesto(
       plazo_entrega: input.plazo_entrega?.trim() || null,
       observaciones: input.observaciones?.trim() || null,
       ubicacion_id: input.ubicacion_id || null,
+      prospecto_id: input.prospecto_id || null,
       created_by_user_id: createdByUserId,
     })
     .select("id, numero_control")
@@ -172,6 +195,8 @@ export async function crearPresupuesto(
     } catch {}
     throw new Error(insItems.error.message);
   }
+
+  await sincronizarValorProspecto(sb, empresaId, input.prospecto_id, total);
 
   return { id: presupuestoId, numero_control: numero };
 }

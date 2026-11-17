@@ -5,11 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addNota, deleteProspecto, getProspecto, moveProspecto, updateProspecto } from "@/lib/crm/storage";
 import { getEtapas, getEtapaClasses } from "@/lib/crm/etapas";
-import { getPlanes } from "@/lib/planes/storage";
-import PlanSelector from "@/components/crm/PlanSelector";
 import type { EtapaCrm } from "@/lib/crm/etapas";
 import type { Nota, Prospecto } from "@/lib/crm/types";
-import type { Plan } from "@/lib/planes/types";
 import { getBrowserSupabaseForEmpresaData } from "@/lib/supabase/browser-data-client";
 import { AlertTriangle } from "lucide-react";
 
@@ -59,6 +56,14 @@ function originLabel(origen?: Prospecto["origen_creacion"]): string {
   }
 }
 
+type PresupuestoVinculado = {
+  id: string;
+  numero_control: string;
+  estado: string;
+  total: number;
+  fecha: string;
+};
+
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export default function EditProspectoPage() {
@@ -76,7 +81,6 @@ export default function EditProspectoPage() {
     contacto:              "",
     email:                 "",
     telefono:              "",
-    planIds:               [] as string[],
     proxima_accion:        "",
     fecha_proxima_accion:  "",
     creado_por:            "",
@@ -90,7 +94,7 @@ export default function EditProspectoPage() {
 
   const [errorForm,         setErrorForm]         = useState<string | null>(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
-  const [planes,            setPlanes]            = useState<Plan[]>([]);
+  const [presupuestos,      setPresupuestos]      = useState<PresupuestoVinculado[]>([]);
   const [etapas,            setEtapas]            = useState<EtapaCrm[]>([]);
   const [cargandoPlanes,    setCargandoPlanes]    = useState(true);
   const [conversationId,  setConversationId]   = useState<string | null>(null);
@@ -99,21 +103,30 @@ export default function EditProspectoPage() {
     getEtapas().then(setEtapas);
   }, []);
 
+  // Presupuestos vinculados a este prospecto (el más reciente no rechazado define el valor estimado).
   useEffect(() => {
-    getPlanes()
-      .then(setPlanes)
-      .catch(() => setPlanes([]))
-      .finally(() => setCargandoPlanes(false));
-  }, []);
-
-  useEffect(() => {
-    if (!prospecto || planes.length === 0) return;
-    const nombres = (prospecto.servicio ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-    const ids = nombres
-      .map((n) => planes.find((p) => p.nombre === n)?.id)
-      .filter((id): id is string => Boolean(id));
-    setForm((prev) => ({ ...prev, planIds: ids }));
-  }, [prospecto?.id, prospecto?.servicio, planes]);
+    if (!id) return;
+    let vivo = true;
+    (async () => {
+      try {
+        const sb = await getBrowserSupabaseForEmpresaData();
+        const { data, error } = await sb
+          .from("presupuestos")
+          .select("id, numero_control, estado, total, fecha")
+          .eq("prospecto_id", id)
+          .order("fecha", { ascending: false });
+        if (!vivo) return;
+        setPresupuestos(error ? [] : ((data ?? []) as PresupuestoVinculado[]));
+      } catch {
+        if (vivo) setPresupuestos([]);
+      } finally {
+        if (vivo) setCargandoPlanes(false);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [id]);
 
   useEffect(() => {
     async function loadConversationId() {
@@ -211,42 +224,31 @@ export default function EditProspectoPage() {
     setForm((prev) => ({ ...prev, [name]: normalized }));
   }
 
-  function togglePlan(planId: string) {
-    setForm((prev) => ({
-      ...prev,
-      planIds: prev.planIds.includes(planId)
-        ? prev.planIds.filter((id) => id !== planId)
-        : [...prev.planIds, planId],
-    }));
-  }
+  const presupuestoActual = presupuestos.find((p) => p.estado !== "rechazado") ?? null;
+  // Con presupuesto vinculado, el valor estimado es su total; sin presupuesto se conserva el que ya tenía.
+  const valorEstimado = presupuestoActual ? Number(presupuestoActual.total) || 0 : Number(prospecto?.valor_estimado) || 0;
 
-  const planesActivos = planes.filter((p) => p.estado === "activo");
-  const valorEstimado = form.planIds.reduce(
-    (sum, pid) => sum + (planesActivos.find((p) => p.id === pid)?.precio ?? 0),
-    0
-  );
+  const qsNuevoPresupuesto = (p: Prospecto) => {
+    const qs = new URLSearchParams({
+      prospecto_id: p.id,
+      cliente_nombre: p.empresa || p.contacto,
+      contacto: p.contacto,
+    });
+    if (p.telefono) qs.set("telefono", p.telefono);
+    if (p.email) qs.set("email", p.email);
+    return qs.toString();
+  };
 
   async function handleGuardar(e: React.FormEvent) {
     e.preventDefault();
     setErrorForm(null);
     if (!form.contacto.trim()) return setErrorForm("El contacto es obligatorio.");
 
-    const planesActivos = planes.filter((p) => p.estado === "activo");
-    const servicioTexto = form.planIds
-      .map((pid) => planesActivos.find((p) => p.id === pid)?.nombre)
-      .filter(Boolean)
-      .join(", ");
-    const valorEstimado = form.planIds.reduce(
-      (sum, pid) => sum + (planesActivos.find((p) => p.id === pid)?.precio ?? 0),
-      0
-    );
-
     const actualizado = await updateProspecto(id, {
       empresa:              form.empresa.trim().toUpperCase() || null,
       contacto:             form.contacto.trim().toUpperCase(),
       email:                form.email.trim()    || undefined,
       telefono:             form.telefono.trim() || undefined,
-      servicio:             servicioTexto || null,
       valor_estimado:       valorEstimado,
       proxima_accion:       form.proxima_accion.trim()       || undefined,
       fecha_proxima_accion: form.fecha_proxima_accion        || undefined,
@@ -335,14 +337,7 @@ export default function EditProspectoPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              const qs = new URLSearchParams({
-                prospecto_id: prospecto.id,
-                cliente_nombre: (prospecto.empresa || prospecto.contacto),
-                contacto: prospecto.contacto,
-              });
-              if (prospecto.telefono) qs.set("telefono", prospecto.telefono);
-              if (prospecto.email) qs.set("email", prospecto.email);
-              router.push(`/presupuestos/nuevo?${qs.toString()}`);
+              router.push(`/presupuestos/nuevo?${qsNuevoPresupuesto(prospecto)}`);
             }}
             className="rounded-lg bg-[#4FAEB2] px-3 py-2 text-sm font-semibold text-white hover:bg-[#3F8E91] transition-colors"
             title="Abrir el formulario de presupuesto con los datos del prospecto"
@@ -508,26 +503,39 @@ export default function EditProspectoPage() {
 
           {/* Servicio */}
           <div>
-            <label className={labelClass}>Servicios / Productos de interés</label>
+            <label className={labelClass}>Presupuesto del prospecto</label>
             {cargandoPlanes ? (
-              <p className="text-sm text-gray-400 py-2">Cargando planes…</p>
-            ) : planes.length === 0 ? (
+              <p className="text-sm text-gray-400 py-2">Cargando presupuestos…</p>
+            ) : presupuestos.length === 0 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                <p className="font-medium">No hay planes creados para esta empresa.</p>
+                <p className="font-medium">Este prospecto todavía no tiene un presupuesto.</p>
                 <Link
-                  href="/planes/nuevo"
+                  href={`/presupuestos/nuevo?${qsNuevoPresupuesto(prospecto)}`}
                   className="mt-2 inline-flex items-center gap-1.5 text-[#0EA5E9] hover:text-[#0284C7] font-medium"
                 >
-                  Ir a crear plan →
+                  Crear presupuesto →
                 </Link>
               </div>
             ) : (
-              <PlanSelector
-                planes={planes}
-                selectedIds={form.planIds}
-                onToggle={togglePlan}
-                placeholder="Buscar plan por nombre…"
-              />
+              <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
+                {presupuestos.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                    <div>
+                      <span className="font-mono font-semibold text-gray-800">{p.numero_control}</span>
+                      <span className="ml-2 text-xs text-gray-500">{p.estado}</span>
+                      <span className="ml-3 font-semibold text-gray-800">Gs. {Number(p.total).toLocaleString("es-PY")}</span>
+                    </div>
+                    <div className="flex gap-3 shrink-0">
+                      <Link href={`/presupuestos/${p.id}`} className="text-[#0EA5E9] hover:underline font-medium">
+                        Ver presupuesto
+                      </Link>
+                      <Link href={`/presupuestos/${p.id}/editar`} className="text-[#0EA5E9] hover:underline font-medium">
+                        Editar presupuesto
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
@@ -542,7 +550,9 @@ export default function EditProspectoPage() {
               className={`${inputClass} bg-slate-50 cursor-not-allowed`}
             />
             {valorEstimado > 0 && (
-              <p className="text-xs text-gray-500 mt-1">Suma de los planes seleccionados</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {presupuestoActual ? `Total del presupuesto ${presupuestoActual.numero_control}` : "Valor cargado en el prospecto"}
+              </p>
             )}
           </div>
 

@@ -273,6 +273,7 @@ export default function NuevoPresupuestoPage() {
           plazo_entrega: plazoEntrega.trim() || null,
           observaciones: observaciones.trim() || null,
           ubicacion_id: ubicacionId || null,
+          prospecto_id: searchParams?.get("prospecto_id") || null,
           items: items.map((it) => ({
             producto_id: it.producto_id,
             producto_nombre: it.producto_nombre.trim(),

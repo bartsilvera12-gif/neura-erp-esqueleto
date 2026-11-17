@@ -85,9 +85,6 @@ export default function PresupuestoDetallePage() {
   // Cobros del compromiso: anticipo o pago total.
   const [recibos, setRecibos] = useState<ReciboRow[]>([]);
   const [deposito, setDeposito] = useState<string>("");
-  const [cobrando, setCobrando] = useState(false);
-  const [montoCobro, setMontoCobro] = useState("");
-  const [metodoCobro, setMetodoCobro] = useState("efectivo");
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -124,38 +121,6 @@ export default function PresupuestoDetallePage() {
     void cargar();
   }, [cargar]);
 
-  const totalPresu = Number(presu?.total) || 0;
-  const cobrado = recibos.reduce((a, r) => a + (Number(r.monto) || 0), 0);
-  const saldo = Math.max(0, totalPresu - cobrado);
-
-  /** Cobra el compromiso: el recibo queda atado y descuenta del saldo. */
-  async function cobrar() {
-    const monto = Number(montoCobro);
-    if (!(monto > 0)) {
-      setError("Poné cuánto se cobró.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetchWithSupabaseSession("/api/recibos-dinero", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ origen: "manual", presupuesto_id: id, manual: { monto, metodo_pago: metodoCobro } }),
-      });
-      const body = await res.json();
-      if (!res.ok || body?.success === false) throw new Error(body?.error ?? "No se pudo generar el recibo.");
-      setOk("Recibo generado.");
-      setCobrando(false);
-      setMontoCobro("");
-      await cargar();
-      window.open(`/api/recibos-dinero/${body.data.recibo.id}/pdf?auto=1`, "_blank", "noopener");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function cambiarEstado(nuevo: EstadoPresupuesto) {
     if (busy) return;
@@ -314,63 +279,11 @@ export default function PresupuestoDetallePage() {
         </div>
       </div>
 
-      {/* Cobros del compromiso */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-xs uppercase tracking-wide text-gray-500">Cobros</h3>
-            <p className="text-sm text-gray-700">
-              Total {fmtGs(totalPresu, presu.moneda)} · Cobrado {fmtGs(cobrado, presu.moneda)} ·{" "}
-              <strong className={saldo > 0 ? "text-amber-700" : "text-emerald-700"}>Saldo {fmtGs(saldo, presu.moneda)}</strong>
-            </p>
-          </div>
-          {saldo > 0 && !cobrando && (
-            <button
-              onClick={() => {
-                setCobrando(true);
-                setMontoCobro(String(saldo));
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#4FAEB2] px-4 py-2 text-sm font-medium text-white hover:bg-[#3F8E91]"
-            >
-              <Wallet className="h-4 w-4" /> Cobrar
-            </button>
-          )}
-        </div>
-
-        {cobrando && (
-          <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Monto</label>
-              <input
-                type="number"
-                min="0"
-                value={montoCobro}
-                onChange={(e) => setMontoCobro(e.target.value)}
-                className="w-40 rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Forma de pago</label>
-              <select value={metodoCobro} onChange={(e) => setMetodoCobro(e.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
-            <button type="button" onClick={() => setMontoCobro(String(saldo))} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
-              Pago total
-            </button>
-            <button onClick={() => void cobrar()} disabled={busy} className="rounded-md bg-[#4FAEB2] px-4 py-2 text-sm font-medium text-white hover:bg-[#3F8E91] disabled:opacity-50">
-              {busy ? "Generando…" : "Generar recibo"}
-            </button>
-            <button onClick={() => setCobrando(false)} className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
-              Cancelar
-            </button>
-          </div>
-        )}
-
-        {recibos.length > 0 && (
+      {/* Los cobros ahora se manejan desde la factura. Acá solo se muestran los recibos históricos ya registrados. */}
+      {recibos.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h3 className="text-xs uppercase tracking-wide text-gray-500">Cobros registrados (histórico)</h3>
+          <p className="text-xs text-gray-500">Los nuevos cobros se registran desde la factura.</p>
           <ul className="mt-3 divide-y divide-slate-100 text-sm">
             {recibos.map((r) => (
               <li key={r.id} className="flex items-center justify-between py-2">
@@ -389,8 +302,8 @@ export default function PresupuestoDetallePage() {
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Items */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       incluirAnulados: searchParams.get("incluir_anulados") === "1",
       presupuestoId: searchParams.get("presupuesto_id"),
       facturaExportacionId: searchParams.get("factura_exportacion_id"),
+      sinFactura: searchParams.get("sin_factura") === "1",
     });
     return NextResponse.json(successResponse({ recibos }));
   } catch (err) {

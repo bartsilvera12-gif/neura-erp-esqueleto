@@ -409,6 +409,87 @@ export async function anularRecibo(
   return up.data as unknown as Record<string, unknown>;
 }
 
+/**
+ * Vincula un recibo YA existente a una factura. No crea ni duplica cobros: solo
+ * apunta el recibo a la factura (conserva su número, su monto y su vínculo previo
+ * con el compromiso de venta, si lo tenía). Un recibo cuenta una sola vez: no se
+ * puede vincular si ya está en otra factura, y el monto no puede superar el saldo.
+ */
+export async function vincularReciboAFactura(
+  sb: AppSupabaseClient,
+  empresaId: string,
+  reciboId: string,
+  facturaId: string
+): Promise<Record<string, unknown>> {
+  const rq = await sb
+    .from("recibos_dinero")
+    .select("id, numero_recibo, anulado, moneda, monto, factura_exportacion_id, observaciones")
+    .eq("empresa_id", empresaId)
+    .eq("id", reciboId)
+    .maybeSingle();
+  if (rq.error) throw new ReciboError(rq.error.message, 500);
+  const rec = rq.data as unknown as {
+    id: string; numero_recibo: string; anulado: boolean; moneda: string | null; monto: number | null;
+    factura_exportacion_id: string | null; observaciones: string | null;
+  } | null;
+  if (!rec) throw new ReciboError("Recibo no encontrado.", 404);
+  if (rec.anulado) throw new ReciboError("El recibo está anulado.", 409);
+  if (rec.factura_exportacion_id) {
+    if (rec.factura_exportacion_id === facturaId) throw new ReciboError("El recibo ya está vinculado a esta factura.", 409);
+    throw new ReciboError("El recibo ya está vinculado a otra factura.", 409);
+  }
+
+  const fq = await sb
+    .from("facturas_exportacion")
+    .select("id, numero, numero_formateado, moneda, total, estado")
+    .eq("empresa_id", empresaId)
+    .eq("id", facturaId)
+    .maybeSingle();
+  if (fq.error) throw new ReciboError(fq.error.message, 500);
+  const fac = fq.data as unknown as {
+    id: string; numero: number | null; numero_formateado: string | null;
+    moneda: string | null; total: number | null; estado: string;
+  } | null;
+  if (!fac) throw new ReciboError("La factura no existe.", 404);
+  if (fac.estado === "ANULADA") throw new ReciboError("La factura está anulada.");
+
+  const monedaFac = fac.moneda === "USD" ? "USD" : "PYG";
+  const monedaRec = rec.moneda === "USD" ? "USD" : "PYG";
+  if (monedaFac !== monedaRec) throw new ReciboError(`El recibo es en ${monedaRec} y la factura en ${monedaFac}.`);
+
+  const prev = await sb
+    .from("recibos_dinero")
+    .select("monto")
+    .eq("empresa_id", empresaId)
+    .eq("factura_exportacion_id", fac.id)
+    .eq("anulado", false);
+  if (prev.error) throw new ReciboError(prev.error.message, 500);
+  const cobrado = ((prev.data ?? []) as { monto: number | null }[]).reduce((a, r) => a + (Number(r.monto) || 0), 0);
+  const saldo = Math.max(0, (Number(fac.total) || 0) - cobrado);
+  const monto = Number(rec.monto) || 0;
+  if (monto > saldo + 0.001) {
+    throw new ReciboError(`El recibo (${monto.toLocaleString("es-PY")}) supera el saldo de la factura (${saldo.toLocaleString("es-PY")}).`);
+  }
+
+  const numero = fac.numero_formateado ?? (fac.numero != null ? String(fac.numero) : "");
+  const nota = `Vinculado a la factura ${numero}`.trim();
+  const up = await sb
+    .from("recibos_dinero")
+    .update({
+      factura_exportacion_id: fac.id,
+      observaciones: rec.observaciones ? `${rec.observaciones}\n${nota}` : nota,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("empresa_id", empresaId)
+    .eq("id", reciboId)
+    .is("factura_exportacion_id", null)
+    .select(RECIBO_COLS)
+    .maybeSingle();
+  if (up.error) throw new ReciboError(up.error.message, 500);
+  if (!up.data) throw new ReciboError("El recibo ya fue vinculado por otra persona.", 409);
+  return up.data as unknown as Record<string, unknown>;
+}
+
 /** Listado de recibos con filtros opcionales. */
 export async function listarRecibos(
   sb: AppSupabaseClient,
@@ -421,6 +502,8 @@ export async function listarRecibos(
     incluirAnulados?: boolean;
     presupuestoId?: string | null;
     facturaExportacionId?: string | null;
+    /** Solo recibos que todavía no están vinculados a ninguna factura. */
+    sinFactura?: boolean;
   }
 ): Promise<Record<string, unknown>[]> {
   const cols = esInstanciaLR() ? RECIBO_COLS + RECIBO_COLS_DEPOSITO : RECIBO_COLS;
@@ -436,6 +519,7 @@ export async function listarRecibos(
   if (filtros.origen) q = q.eq("origen", filtros.origen);
   if (filtros.presupuestoId) q = q.eq("presupuesto_id", filtros.presupuestoId);
   if (filtros.facturaExportacionId) q = q.eq("factura_exportacion_id", filtros.facturaExportacionId);
+  if (filtros.sinFactura) q = q.is("factura_exportacion_id", null);
   if (!filtros.incluirAnulados) q = q.eq("anulado", false);
   const b = filtros.buscar?.trim();
   if (b) q = q.or(`numero_recibo.ilike.%${b}%,cliente_nombre.ilike.%${b}%,concepto.ilike.%${b}%`);
