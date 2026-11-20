@@ -14,9 +14,10 @@ export type TimbradoNR = {
   activo: boolean;
   modo_prueba: boolean;
   proximo_numero_prueba: number;
+  tipo?: string;
 };
 
-const vacio = { id: "", timbrado: "", establecimiento: "001", punto_expedicion: "", vigencia_desde: "", vigencia_hasta: "", proximo_numero: "1", proximo_numero_prueba: "1", activo: true, modo_prueba: true };
+const vacio = { tipo: "general", id: "", timbrado: "", establecimiento: "001", punto_expedicion: "", vigencia_desde: "", vigencia_hasta: "", proximo_numero: "1", proximo_numero_prueba: "1", activo: true, modo_prueba: true };
 const fechaES = (v: string | null) => (v ? v.split("-").reverse().join("/") : "");
 
 /**
@@ -39,6 +40,7 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
   function editar(t: TimbradoNR) {
     setF({
       id: t.id,
+      tipo: t.tipo ?? "general",
       timbrado: t.timbrado,
       establecimiento: t.establecimiento,
       punto_expedicion: t.punto_expedicion,
@@ -86,6 +88,7 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
     try {
       await api("/api/notas-remision/config", jsonInit("PUT", {
         id: t.id,
+        tipo: t.tipo ?? "general",
         timbrado: t.timbrado,
         establecimiento: t.establecimiento,
         punto_expedicion: t.punto_expedicion,
@@ -125,7 +128,10 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
               <tbody>
                 {lista.map((t) => (
                   <tr key={t.id} className={`border-t border-slate-100 ${t.activo ? "" : "bg-slate-50 text-slate-400"}`}>
-                    <td className="px-3 py-2 font-mono">{t.establecimiento}-{t.punto_expedicion}</td>
+                    <td className="px-3 py-2 font-mono">
+                      {t.establecimiento}-{t.punto_expedicion}
+                      {t.tipo === "exportacion" && <span className="ml-1 rounded-full bg-sky-100 px-2 py-0.5 font-sans text-[11px] font-semibold text-sky-700">Exportación</span>}
+                    </td>
                     <td className="px-3 py-2 font-mono">{t.timbrado}</td>
                     <td className="px-3 py-2 text-xs">
                       {t.vigencia_desde ? `${fechaES(t.vigencia_desde)} al ${fechaES(t.vigencia_hasta)}` : "—"}
@@ -171,6 +177,13 @@ export function TimbradoModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
             <h3 className="text-sm font-semibold text-slate-800">{f.id ? "Editar timbrado" : "Nuevo timbrado"}</h3>
             <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className={labelClass}>Tipo de timbrado</label>
+                <select value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })} className={inputClass}>
+                  <option value="general">General (ventas y traslados)</option>
+                  <option value="exportacion">Exportación</option>
+                </select>
+              </div>
               <div className="col-span-2">
                 <label className={labelClass}>Timbrado Nº *</label>
                 <input value={f.timbrado} onChange={(e) => setF({ ...f, timbrado: e.target.value.replace(/\D/g, "") })} className={inputClass} placeholder="Ej.: 19025402" />

@@ -204,6 +204,9 @@ export async function POST(request: NextRequest) {
       .eq("empresa_id", auth.empresa_id)
       .eq("activo", true);
     if (body.timbrado_config_id) cfgQ = cfgQ.eq("id", body.timbrado_config_id);
+    // Las notas de exportación (salen de una factura de exportación) usan solo timbrados
+    // de exportación; las demás, solo los generales: así la numeración no se mezcla.
+    cfgQ = cfgQ.eq("tipo", body.factura_id ? "exportacion" : "general");
     const cfgRes = await cfgQ.order("punto_expedicion").limit(1);
     const cfg = ((cfgRes.data ?? [])[0] ?? null) as
       | { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; modo_prueba: boolean; proximo_numero_prueba: number }

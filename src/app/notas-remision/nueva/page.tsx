@@ -59,10 +59,11 @@ export default function EmitirNRPage() {
   const [resDoc, setResDoc] = useState<{ ok: number; sinStock: string[]; sinVincular: string[]; parciales: string[] } | null>(null);
   const [verDetalleDoc, setVerDetalleDoc] = useState(false);
   /** Timbrados activos: con cuál sale la nota. */
-  type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean; modo_prueba?: boolean; proximo_numero_prueba?: number };
+  type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean; modo_prueba?: boolean; proximo_numero_prueba?: number; tipo?: string };
   /** Número que va a salir según el modo en que esté ese timbrado. */
   const proxDe = (t: TimbradoNR) => String(t.modo_prueba !== false ? t.proximo_numero_prueba ?? 1 : t.proximo_numero).padStart(7, "0");
   const [timbrados, setTimbrados] = useState<TimbradoNR[]>([]);
+  const [todosTimbrados, setTodosTimbrados] = useState<TimbradoNR[]>([]);
   const [timbradoId, setTimbradoId] = useState("");
   const [fechaInicio, setFechaInicio] = useState(hoyISO());
   const [fechaFin, setFechaFin] = useState(hoyISO());
@@ -116,11 +117,18 @@ export default function EmitirNRPage() {
       .then((j) => {
         if (!j?.success) return;
         const activos = ((j.data?.timbrados ?? []) as TimbradoNR[]).filter((t) => t.activo);
-        setTimbrados(activos);
-        if (activos.length) setTimbradoId((prev) => prev || activos[0].id);
+        setTodosTimbrados(activos);
       })
       .catch(() => undefined);
   }, []);
+
+  // Nota de exportación (sale de una factura de exportación) → timbrados de exportación; si no, los generales.
+  useEffect(() => {
+    const tipo = facturaId ? "exportacion" : "general";
+    const lista = todosTimbrados.filter((t) => (t.tipo ?? "general") === tipo);
+    setTimbrados(lista);
+    setTimbradoId((prev) => (lista.some((t) => t.id === prev) ? prev : lista[0]?.id ?? ""));
+  }, [todosTimbrados, facturaId]);
 
   useEffect(() => {
     fetch("/api/notas-remision/origenes", { credentials: "include", cache: "no-store" })
