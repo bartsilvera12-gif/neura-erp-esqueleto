@@ -1,0 +1,133 @@
+import { NextRequest, NextResponse } from "next/server";
+import { successResponse, errorResponse } from "@/lib/api/response";
+import { API_ERRORS } from "@/lib/api/errors";
+import { getComexCtx, operacionCerrada, nombreUsuario, registrarHistorial } from "@/lib/comex/server";
+import { parseUploadFile } from "@/lib/excel/import";
+import { parseGastosRows, buildPreviewGastos } from "@/lib/importaciones/gastos-import";
+import { crearFacturaDeGasto } from "@/lib/comex/gasto-factura";
+import type { CommitResponse } from "@/lib/excel/import-types";
+
+/** POST (multipart file) → crea todos los gastos válidos de la exportación. */
+export async function POST(request: NextRequest, p: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await p.params;
+    const ctx = await getComexCtx(request);
+    if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
+    const emp = ctx.auth.empresa_id;
+    const sb = ctx.supabase;
+
+    const { data: exp } = await sb.from("exportaciones").select("estado, moneda").eq("empresa_id", emp).eq("id", id).maybeSingle();
+    if (!exp) return NextResponse.json(errorResponse("Exportación no encontrada."), { status: 404 });
+    if (operacionCerrada((exp as { estado: string }).estado))
+      return NextResponse.json(errorResponse("La exportación está cerrada o anulada."), { status: 400 });
+
+    let form: FormData;
+    try {
+      form = await request.formData();
+    } catch {
+      return NextResponse.json(errorResponse("Form-data inválido."), { status: 400 });
+    }
+    const file = form.get("file");
+    if (!(file instanceof File)) return NextResponse.json(errorResponse("Falta el archivo."), { status: 400 });
+    const parsedFile = await parseUploadFile(file);
+    if ("error" in parsedFile) return NextResponse.json(errorResponse(parsedFile.error), { status: 400 });
+
+    const parsed = parseGastosRows(parsedFile.rows, (exp as { moneda: string }).moneda);
+    const prev = buildPreviewGastos(parsed);
+    const hoy = new Date().toISOString().slice(0, 10);
+
+    const out: CommitResponse = {
+      summary: { total: parsed.length, inserted: 0, updated: 0, skipped: 0, errors: 0, warnings: 0 },
+      warnings: [],
+      errors: [],
+    };
+
+    let facturasCreadas = 0;
+    for (let i = 0; i < parsed.length; i++) {
+      const g = parsed[i];
+      if (prev.rows[i].action === "ERROR") {
+        out.summary.errors++;
+        out.errors.push(`Fila ${g.row_number}: ${g.errors.join("; ")}`);
+        continue;
+      }
+      const fecha = g.fecha ?? hoy;
+      try {
+        const ins = await sb
+          .from("comex_gastos")
+          .insert({
+            empresa_id: emp,
+            origen_tipo: "EXPORTACION",
+            origen_id: id,
+            usuario_nombre: nombreUsuario(ctx.auth),
+            fecha,
+            tipo: g.tipo,
+            descripcion: g.descripcion,
+            proveedor_nombre: g.proveedor_nombre,
+            proveedor_ruc: g.proveedor_ruc,
+            comprobante: g.comprobante,
+            timbrado: g.timbrado,
+            cuenta_codigo: g.cuenta_codigo,
+            monto: g.monto,
+            moneda: g.moneda,
+            tipo_cambio: g.tipo_cambio,
+            pagado: g.pagado,
+            lleva_iva: g.lleva_iva,
+            iva_porcentaje: g.iva_porcentaje,
+          })
+          .select("id")
+          .single();
+        if (ins.error) throw new Error(ins.error.message);
+        const gastoId = (ins.data as { id: string }).id;
+
+        // Va al Libro de Compras si lleva IVA o es exento con comprobante real y completo.
+        const _comp = String(g.comprobante ?? "").trim();
+        const _nroReal = _comp.length >= 3 && !/^0+$/.test(_comp.replace(/[-\s]/g, ""));
+        const vaAlLibro = g.lleva_iva
+          || Boolean(g.proveedor_ruc?.trim() && _nroReal && g.timbrado?.trim() && g.cuenta_codigo?.trim());
+        if (vaAlLibro) {
+          try {
+            const { compraId, existed } = await crearFacturaDeGasto(sb, ctx.auth, {
+              fecha,
+              tipo: g.tipo,
+              descripcion: g.descripcion,
+              proveedor_nombre: g.proveedor_nombre,
+              proveedor_ruc: g.proveedor_ruc,
+              comprobante: g.comprobante,
+              timbrado: g.timbrado,
+              cuenta_codigo: g.cuenta_codigo,
+              monto: g.monto,
+              moneda: g.moneda,
+              tipo_cambio: g.tipo_cambio,
+              iva_porcentaje: g.iva_porcentaje,
+            });
+            await sb.from("comex_gastos").update({ libro_compra_id: compraId }).eq("empresa_id", emp).eq("id", gastoId);
+            if (existed) {
+              out.summary.warnings++;
+              out.warnings.push(`Fila ${g.row_number}: la factura ${g.comprobante} del proveedor ${g.proveedor_nombre} ya estaba cargada en el Libro de Compras; se enlazó la existente.`);
+            } else {
+              facturasCreadas++;
+            }
+          } catch (e) {
+            await sb.from("comex_gastos").delete().eq("empresa_id", emp).eq("id", gastoId);
+            throw e;
+          }
+        }
+        out.summary.inserted++;
+      } catch (e) {
+        out.summary.errors++;
+        out.errors.push(`Fila ${g.row_number}: ${(e as Error).message.slice(0, 200)}`);
+      }
+    }
+
+    await registrarHistorial(ctx.supabase, ctx.auth, "EXPORTACION", id, "IMPORTAR_GASTOS_EXCEL", {
+      gastos_creados: out.summary.inserted,
+      facturas_libro_compras: facturasCreadas,
+      errores: out.summary.errors,
+    });
+
+    return NextResponse.json(successResponse(out));
+  } catch (err) {
+    console.error("[/api/exportaciones/:id/gastos/import/commit]", err);
+    return NextResponse.json(errorResponse("No se pudieron importar los gastos."), { status: 500 });
+  }
+}

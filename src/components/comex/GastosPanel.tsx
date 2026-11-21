@@ -306,19 +306,22 @@ export default function GastosPanel({
           <button type="button" onClick={abrirNuevo} className={btnPrimario}>
             <Plus className="h-3.5 w-3.5" /> Cargar gasto
           </button>
-          {origenTipo === "IMPORTACION" && (
-            <>
+          {(() => {
+            const base = origenTipo === "IMPORTACION" ? "importaciones" : "exportaciones";
+            return (
               <ImportExcelButton
                 entidad="Gastos"
-                previewUrl={`/api/importaciones/${origenId}/gastos/import/preview`}
-                commitUrl={`/api/importaciones/${origenId}/gastos/import/commit`}
-                templateUrl={`/api/importaciones/${origenId}/gastos/import/template`}
+                previewUrl={`/api/${base}/${origenId}/gastos/import/preview`}
+                commitUrl={`/api/${base}/${origenId}/gastos/import/commit`}
+                templateUrl={`/api/${base}/${origenId}/gastos/import/template`}
                 label="Cargar por Excel"
                 titulo="Importar gastos desde Excel"
                 onCompleted={() => { void cargar(); onCambio?.(); }}
               />
-              <ConsistenciaGastos importacionId={origenId} onAplicado={() => { void cargar(); onCambio?.(); }} />
-            </>
+            );
+          })()}
+          {origenTipo === "IMPORTACION" && (
+            <ConsistenciaGastos importacionId={origenId} onAplicado={() => { void cargar(); onCambio?.(); }} />
           )}
         </div>
       )}
