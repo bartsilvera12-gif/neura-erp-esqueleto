@@ -48,7 +48,7 @@ export async function faltantesExportacion(
   ]);
   const its = (q(items) ?? []) as { producto_id: string | null; producto_nombre: string }[];
   const fac = q(factura) as { estado?: string; prueba?: boolean } | null;
-  const nr = q(remision) as { estado?: string } | null;
+  void remision; // la nota de remisión ya no requiere aprobación: alcanza con que esté vinculada
   const enModoPrueba = ((q(config) ?? []) as { modo_prueba: boolean }[]).some((c) => c.modo_prueba);
   const abiertas = ((q(incs) ?? []) as { estado: string }[]).filter((i) => i.estado !== "resuelto" && i.estado !== "verificado");
   const facturaOk = () => {
@@ -81,11 +81,10 @@ export async function faltantesExportacion(
     return f;
   }
 
-  // Despachada: sale con su nota de remisión aprobada y la factura sigue válida.
+  // Despachada: sale con su nota de remisión vinculada (no requiere aprobación) y la factura sigue válida.
   if (hacia === "despachada") {
     facturaOk();
     if (!exp.nota_remision_id) f.push("Falta vincular la nota de remisión.");
-    else if (nr?.estado !== "aprobada") f.push("La nota de remisión todavía no está aprobada.");
     if (!exp.fecha_embarque) f.push("Falta la fecha real de embarque (en Datos).");
     return f;
   }

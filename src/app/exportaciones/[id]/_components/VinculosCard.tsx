@@ -7,7 +7,7 @@ import type { Exportacion, VinculoFactura, VinculoRemision } from "@/lib/exporta
 import { Aviso, api, btnSecundario, fechaES, inputClass, jsonInit } from "@/components/comex/ui";
 
 const money = (v: number, m: string) => `${m === "PYG" ? "Gs." : m} ${Number(v).toLocaleString("es-PY", { maximumFractionDigits: 2 })}`;
-const ESTADO_NR: Record<string, string> = { pendiente: "Pendiente de aprobación", aprobada: "Aprobada", rechazada: "Rechazada" };
+const ESTADO_NR: Record<string, string> = { pendiente: "Emitida", aprobada: "Emitida", rechazada: "Rechazada" };
 
 /** La factura de exportación y la nota de remisión del envío, para verlas juntas. */
 export default function VinculosCard({

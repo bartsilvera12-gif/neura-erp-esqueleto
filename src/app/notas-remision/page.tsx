@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Truck, Plus, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Truck, Plus, CheckCircle2 } from "lucide-react";
 import { fetchDepositos, fetchNRs, type Deposito, type NotaRemision, type NotaRemisionEstado } from "@/lib/multideposito/client";
 import { Select } from "@/components/ui/Select";
 import { useIsAdmin } from "@/lib/auth/use-is-admin";
@@ -58,12 +58,6 @@ export default function HistorialNRPage() {
       : nombreUbic(nr.ubicacion_destino_id ?? "");
 
 
-  const stats = useMemo(() => ({
-    pendientes: nrs.filter((n) => n.estado === "pendiente").length,
-    aprobadas: nrs.filter((n) => n.estado === "aprobada").length,
-    rechazadas: nrs.filter((n) => n.estado === "rechazada").length,
-  }), [nrs]);
-
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm">
@@ -118,10 +112,8 @@ export default function HistorialNRPage() {
 
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
-      <div className="grid grid-cols-3 gap-3">
-        <Kpi label="Pendientes" value={String(stats.pendientes)} icon={<Clock className="h-5 w-5" />} tone="amber" />
-        <Kpi label="Aprobadas" value={String(stats.aprobadas)} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" />
-        <Kpi label="Rechazadas" value={String(stats.rechazadas)} icon={<XCircle className="h-5 w-5" />} tone="rose" />
+      <div className="grid grid-cols-1 gap-3">
+        <Kpi label="Emitidas" value={String(nrs.length)} icon={<CheckCircle2 className="h-5 w-5" />} tone="emerald" />
       </div>
 
       <div className="zx-surface">
@@ -130,8 +122,6 @@ export default function HistorialNRPage() {
             <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Estado</label>
             <Select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)} className="zx-surface mt-1 w-full rounded-md border-slate-300 px-3 py-2 text-sm">
               <option value="">Todos</option>
-              <option value="pendiente">Pendientes</option>
-              <option value="aprobada">Aprobadas</option>
               <option value="rechazada">Rechazadas</option>
             </Select>
           </div>
@@ -245,7 +235,7 @@ function EstadoBadge({ estado }: { estado: NotaRemisionEstado }) {
     aprobada:  "bg-emerald-50 border-emerald-200 text-emerald-800",
     rechazada: "bg-rose-50 border-rose-200 text-rose-800",
   } as const;
-  return <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${map[estado]}`}>{estado}</span>;
+  return <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${map[estado]}`}>{estado === "rechazada" ? "rechazada" : "emitida"}</span>;
 }
 
 function Kpi({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "amber" | "emerald" | "rose" }) {
