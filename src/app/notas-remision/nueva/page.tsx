@@ -47,7 +47,7 @@ export default function EmitirNRPage() {
   const [chapa, setChapa] = useState("");
   const [marcaVehiculo, setMarcaVehiculo] = useState("");
   /** Facturas y compromisos de venta desde los que se pueden traer los productos. */
-  type DocOrigen = { id: string; numero: string | null; cliente: string | null; fecha: string | null; prueba?: boolean };
+  type DocOrigen = { id: string; numero: string | null; cliente: string | null; fecha: string | null; prueba?: boolean; timbrado?: string | null };
   const [docs, setDocs] = useState<{ facturas: DocOrigen[]; compromisos: DocOrigen[] }>({ facturas: [], compromisos: [] });
   const [docElegido, setDocElegido] = useState("");
   /** Si se llega desde una factura (?factura=…), se trae sola al abrir. */
@@ -59,7 +59,7 @@ export default function EmitirNRPage() {
   const [resDoc, setResDoc] = useState<{ ok: number; sinStock: string[]; sinVincular: string[]; parciales: string[] } | null>(null);
   const [verDetalleDoc, setVerDetalleDoc] = useState(false);
   /** Timbrados activos: con cuál sale la nota. */
-  type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean; modo_prueba?: boolean; proximo_numero_prueba?: number; tipo?: string };
+  type TimbradoNR = { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; activo: boolean; modo_prueba?: boolean; proximo_numero_prueba?: number; tipo?: string; historico?: boolean; vigencia_desde?: string | null; vigencia_hasta?: string | null };
   /** Número que va a salir según el modo en que esté ese timbrado. */
   const proxDe = (t: TimbradoNR) => String(t.modo_prueba !== false ? t.proximo_numero_prueba ?? 1 : t.proximo_numero).padStart(7, "0");
   const [timbrados, setTimbrados] = useState<TimbradoNR[]>([]);
@@ -125,10 +125,29 @@ export default function EmitirNRPage() {
   // Nota de exportación (sale de una factura de exportación) → timbrados de exportación; si no, los generales.
   useEffect(() => {
     const tipo = facturaId ? "exportacion" : "general";
-    const lista = todosTimbrados.filter((t) => (t.tipo ?? "general") === tipo);
+    // Timbrado histórico (regularización): solo si la factura de origen es de ese mismo timbrado.
+    const timbradoFactura = docs.facturas.find((f) => f.id === facturaId)?.timbrado ?? null;
+    const lista = todosTimbrados.filter(
+      (t) => (t.tipo ?? "general") === tipo && (!t.historico || (!!timbradoFactura && t.timbrado === timbradoFactura))
+    );
     setTimbrados(lista);
-    setTimbradoId((prev) => (lista.some((t) => t.id === prev) ? prev : lista[0]?.id ?? ""));
-  }, [todosTimbrados, facturaId]);
+    // Si la factura es del timbrado histórico, la nota sale con el timbrado histórico.
+    setTimbradoId((prev) => {
+      const hist = lista.find((t) => t.historico);
+      if (hist) return hist.id;
+      return lista.some((t) => t.id === prev) ? prev : lista[0]?.id ?? "";
+    });
+  }, [todosTimbrados, facturaId, docs.facturas]);
+
+  // Con timbrado histórico, el traslado lleva la fecha original de la factura (dentro de la vigencia).
+  useEffect(() => {
+    const t = timbrados.find((x) => x.id === timbradoId);
+    const f = docs.facturas.find((x) => x.id === facturaId)?.fecha;
+    if (t?.historico && f) {
+      setFechaInicio(f.slice(0, 10));
+      setFechaFin(f.slice(0, 10));
+    }
+  }, [timbradoId, timbrados, facturaId, docs.facturas]);
 
   useEffect(() => {
     fetch("/api/notas-remision/origenes", { credentials: "include", cache: "no-store" })

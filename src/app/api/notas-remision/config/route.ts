@@ -6,7 +6,7 @@ import { esRolAdminEmpresaOGlobal } from "@/lib/auth/rol-empresa";
 import { esUuid } from "@/lib/comex/server";
 
 const COLS =
-  "id, timbrado, establecimiento, punto_expedicion, vigencia_desde, vigencia_hasta, proximo_numero, activo, modo_prueba, proximo_numero_prueba, tipo";
+  "id, timbrado, establecimiento, punto_expedicion, vigencia_desde, vigencia_hasta, proximo_numero, activo, modo_prueba, proximo_numero_prueba, tipo, historico";
 
 /** GET — los timbrados de notas de remisión que autorizó la DNIT. */
 export async function GET(request: NextRequest) {

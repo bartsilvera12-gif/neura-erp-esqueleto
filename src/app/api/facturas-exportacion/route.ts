@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
 
     const cfgRes = await supabase
       .from("facturas_exportacion_config")
-      .select("timbrado, vigencia_desde, vigencia_hasta, rango_desde, rango_hasta, modo_prueba")
+      .select("timbrado, vigencia_desde, vigencia_hasta, rango_desde, rango_hasta, modo_prueba, historico")
       .eq("empresa_id", auth.empresa_id)
       .eq("establecimiento", est)
       .eq("punto_expedicion", punto)
@@ -212,9 +212,25 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     if (cfgRes.error) throw new Error(cfgRes.error.message);
     const cfg = cfgRes.data as unknown as {
-      timbrado: string; vigencia_desde: string; vigencia_hasta: string; rango_desde: number; rango_hasta: number; modo_prueba: boolean;
+      timbrado: string; vigencia_desde: string; vigencia_hasta: string; rango_desde: number; rango_hasta: number; modo_prueba: boolean; historico: boolean | null;
     } | null;
     if (!cfg) return bad(`No hay timbrado activo para ${est}-${punto}.`);
+
+    // Timbrado histórico (ej. G-2025): solo para reemitir una factura anotada en Regularización con ese mismo timbrado.
+    if (cfg.historico && !original) {
+      if (!regularizacionId) return bad(`El timbrado ${cfg.timbrado} es histórico: solo se usa para regularizar facturas anotadas en Regularización.`);
+      const regH = await supabase
+        .from("facturas_regularizacion")
+        .select("timbrado_original")
+        .eq("empresa_id", auth.empresa_id)
+        .eq("id", regularizacionId)
+        .maybeSingle();
+      if (regH.error) throw new Error(regH.error.message);
+      if ((regH.data as { timbrado_original?: string } | null)?.timbrado_original !== cfg.timbrado)
+        return bad(`La factura a regularizar no es del timbrado histórico ${cfg.timbrado}.`);
+      if (fecha < cfg.vigencia_desde || fecha > cfg.vigencia_hasta)
+        return bad(`La fecha ${fecha} está fuera de la vigencia del timbrado ${cfg.timbrado} (${cfg.vigencia_desde} a ${cfg.vigencia_hasta}).`);
+    }
 
     if (!esBorrador && (fecha < cfg.vigencia_desde || fecha > cfg.vigencia_hasta))
       return bad(`La fecha ${fecha} está fuera de la vigencia del timbrado ${cfg.timbrado} (${cfg.vigencia_desde} a ${cfg.vigencia_hasta}).`);

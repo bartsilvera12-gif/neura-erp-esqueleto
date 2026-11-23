@@ -27,6 +27,8 @@ interface PuntoConfig {
   proximo_numero_prueba: number;
   modo_prueba: boolean;
   activo: boolean;
+  /** Timbrado histórico (ej. G-2025): solo se ofrece al reemitir una factura a regularizar con ese timbrado. */
+  historico?: boolean;
 }
 interface ClienteLista {
   id: string;
@@ -45,6 +47,7 @@ interface ClienteLista {
 interface Reemision {
   id: string;
   numero_original: string;
+  fecha_original?: string | null;
   timbrado_original: string;
   cliente_nombre: string;
   cliente_pais: string | null;
@@ -321,7 +324,10 @@ export default function FormFactura() {
       .catch(() => setError("No se pudo cargar el borrador."));
   }, [cargarId, editarParam]);
 
-  const puntos = useMemo(() => config.filter((c) => c.activo), [config]);
+  const puntos = useMemo(
+    () => config.filter((c) => c.activo && (!c.historico || (!!reemision && c.timbrado === reemision.timbrado_original))),
+    [config, reemision]
+  );
 
   // Un error de validación viejo no debe quedar a la vista después de corregir los datos.
   useEffect(() => {
@@ -352,11 +358,16 @@ export default function FormFactura() {
     if (!reemision || !puntos.length || puntoReemision.current) return;
     puntoReemision.current = true;
     const orig = (reemision.punto_original ?? reemision.numero_original.split("-")[1] ?? "").trim().padStart(3, "0");
-    if (puntos.some((p) => p.punto_expedicion === orig)) setPunto(orig);
+    const pOrig = puntos.find((p) => p.punto_expedicion === orig);
+    if (pOrig) setPunto(orig);
+    // Timbrado histórico: la factura lleva la fecha original, dentro de la vigencia de ese timbrado.
+    if (pOrig?.historico && reemision.fecha_original) setFecha(reemision.fecha_original.slice(0, 10));
   }, [reemision, puntos]);
 
   // Al editar vale el punto original aunque hoy esté inactivo.
-  const cfg = (editarParam ? config : puntos).find((c) => c.punto_expedicion === punto);
+  const cfg = editarParam
+    ? config.find((c) => c.punto_expedicion === punto)
+    : puntos.find((c) => c.punto_expedicion === punto);
   const fueraVigencia = cfg ? fecha < cfg.vigencia_desde || fecha > cfg.vigencia_hasta : false;
   const esPrueba = editada ? editada.prueba : cfg ? cfg.modo_prueba !== false : true;
   const esPyg = moneda === "PYG";

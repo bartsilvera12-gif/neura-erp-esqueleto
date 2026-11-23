@@ -66,12 +66,12 @@ export async function GET(request: NextRequest) {
     }
 
     const [fs, ps] = await Promise.all([
-      supabase.from("facturas_exportacion").select("id, numero_formateado, cliente_nombre, fecha, prueba").eq("empresa_id", emp).eq("estado", "EMITIDA").order("emitida_at", { ascending: false }).limit(100),
+      supabase.from("facturas_exportacion").select("id, numero_formateado, cliente_nombre, fecha, prueba, timbrado").eq("empresa_id", emp).eq("estado", "EMITIDA").order("emitida_at", { ascending: false }).limit(100),
       supabase.from("presupuestos").select("id, numero_control, cliente_nombre, fecha, estado, total, moneda").eq("empresa_id", emp).neq("estado", "rechazado").order("created_at", { ascending: false }).limit(100),
     ]);
     return NextResponse.json(
       successResponse({
-        facturas: ((fs.data ?? []) as unknown as Record<string, unknown>[]).map((f) => ({ id: f.id, numero: f.numero_formateado, cliente: f.cliente_nombre, fecha: f.fecha, prueba: f.prueba === true })),
+        facturas: ((fs.data ?? []) as unknown as Record<string, unknown>[]).map((f) => ({ id: f.id, numero: f.numero_formateado, cliente: f.cliente_nombre, fecha: f.fecha, prueba: f.prueba === true, timbrado: f.timbrado ?? null })),
         compromisos: ((ps.data ?? []) as unknown as Record<string, unknown>[]).map((p) => ({ id: p.id, numero: p.numero_control, cliente: p.cliente_nombre, fecha: p.fecha, total: Number(p.total) || 0, moneda: p.moneda ?? "PYG" })),
       })
     );

@@ -200,19 +200,28 @@ export async function POST(request: NextRequest) {
     let timbradoId: string | null = null;
     let cfgQ = supabase
       .from("notas_remision_config")
-      .select("id, timbrado, establecimiento, punto_expedicion, proximo_numero, modo_prueba, proximo_numero_prueba")
+      .select("id, timbrado, establecimiento, punto_expedicion, proximo_numero, modo_prueba, proximo_numero_prueba, vigencia_desde, vigencia_hasta, historico")
       .eq("empresa_id", auth.empresa_id)
       .eq("activo", true);
     if (body.timbrado_config_id) cfgQ = cfgQ.eq("id", body.timbrado_config_id);
+    // Los timbrados históricos (regularización) nunca se eligen solos: hay que pedirlos explícitamente.
+    else cfgQ = cfgQ.eq("historico", false);
     // Las notas de exportación (salen de una factura de exportación) usan solo timbrados
     // de exportación; las demás, solo los generales: así la numeración no se mezcla.
     cfgQ = cfgQ.eq("tipo", body.factura_id ? "exportacion" : "general");
     const cfgRes = await cfgQ.order("punto_expedicion").limit(1);
     const cfg = ((cfgRes.data ?? [])[0] ?? null) as
-      | { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; modo_prueba: boolean; proximo_numero_prueba: number }
+      | { id: string; timbrado: string; establecimiento: string; punto_expedicion: string; proximo_numero: number; modo_prueba: boolean; proximo_numero_prueba: number; vigencia_desde: string | null; vigencia_hasta: string | null; historico: boolean | null }
       | null;
     if (body.timbrado_config_id && !cfg)
       return NextResponse.json(errorResponse("Ese timbrado no existe o está desactivado."), { status: 400 });
+    // Timbrado histórico: solo para regularizar una remisión de esa época, con la fecha de traslado dentro de su vigencia.
+    if (cfg?.historico) {
+      const f = String(body.fecha_inicio_traslado ?? "").slice(0, 10);
+      if (!f) return NextResponse.json(errorResponse(`El timbrado ${cfg.timbrado} es histórico: cargá la fecha original de inicio del traslado.`), { status: 400 });
+      if ((cfg.vigencia_desde && f < cfg.vigencia_desde) || (cfg.vigencia_hasta && f > cfg.vigencia_hasta))
+        return NextResponse.json(errorResponse(`La fecha ${f} está fuera de la vigencia del timbrado ${cfg.timbrado} (${cfg.vigencia_desde} a ${cfg.vigencia_hasta}).`), { status: 400 });
+    }
     // En modo prueba la numeración sale de un contador aparte: no gasta la real.
     const enPrueba = cfg?.modo_prueba !== false;
     const campoNro = enPrueba ? "proximo_numero_prueba" : "proximo_numero";
