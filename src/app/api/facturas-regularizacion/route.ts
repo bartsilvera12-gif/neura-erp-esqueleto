@@ -90,6 +90,25 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
 
+    // Facturas de exportación históricas: la fecha original tiene que estar dentro de la vigencia
+    // del timbrado cargado (si el timbrado está cargado en la configuración).
+    if (b.tipo === "EXPORTACION") {
+      const { data: cfgs } = await supabase
+        .from("facturas_exportacion_config")
+        .select("vigencia_desde, vigencia_hasta")
+        .eq("empresa_id", auth.empresa_id)
+        .eq("timbrado", timbrado);
+      const lista = (cfgs ?? []) as unknown as Array<{ vigencia_desde: string | null; vigencia_hasta: string | null }>;
+      const f = fecha.slice(0, 10);
+      if (lista.length && !lista.some((c) => (!c.vigencia_desde || f >= c.vigencia_desde) && (!c.vigencia_hasta || f <= c.vigencia_hasta))) {
+        const c = lista[0];
+        return NextResponse.json(
+          errorResponse(`La fecha ${f.split("-").reverse().join("/")} está fuera de la vigencia del timbrado ${timbrado} (${String(c.vigencia_desde ?? "").split("-").reverse().join("/")} al ${String(c.vigencia_hasta ?? "").split("-").reverse().join("/")}).`),
+          { status: 400 }
+        );
+      }
+    }
+
     const nombre = auth.nombre ?? auth.user.email ?? null;
     const ins = await supabase
       .from("facturas_regularizacion")
