@@ -250,9 +250,49 @@ export async function POST(request: NextRequest) {
       if (estadoReg === "REEMITIDA") return bad("Esa factura de agosto ya fue reemitida.");
     }
 
+    // Reemisión de una factura histórica importada (ej. G-2025): el número original ya existe en esta tabla
+    // como registro importado. Se conserva ese número y se actualiza ESE registro (no se crea un duplicado).
+    let reemplazoId: string | null = null;
+    let numeroReemplazo: number | null = null;
+    let reemplazoPrevio: Record<string, unknown> | null = null;
+    if (!esBorrador && !esEdicion && regularizacionId && cfg.historico && !prueba) {
+      const regO = await supabase
+        .from("facturas_regularizacion")
+        .select("numero_original, timbrado_original")
+        .eq("empresa_id", auth.empresa_id)
+        .eq("id", regularizacionId)
+        .maybeSingle();
+      if (regO.error) throw new Error(regO.error.message);
+      const ro = regO.data as { numero_original?: string | null } | null;
+      const partes = String(ro?.numero_original ?? "").split("-");
+      if (partes.length === 3 && partes[0] === est && partes[1] === punto && Number(partes[2]) > 0) {
+        const nro = Number(partes[2]);
+        const ex = await supabase
+          .from("facturas_exportacion")
+          .select("id, estado, tipo, moneda, total, cliente_nombre, fecha, observaciones, regularizacion_id, prueba")
+          .eq("empresa_id", auth.empresa_id)
+          .eq("establecimiento", est)
+          .eq("punto_expedicion", punto)
+          .eq("timbrado", cfg.timbrado)
+          .eq("numero", nro)
+          .eq("prueba", false);
+        if (ex.error) throw new Error(ex.error.message);
+        const filas = (ex.data ?? []) as unknown as Array<Record<string, unknown>>;
+        const activas = filas.filter((f) => f.estado !== "BORRADOR" && f.id !== borradorId);
+        const importada = activas.find((f) => f.estado === "EMITIDA" && !f.regularizacion_id && String(f.observaciones ?? "").startsWith("HIST-"));
+        if (activas.length > 1 || (activas.length === 1 && !importada))
+          return bad(`El número ${est}-${punto}-${String(nro).padStart(7, "0")} ya está usado por otra factura que no es la histórica a regularizar.`, 409);
+        if (importada) {
+          reemplazoId = String(importada.id);
+          numeroReemplazo = nro;
+          reemplazoPrevio = importada;
+        }
+      }
+    }
+
     // El número se asigna solo al emitir. La RPC valida el rango y revierte si se excede; en prueba usa otro contador.
-    let numero: number | null = original ? original.numero : null;
-    if (!esBorrador && !esEdicion) {
+    let numero: number | null = original ? original.numero : numeroReemplazo;
+    if (!esBorrador && !esEdicion && reemplazoId == null) {
       const rpc = await supabase.rpc("reservar_correlativo_factura_exportacion", {
         p_empresa_id: auth.empresa_id,
         p_establecimiento: est,
@@ -317,11 +357,21 @@ export async function POST(request: NextRequest) {
     };
 
     // Ítems anteriores de la factura editada, para restaurarlos si algo falla.
-    const itemsPrevios = editarId
-      ? (((await supabase.from("facturas_exportacion_items").select("*").eq("empresa_id", auth.empresa_id).eq("factura_id", editarId)).data ?? []) as Record<string, unknown>[])
+    const idPrevio = editarId ?? reemplazoId;
+    const itemsPrevios = idPrevio
+      ? (((await supabase.from("facturas_exportacion_items").select("*").eq("empresa_id", auth.empresa_id).eq("factura_id", idPrevio)).data ?? []) as Record<string, unknown>[])
       : [];
 
-    const res = editarId
+    const res = reemplazoId
+      ? await supabase
+          .from("facturas_exportacion")
+          .update(datos)
+          .eq("empresa_id", auth.empresa_id)
+          .eq("id", reemplazoId)
+          .eq("estado", "EMITIDA")
+          .select(COLS)
+          .single()
+      : editarId
       ? await supabase
           .from("facturas_exportacion")
           .update(datos)
@@ -349,7 +399,7 @@ export async function POST(request: NextRequest) {
       console.error("[facturas-exportacion guardar]", msg);
       // Política del spec 4.3: si el número ya se reservó y la factura no se pudo guardar,
       // el número queda consumido y se deja registrado (nunca un hueco silencioso).
-      if (numero != null && !esEdicion) {
+      if (numero != null && !esEdicion && !reemplazoId) {
         await supabase.from("facturas_exportacion_auditoria").insert({
           empresa_id: auth.empresa_id,
           accion: "NUMERO_CONSUMIDO_SIN_FACTURA",
@@ -365,7 +415,7 @@ export async function POST(request: NextRequest) {
       }
       if (/duplicate|unique|23505/i.test(msg)) return bad("Ese número ya está usado en ese punto y timbrado.", 409);
       return bad(
-        numero != null && !esEdicion
+        numero != null && !esEdicion && !reemplazoId
           ? `No se pudo guardar la factura. El número ${est}-${punto}-${String(numero).padStart(7, "0")} quedó registrado como consumido en el Historial.`
           : "No se pudo guardar la factura.",
         500
@@ -381,7 +431,7 @@ export async function POST(request: NextRequest) {
         .insert(items.map((it) => ({ ...it, empresa_id: auth.empresa_id, factura_id: factura.id })));
       if (itemsIns.error) {
         console.error("[facturas-exportacion items]", itemsIns.error.message);
-        if (esEdicion) {
+        if (esEdicion || reemplazoId) {
           // Se vuelven a poner los productos que tenía; la factura queda como estaba en ítems.
           if (itemsPrevios.length) await supabase.from("facturas_exportacion_items").insert(itemsPrevios);
           return bad("No se pudieron guardar los productos; la factura conserva los anteriores. Probá de nuevo.", 500);
@@ -398,13 +448,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // El borrador de la reemisión ya no hace falta: sus datos quedaron en la factura histórica actualizada.
+    if (reemplazoId && borradorId && borradorId !== reemplazoId) {
+      await supabase.from("facturas_exportacion_items").delete().eq("empresa_id", auth.empresa_id).eq("factura_id", borradorId);
+      await supabase.from("facturas_exportacion").delete().eq("empresa_id", auth.empresa_id).eq("id", borradorId).eq("estado", "BORRADOR");
+    }
+
     // El guardado automático de un borrador ya creado no se audita (sería una fila cada 30 s).
     const autoSinAuditar = esBorrador && borradorId && body.auto === true;
     if (!autoSinAuditar) await supabase.from("facturas_exportacion_auditoria").insert({
       empresa_id: auth.empresa_id,
       factura_id: factura.id,
       accion: esEdicion ? "EDITAR" : esBorrador ? (borradorId ? "BORRADOR_MODIFICAR" : "BORRADOR_CREAR") : regularizacionId ? "REEMITIR" : "EMITIR",
-      detalle: esEdicion && original
+      detalle: reemplazoId
+        ? { tipo, numero, punto, total, moneda, prueba, regularizacion_id: regularizacionId, reemplaza_historica: reemplazoPrevio }
+        : esEdicion && original
         ? {
             numero: original.numero_formateado,
             antes: { fecha: original.fecha, cliente: original.cliente_nombre, total: original.total, moneda: original.moneda, productos: itemsPrevios.length },
