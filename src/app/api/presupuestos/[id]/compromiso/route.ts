@@ -81,10 +81,10 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
     totalNormal += totalSinDesc;
     const pid = it.producto_id ? String(it.producto_id) : "";
     const info = pid ? prodInfo.get(pid) : undefined;
-    const desc = info?.descripcion ? `<div style="font-size:9px;color:#333">${esc(info.descripcion)}</div>` : "";
-    const sku = it.sku ? `<div style="font-size:9px;color:#666">SKU: ${esc(it.sku)}</div>` : "";
+    const desc = info?.descripcion ? `<div style="font-size:8pt;line-height:1.25;color:#333;overflow-wrap:anywhere">${esc(info.descripcion)}</div>` : "";
+    const sku = it.sku ? `<div style="font-size:8pt;color:#666">SKU: ${esc(it.sku)}</div>` : "";
     const img = info?.imagen_url
-      ? `<img src="${esc(info.imagen_url)}" style="max-width:78px;max-height:60px;object-fit:contain" />`
+      ? `<img src="${esc(info.imagen_url)}" style="max-width:150px;max-height:130px;object-fit:contain" />`
       : "";
     return `<tr>
       <td class="c">${num(cant)}</td>
@@ -116,15 +116,16 @@ export async function GET(request: NextRequest, ctxParams: { params: Promise<{ i
       ${validez ? `<div class="fila"><span class="l">Propuesta válida:</span><span>${esc(validez)}</span></div>` : ""}
     </div>
   </div>
-  <table class="g">
+  <style>table.pres{table-layout:fixed}table.pres th{font-size:9px;padding:3px 3px}table.pres td{padding:3px 4px;font-size:10px}table.pres td img{display:block;margin:0 auto}table.pres tr{page-break-inside:avoid}</style>
+  <table class="g pres">
     <thead><tr>
-      <th style="width:48px">Cant</th>
+      <th style="width:34px">Cant</th>
       <th>Modelo / Descripción</th>
-      <th style="width:90px">Imagen</th>
-      <th style="width:90px">Precio unitario ${simb}</th>
-      <th style="width:95px">Total sin descuento ${simb}</th>
-      <th style="width:95px">Precio unitario con descuento ${simb}</th>
-      <th style="width:95px">Total con descuento ${simb}</th>
+      <th style="width:160px">Imagen</th>
+      <th style="width:70px">Precio unitario ${simb}</th>
+      <th style="width:72px">Total sin descuento ${simb}</th>
+      <th style="width:72px">Precio unitario con descuento ${simb}</th>
+      <th style="width:72px">Total con descuento ${simb}</th>
     </tr></thead>
     <tbody>
       ${filas || `<tr><td colspan="7" class="c" style="padding:10px;color:#888">Sin ítems.</td></tr>`}
