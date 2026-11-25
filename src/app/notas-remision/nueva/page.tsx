@@ -431,6 +431,11 @@ export default function EmitirNRPage() {
                   </span>
                 </p>
               )}
+              {(timbrados.find((t) => t.id === timbradoId) ?? timbrados[0])?.historico && (
+                <p className="mt-1 text-xs text-emerald-800">
+                  Timbrado de la factura original: {(timbrados.find((t) => t.id === timbradoId) ?? timbrados[0]).timbrado}
+                </p>
+              )}
               {(timbrados.find((t) => t.id === timbradoId) ?? timbrados[0])?.modo_prueba !== false && (
                 <p className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">
                   Este timbrado está en <strong>modo prueba</strong>: la nota sale marcada PRUEBA · SIN VALOR, usa el
@@ -477,8 +482,8 @@ export default function EmitirNRPage() {
       <div className="zx-surface">
         <div className="border-b border-slate-100 px-5 py-4">
           <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
-            <label className="text-xs font-medium text-slate-700">Traer los productos de una factura o compromiso de venta (opcional)</label>
-            <select value={docElegido} onChange={(e) => void traerDe(e.target.value)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+            <label htmlFor="nr-traer-documento" className="text-xs font-medium text-slate-700">Traer los productos de una factura o compromiso de venta (opcional)</label>
+            <select id="nr-traer-documento" value={docElegido} onChange={(e) => void traerDe(e.target.value)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
               <option value="">— Cargar los productos a mano —</option>
               {docs.facturas.length > 0 && (
                 <optgroup label="Facturas">
