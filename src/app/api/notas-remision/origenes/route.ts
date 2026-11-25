@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTenantSupabaseFromAuth } from "@/lib/supabase/tenant-api";
 import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
+import { traerTodo } from "@/lib/comex/server";
+import { armarBuscadorPorCodigo } from "@/lib/productos/buscar-por-codigo";
 
 /**
  * Documentos desde los que se puede armar una nota de remisión o una factura
@@ -23,16 +25,25 @@ export async function GET(request: NextRequest) {
     if (tipo === "factura" && id) {
       const [f, it] = await Promise.all([
         supabase.from("facturas_exportacion").select("id, numero_formateado, cliente_id, cliente_nombre, cliente_direccion, cliente_ciudad").eq("empresa_id", emp).eq("id", id).maybeSingle(),
-        supabase.from("facturas_exportacion_items").select("producto_id, descripcion, cantidad").eq("empresa_id", emp).eq("factura_id", id).order("orden"),
+        supabase.from("facturas_exportacion_items").select("producto_id, codigo, descripcion, cantidad").eq("empresa_id", emp).eq("factura_id", id).order("orden"),
       ]);
       if (f.error || it.error) throw new Error((f.error ?? it.error)?.message);
       if (!f.data) return NextResponse.json(errorResponse("La factura no existe."), { status: 404 });
       const c = f.data as unknown as Record<string, string | null>;
+      const lineas = (it.data ?? []) as unknown as { producto_id: string | null; codigo: string | null; descripcion: string; cantidad: number }[];
+      // Líneas sin vincular: se resuelven por código (tolera ceros de más o de menos), nunca por nombre.
+      let buscar: ReturnType<typeof armarBuscadorPorCodigo<{ id: string; sku: string | null }>> | null = null;
+      if (lineas.some((x) => !x.producto_id && x.codigo)) {
+        const prods = await traerTodo<{ id: string; sku: string | null }>((a, b) =>
+          supabase.from("productos").select("id, sku").eq("empresa_id", emp).eq("activo", true).order("id").range(a, b)
+        );
+        buscar = armarBuscadorPorCodigo(prods);
+      }
       return NextResponse.json(
         successResponse({
           documento: `Factura ${c.numero_formateado ?? ""}`.trim(),
           cliente: { id: c.cliente_id, nombre: c.cliente_nombre, direccion: c.cliente_direccion, ciudad: c.cliente_ciudad },
-          items: ((it.data ?? []) as unknown as { producto_id: string | null; descripcion: string; cantidad: number }[]).map((x) => ({ producto_id: x.producto_id, descripcion: x.descripcion, cantidad: Number(x.cantidad) })),
+          items: lineas.map((x) => ({ producto_id: x.producto_id ?? buscar?.(x.codigo)?.id ?? null, descripcion: x.descripcion, cantidad: Number(x.cantidad) })),
         })
       );
     }

@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from "@/lib/api/response";
 import { API_ERRORS } from "@/lib/api/errors";
 import { parseUploadFile } from "@/lib/excel/import";
 import { traerTodo } from "@/lib/comex/server";
+import { armarBuscadorPorCodigo } from "@/lib/productos/buscar-por-codigo";
 
 /**
  * POST (form-data: file, tipo) — lee el Excel con los productos de una factura
@@ -58,6 +59,8 @@ export async function POST(request: NextRequest) {
     );
     const porSku = new Map(productos.filter((p) => p.sku).map((p) => [String(p.sku).trim().toLowerCase(), p]));
 
+    const buscarCodigo = armarBuscadorPorCodigo(productos);
+
     // Depósitos y categorías, para resolverlos por nombre al dar de alta.
     const [ubicQ, catQ] = await Promise.all([
       ctx.supabase.from("inventario_ubicaciones").select("id, nombre").eq("empresa_id", emp),
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
       const descuento = Math.max(0, num(col(f, "descuento", "desc")));
       const ivaRaw = txt(col(f, "iva", "ivaporcentaje"), 10).replace("%", "").toUpperCase();
 
-      let p = codigo ? porSku.get(codigo.toLowerCase()) : undefined;
+      let p = codigo ? (porSku.get(codigo.toLowerCase()) ?? buscarCodigo(codigo)) : undefined;
       const descripcion = descripcionExcel || p?.nombre || "";
       if (!descripcion) {
         errores.push(`Fila ${linea}: sin descripción ni código que exista en el inventario.`);
