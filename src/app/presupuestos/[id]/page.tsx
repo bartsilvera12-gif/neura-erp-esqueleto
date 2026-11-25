@@ -171,7 +171,7 @@ export default function PresupuestoDetallePage() {
   }
 
   function abrirPdf() {
-    window.open(`/api/presupuestos/${id}/pdf?auto=1`, "_blank", "noopener");
+    window.open(`/api/presupuestos/${id}/pdf?auto=1`, "_blank");
   }
 
   if (loading) {
