@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Check, Hammer, ChevronDown, ChevronRight, Paperclip } from "lucide-react";
+import { Plus, Trash2, Check, Hammer, ChevronDown, ChevronRight, Paperclip, Wallet } from "lucide-react";
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { MODALIDAD_LABEL, MODALIDADES, TIPO_PARTIDA_LABEL, TIPOS_PARTIDA, CAUSA_ADICIONAL_LABEL, CAUSAS_ADICIONAL } from "@/lib/produccion/ordenes-helper";
 
 type Orden = { id: string; contratista_id: string; contratista_nombre: string; version: number; modalidad: string; estado: string; importe_solicitado: number; importe_aprobado: number; aprobado_por: string | null; aprobado_at: string | null };
 type Detalle = Record<string, unknown> & { id: string; modalidad: string; estado: string; importe_base: number; importe_solicitado: number; importe_anterior: number | null; alcance: string | null; plazo: string | null; condiciones: string | null; exclusiones: string | null };
 type Linea = { id: string; tipo_partida: string; descripcion: string; cantidad: number; precio_unitario: number; subtotal: number; causa: string | null };
+type Pago = { id: string; monto: number; fecha: string; metodo_pago: string; observaciones: string | null; comprobante_url: string | null; created_by_nombre: string | null };
 type Contratista = { id: string; nombre: string };
 
 const input = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#4FAEB2] focus:ring-2 focus:ring-[#4FAEB2]/20";
@@ -24,6 +25,12 @@ export default function OrdenesContratista({ proyectoId }: { proyectoId: string 
   const [nc, setNc] = useState({ contratista_id: "", modalidad: "global" });
   const [nl, setNl] = useState({ tipo_partida: "unidad", descripcion: "", cantidad: "1", precio_unitario: "", causa: "ampliacion" });
   const fileRef = useRef<HTMLInputElement>(null);
+  const pagoFileRef = useRef<HTMLInputElement>(null);
+  const [pagos, setPagos] = useState<Pago[]>([]);
+  const [verPago, setVerPago] = useState(false);
+  const hoy = () => new Date().toISOString().slice(0, 10);
+  const [np, setNp] = useState({ monto: "", fecha: hoy(), metodo_pago: "efectivo", observaciones: "" });
+  const [pagoArchivo, setPagoArchivo] = useState<File | null>(null);
 
   const cargar = useCallback(async () => {
     const r = await fetchWithSupabaseSession(`/api/produccion/proyectos/${proyectoId}/ordenes`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({ success: false }));
@@ -34,11 +41,15 @@ export default function OrdenesContratista({ proyectoId }: { proyectoId: string 
     fetchWithSupabaseSession("/api/produccion/contratistas", { cache: "no-store" }).then((x) => x.json()).then((j) => { if (j?.success) setContratistas((j.data.contratistas as Record<string, unknown>[]).map((c) => ({ id: String(c.id), nombre: String(c.nombre) }))); }).catch(() => {});
   }, [cargar]);
 
+  const cargarPagos = useCallback(async (id: string) => {
+    const r = await fetchWithSupabaseSession(`/api/produccion/ordenes/${id}/pagos`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({ success: false }));
+    setPagos(r?.success ? (r.data.pagos as Pago[]) : []);
+  }, []);
   const abrir = useCallback(async (id: string) => {
     if (abierta === id) { setAbierta(null); setDetalle(null); return; }
     const r = await fetchWithSupabaseSession(`/api/produccion/ordenes/${id}`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({ success: false }));
-    if (r?.success) { setAbierta(id); setDetalle({ orden: r.data.orden as Detalle, lineas: r.data.lineas as Linea[], archivo_url: r.data.archivo_url as string | null }); }
-  }, [abierta]);
+    if (r?.success) { setAbierta(id); setVerPago(false); setDetalle({ orden: r.data.orden as Detalle, lineas: r.data.lineas as Linea[], archivo_url: r.data.archivo_url as string | null }); void cargarPagos(id); }
+  }, [abierta, cargarPagos]);
   const refrescar = useCallback(async (id: string) => {
     const r = await fetchWithSupabaseSession(`/api/produccion/ordenes/${id}`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({ success: false }));
     if (r?.success) setDetalle({ orden: r.data.orden as Detalle, lineas: r.data.lineas as Linea[], archivo_url: r.data.archivo_url as string | null });
@@ -75,6 +86,13 @@ export default function OrdenesContratista({ proyectoId }: { proyectoId: string 
     if (!confirm("¿Aprobar esta cotización? Una vez aprobada no se edita (para cambios creá una nueva versión).")) return;
     const r = await fetchWithSupabaseSession(`/api/produccion/ordenes/${id}/aprobar`, { method: "POST" }).then((x) => x.json()).catch(() => ({ success: false, error: "Error de red." }));
     if (r?.success) await refrescar(id); else setError(r?.error ?? "No se pudo aprobar.");
+  }
+  async function registrarPago(id: string) {
+    const fd = new FormData();
+    fd.append("monto", np.monto); fd.append("fecha", np.fecha); fd.append("metodo_pago", np.metodo_pago); fd.append("observaciones", np.observaciones);
+    if (pagoArchivo) fd.append("file", pagoArchivo);
+    const r = await fetchWithSupabaseSession(`/api/produccion/ordenes/${id}/pagos`, { method: "POST", body: fd }).then((x) => x.json()).catch(() => ({ success: false, error: "Error de red." }));
+    if (r?.success) { setNp({ monto: "", fecha: hoy(), metodo_pago: "efectivo", observaciones: "" }); setPagoArchivo(null); setVerPago(false); setError(null); await refrescar(id); await cargarPagos(id); } else setError(r?.error ?? "No se pudo registrar el pago.");
   }
   async function subirArchivo(id: string, file: File) {
     const fd = new FormData(); fd.append("file", file);
@@ -168,6 +186,52 @@ export default function OrdenesContratista({ proyectoId }: { proyectoId: string 
                   </div>
                   <span className="font-mono text-sm font-bold text-slate-800">Total: {gs(o.importe_solicitado)}</span>
                 </div>
+
+                {o.estado === "aprobada" && (() => {
+                  const total = Number(o.importe_aprobado) || 0;
+                  const pagado = Number(o.importe_pagado) || 0;
+                  const saldo = total - pagado;
+                  return (
+                    <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <h3 className="flex items-center gap-1 text-xs font-semibold text-slate-700"><Wallet className="h-4 w-4 text-[#4FAEB2]" /> Pagos al contratista</h3>
+                        {saldo > 0 && <button onClick={() => setVerPago((v) => !v)} className="rounded-lg bg-[#4FAEB2] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3F8E91]">Registrar pago</button>}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div><p className="text-slate-400">Importe contratado</p><p className="font-mono font-semibold">{gs(total)}</p></div>
+                        <div><p className="text-slate-400">Total abonado</p><p className="font-mono font-semibold text-emerald-700">{gs(pagado)}</p></div>
+                        <div><p className="text-slate-400">Saldo pendiente</p><p className="font-mono font-semibold text-rose-600">{gs(saldo)}</p></div>
+                      </div>
+                      {verPago && (
+                        <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-3">
+                          <div className="w-32"><label className="text-[11px] text-slate-400">Monto del pago</label><input type="number" value={np.monto} onChange={(e) => setNp({ ...np, monto: e.target.value })} className={input} /></div>
+                          <div className="w-36"><label className="text-[11px] text-slate-400">Fecha del pago</label><input type="date" value={np.fecha} onChange={(e) => setNp({ ...np, fecha: e.target.value })} className={input} /></div>
+                          <div className="w-36"><label className="text-[11px] text-slate-400">Método de pago</label><select value={np.metodo_pago} onChange={(e) => setNp({ ...np, metodo_pago: e.target.value })} className={input}><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="cheque">Cheque</option><option value="otro">Otro</option></select></div>
+                          <div className="flex-1 min-w-[140px]"><label className="text-[11px] text-slate-400">Observaciones del pago</label><input value={np.observaciones} onChange={(e) => setNp({ ...np, observaciones: e.target.value })} className={input} /></div>
+                          <div>
+                            <button onClick={() => pagoFileRef.current?.click()} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:bg-white"><Paperclip className="h-3.5 w-3.5" /> {pagoArchivo ? pagoArchivo.name : "Adjuntar comprobante"}</button>
+                            <input ref={pagoFileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { setPagoArchivo(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+                          </div>
+                          <button onClick={() => registrarPago(o.id)} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Guardar pago</button>
+                        </div>
+                      )}
+                      {pagos.length > 0 ? (
+                        <table className="mt-3 w-full text-xs">
+                          <thead><tr className="text-left text-slate-400"><th className="pb-1 font-medium">Fecha</th><th className="pb-1 font-medium">Método</th><th className="pb-1 font-medium">Observaciones</th><th className="pb-1 text-right font-medium">Monto</th><th /></tr></thead>
+                          <tbody>{pagos.map((pg) => (
+                            <tr key={pg.id} className="border-t border-slate-100">
+                              <td className="py-1.5">{String(pg.fecha).slice(0, 10).split("-").reverse().join("/")}</td>
+                              <td className="py-1.5 capitalize">{pg.metodo_pago}</td>
+                              <td className="py-1.5 text-slate-500">{pg.observaciones ?? ""}</td>
+                              <td className="py-1.5 text-right font-mono font-semibold">{gs(pg.monto)}</td>
+                              <td className="py-1.5 text-right">{pg.comprobante_url ? <a href={pg.comprobante_url} target="_blank" rel="noreferrer" className="text-[#3F8E91] hover:underline">Comprobante</a> : null}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      ) : <p className="mt-2 text-xs text-slate-400">Todavía no se registraron pagos.</p>}
+                    </div>
+                  );
+                })()}
 
                 {editable && (
                   <>
