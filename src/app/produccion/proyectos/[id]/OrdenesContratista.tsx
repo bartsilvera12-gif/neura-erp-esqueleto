@@ -5,7 +5,7 @@ import { Plus, Trash2, Check, Hammer, ChevronDown, ChevronRight, Paperclip, Wall
 import { fetchWithSupabaseSession } from "@/lib/api/fetch-with-supabase-session";
 import { MODALIDAD_LABEL, MODALIDADES, TIPO_PARTIDA_LABEL, TIPOS_PARTIDA, CAUSA_ADICIONAL_LABEL, CAUSAS_ADICIONAL } from "@/lib/produccion/ordenes-helper";
 
-type Orden = { id: string; contratista_id: string; contratista_nombre: string; version: number; modalidad: string; estado: string; importe_solicitado: number; importe_aprobado: number; aprobado_por: string | null; aprobado_at: string | null };
+type Orden = { id: string; contratista_id: string; contratista_nombre: string; version: number; modalidad: string; estado: string; importe_solicitado: number; importe_aprobado: number; importe_pagado: number; aprobado_por: string | null; aprobado_at: string | null };
 type Detalle = Record<string, unknown> & { id: string; modalidad: string; estado: string; importe_base: number; importe_solicitado: number; importe_anterior: number | null; alcance: string | null; plazo: string | null; condiciones: string | null; exclusiones: string | null };
 type Linea = { id: string; tipo_partida: string; descripcion: string; cantidad: number; precio_unitario: number; subtotal: number; causa: string | null };
 type Pago = { id: string; monto: number; fecha: string; metodo_pago: string; observaciones: string | null; comprobante_url: string | null; created_by_nombre: string | null };
@@ -50,6 +50,10 @@ export default function OrdenesContratista({ proyectoId }: { proyectoId: string 
     const r = await fetchWithSupabaseSession(`/api/produccion/ordenes/${id}`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({ success: false }));
     if (r?.success) { setAbierta(id); setVerPago(false); setDetalle({ orden: r.data.orden as Detalle, lineas: r.data.lineas as Linea[], archivo_url: r.data.archivo_url as string | null }); void cargarPagos(id); }
   }, [abierta, cargarPagos]);
+  async function abrirYPagar(id: string) {
+    if (abierta !== id) await abrir(id);
+    setVerPago(true);
+  }
   const refrescar = useCallback(async (id: string) => {
     const r = await fetchWithSupabaseSession(`/api/produccion/ordenes/${id}`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({ success: false }));
     if (r?.success) setDetalle({ orden: r.data.orden as Detalle, lineas: r.data.lineas as Linea[], archivo_url: r.data.archivo_url as string | null });
@@ -131,6 +135,9 @@ export default function OrdenesContratista({ proyectoId }: { proyectoId: string 
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${od.estado === "aprobada" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{ESTADO_LABEL[od.estado] ?? od.estado}</span>
                 <span className="ml-auto font-mono text-sm font-semibold text-slate-700">{gs(od.estado === "aprobada" ? od.importe_aprobado : od.importe_solicitado)}</span>
               </button>
+              {od.estado === "aprobada" && (Number(od.importe_aprobado) || 0) - (Number(od.importe_pagado) || 0) > 0 && (
+                <button onClick={() => void abrirYPagar(od.id)} className="inline-flex items-center gap-1 rounded-lg bg-[#4FAEB2] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#3F8E91]"><Wallet className="h-3.5 w-3.5" /> Registrar pago</button>
+              )}
               {od.estado === "borrador" && <button onClick={() => borrar(od.id)} className="text-rose-500 hover:text-rose-700"><Trash2 className="h-4 w-4" /></button>}
             </div>
 
