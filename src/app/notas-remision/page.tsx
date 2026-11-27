@@ -199,6 +199,15 @@ export default function HistorialNRPage() {
                         >
                           Imprimir
                         </Link>
+                        {isAdmin && nr.estado !== "rechazada" && (
+                          <Link
+                            href={`/notas-remision/${nr.id}/editar`}
+                            className="zx-surface rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            title="Solo administradores: corregir los datos de la nota"
+                          >
+                            Editar
+                          </Link>
+                        )}
                         {isAdmin && (
                           <button
                             type="button"
