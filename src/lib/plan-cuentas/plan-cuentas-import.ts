@@ -98,7 +98,20 @@ export function parsePlanCuentaImportRows(rows: Record<string, string>[]): Parse
     const denominacion = (get(r, "denominacion") ?? "").trim();
     const nivelRaw = (get(r, "nivel") ?? "").trim();
     const nivel = nivelRaw === "" ? null : Number(nivelRaw);
-    const naturaleza = parseNaturaleza(get(r, "naturaleza"));
+    let naturaleza = parseNaturaleza(get(r, "naturaleza"));
+    if (!naturaleza && cuenta) {
+      // Archivo sin columna NATURALEZA: se deduce del primer dígito (misma convención del plan cargado).
+      const g = cuenta.charAt(0);
+      if (g === "1" || g === "9" || g === "5" || g === "6" || g === "8") naturaleza = "D";
+      else if (g === "2" || g === "3" || g === "4" || g === "7") naturaleza = "A";
+      if (naturaleza) {
+        warnings.push(
+          `Naturaleza deducida del grupo ${g} (${naturaleza === "D" ? "Deudora" : "Acreedora"}); validar con el contador${
+            /^\(-\)/.test(denominacion) ? " (cuenta regularizadora)" : ""
+          }.`
+        );
+      }
+    }
 
     if (!cuenta) errors.push("Falta el código de cuenta.");
     if (!denominacion) errors.push("Falta la denominación.");
