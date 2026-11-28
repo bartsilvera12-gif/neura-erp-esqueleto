@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
     if (!ctx) return NextResponse.json(errorResponse(API_ERRORS.UNAUTHORIZED), { status: 401 });
     const emp = ctx.auth.empresa_id;
 
-    const { data: exp } = await ctx.supabase.from("exportaciones").select("estado, moneda").eq("empresa_id", emp).eq("id", id).maybeSingle();
+    const { data: exp } = await ctx.supabase.from("exportaciones").select("estado").eq("empresa_id", emp).eq("id", id).maybeSingle();
     if (!exp) return NextResponse.json(errorResponse("Exportación no encontrada."), { status: 404 });
     if (operacionCerrada((exp as { estado: string }).estado))
       return NextResponse.json(errorResponse("La exportación está cerrada o anulada."), { status: 400 });
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
     const parsedFile = await parseUploadFile(file);
     if ("error" in parsedFile) return NextResponse.json(errorResponse(parsedFile.error), { status: 400 });
 
-    const parsed = parseGastosRows(parsedFile.rows, (exp as { moneda: string }).moneda);
+    const parsed = parseGastosRows(parsedFile.rows, "USD");
     const preview = buildPreviewGastos(parsed);
     await anotarMatchFacturas(ctx.supabase, emp, parsed, preview);
     return NextResponse.json(successResponse(preview));
