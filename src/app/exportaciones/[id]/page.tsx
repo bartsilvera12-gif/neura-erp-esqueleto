@@ -323,7 +323,7 @@ export default function ExportacionDetallePage({ params }: { params: Promise<{ i
         </div>
       )}
       {tab === "checklist" && <ChecklistTab exp={exp} onCambio={() => void load()} />}
-      {tab === "gastos" && <GastosPanel origenTipo="EXPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
+      {tab === "gastos" && <GastosPanel origenTipo="EXPORTACION" origenId={id} bloqueado={bloqueada} permiteExcelCerrada={exp.estado === "cerrada"} onCambio={() => void load()} />}
       {tab === "incidencias" && <IncidenciasPanel origenTipo="EXPORTACION" origenId={id} bloqueado={bloqueada} onCambio={() => void load()} />}
       {tab === "historial" && <HistorialPanel origenTipo="EXPORTACION" origenId={id} recarga={recargaHist} />}
 

@@ -75,12 +75,15 @@ export default function GastosPanel({
   origenTipo,
   origenId,
   bloqueado,
+  permiteExcelCerrada,
   onCambio,
 }: {
   origenTipo: "IMPORTACION" | "EXPORTACION";
   origenId: string;
   /** Operación cerrada o anulada: solo lectura. */
   bloqueado?: boolean;
+  /** Operación cerrada (no anulada): igual se permite cargar gastos históricos por Excel. */
+  permiteExcelCerrada?: boolean;
   onCambio?: () => void;
 }) {
   const [lista, setLista] = useState<GastoComex[]>([]);
@@ -301,11 +304,13 @@ export default function GastosPanel({
 
       {error && <Aviso>{error}</Aviso>}
 
-      {!bloqueado && !abierto && (
+      {(!bloqueado || permiteExcelCerrada) && !abierto && (
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={abrirNuevo} className={btnPrimario}>
-            <Plus className="h-3.5 w-3.5" /> Cargar gasto
-          </button>
+          {!bloqueado && (
+            <button type="button" onClick={abrirNuevo} className={btnPrimario}>
+              <Plus className="h-3.5 w-3.5" /> Cargar gasto
+            </button>
+          )}
           {(() => {
             const base = origenTipo === "IMPORTACION" ? "importaciones" : "exportaciones";
             return (

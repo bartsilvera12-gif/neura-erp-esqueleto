@@ -17,8 +17,9 @@ export async function POST(request: NextRequest, p: { params: Promise<{ id: stri
 
     const { data: exp } = await ctx.supabase.from("exportaciones").select("estado").eq("empresa_id", emp).eq("id", id).maybeSingle();
     if (!exp) return NextResponse.json(errorResponse("Exportación no encontrada."), { status: 404 });
-    if (operacionCerrada((exp as { estado: string }).estado))
-      return NextResponse.json(errorResponse("La exportación está cerrada o anulada."), { status: 400 });
+    // Una exportación cerrada admite cargar gastos históricos por Excel; solo la anulada se bloquea.
+    if ((exp as { estado: string }).estado === "anulada")
+      return NextResponse.json(errorResponse("La exportación está anulada."), { status: 400 });
 
     let form: FormData;
     try {
